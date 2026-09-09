@@ -1,0 +1,26 @@
+{
+  "SPREADSHEET_ID": "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+  "ROOT_FOLDER_ID": "1AbCdEfGhIjKlMnOpQrStUvWxYz_012345",
+  "PROJECT_VIDEOS_FOLDER_ID": "1Pr0j3ctV1d30sF0ld3rId_0123456789",
+  "MARKETING_CONTENT_FOLDER_ID": "1M4rk3t1ngC0nt3ntF0ld3rId_01234567",
+  "UNIT_DESIGN_PDFS_FOLDER_ID": "1Un1tD3s1gnPdfsF0ld3rId_0123456789",
+  "TIMEZONE": "Africa/Cairo",
+  "SYSTEM_INITIALIZED": "TRUE",
+  "AUTHORISED_USERS": [
+    {
+      "email": "owner@amlaakdesign.com",
+      "role": "System Owner",
+      "active": "Yes"
+    },
+    {
+      "email": "engineer@amlaakdesign.com",
+      "role": "Authorised User 1",
+      "active": "Yes"
+    },
+    {
+      "email": "marketing@amlaakdesign.com",
+      "role": "Authorised User 2",
+      "active": "Yes"
+    }
+  ]
+}

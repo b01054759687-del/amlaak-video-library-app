@@ -1,0 +1,27 @@
+# Node and OS files
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+
+# Apps Script Credentials and Deployment State
+.clasprc.json
+.clasp.json
+
+# Local Environment & Secrets
+.env
+.env.local
+*.secret
+credentials.json
+token.json
+
+# Binary Media & Customer Exports
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.pdf
+*.xlsx
+*.csv
+export/
+scratch/

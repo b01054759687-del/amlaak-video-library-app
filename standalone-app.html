@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Amlaak Video Library | المنظومة الهندسية لإدارة مكتبة الفيديوهات والتصاميم (Preview & Interactive App)</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600;700;800;900&family=Almarai:wght@400;700&family=Cairo:wght@400;600;700;800;900&family=Outfit:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --amlaak-navy-dark: #070D18;
+      --amlaak-navy: #0B1528;
+      --amlaak-navy-card: #0F1D38;
+      --amlaak-slate: #1E293B;
+      --amlaak-slate-light: #334155;
+      --amlaak-gold: #C5A059;
+      --amlaak-gold-light: #DFBF7A;
+      --amlaak-gold-subtle: rgba(197, 160, 89, 0.12);
+      --amlaak-gold-border: rgba(197, 160, 89, 0.3);
+      
+      --font-heading: 'Alexandria', 'Cairo', sans-serif;
+      --font-body: 'Almarai', 'Cairo', sans-serif;
+      --font-num: 'Outfit', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--amlaak-navy-dark);
+      background-image: 
+        radial-gradient(circle at 10% 10%, rgba(197, 160, 89, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 90%, rgba(15, 29, 56, 0.45) 0%, transparent 50%),
+        linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+      color: #F1F5F9;
+      min-height: 100vh;
+      direction: rtl;
+      text-align: right;
+    }
+
+    h1, h2, h3, h4, h5, h6, .brand-title {
+      font-family: var(--font-heading);
+    }
+
+    .font-num {
+      font-family: var(--font-num);
+      direction: ltr;
+      display: inline-block;
+    }
+
+    .font-mono-code {
+      font-family: var(--font-mono);
+      direction: ltr;
+      text-align: left;
+    }
+
+    .gold-gradient-text {
+      background: linear-gradient(135deg, #FFF0C2 0%, #C5A059 50%, #9A7329 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .gold-card {
+      background: rgba(15, 29, 56, 0.75);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--amlaak-gold-border);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      transition: all 0.25s ease;
+    }
+
+    .gold-card:hover {
+      border-color: rgba(197, 160, 89, 0.55);
+    }
+
+    .gold-btn {
+      background: linear-gradient(135deg, #D4AF65 0%, #C5A059 100%);
+      color: #070D18;
+      font-weight: 700;
+      transition: all 0.2s ease;
+    }
+
+    .gold-btn:hover {
+      background: linear-gradient(135deg, #E6C47E 0%, #D4AF65 100%);
+      box-shadow: 0 6px 20px rgba(197, 160, 89, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .gold-btn:active {
+      transform: translateY(1px);
+    }
+
+    .input-dark {
+      background-color: #081120;
+      border: 1px solid rgba(197, 160, 89, 0.25);
+      color: #FFFFFF;
+      transition: all 0.2s ease;
+    }
+
+    .input-dark:focus {
+      outline: none;
+      border-color: #C5A059;
+      box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.18);
+    }
+
+    select.input-dark option {
+      background-color: #0B1528;
+      color: #FFFFFF;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #070D18;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #C5A059;
+    }
+
+    .badge-current {
+      background-color: rgba(16, 185, 129, 0.15);
+      color: #34D399;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+
+    .badge-previous {
+      background-color: rgba(148, 163, 184, 0.12);
+      color: #94A3B8;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .badge-project {
+      background-color: rgba(197, 160, 89, 0.15);
+      color: #DFBF7A;
+      border: 1px solid rgba(197, 160, 89, 0.35);
+    }
+
+    .badge-marketing {
+      background-color: rgba(59, 130, 246, 0.15);
+      color: #60A5FA;
+      border: 1px solid rgba(59, 130, 246, 0.35);
+    }
+
+    .loader-spinner {
+      border: 3px solid rgba(197, 160, 89, 0.2);
+      border-top: 3px solid #C5A059;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .autocomplete-items {
+      position: absolute;
+      border: 1px solid rgba(197, 160, 89, 0.3);
+      z-index: 99;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #0B1528;
+      border-radius: 0.5rem;
+      max-height: 180px;
+      overflow-y: auto;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    }
+
+    .autocomplete-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      transition: background 0.15s;
+    }
+
+    .autocomplete-item:hover, .autocomplete-active {
+      background-color: rgba(197, 160, 89, 0.2);
+      color: #DFBF7A;
+    }
+  </style>
+</head>
+<body class="p-3 sm:p-5 md:p-8">
+
+  <!-- TOP BRAND HEADER & APP NAVIGATION -->
+  <header class="gold-card rounded-2xl p-4 sm:p-6 mb-6">
+    <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
+      
+      <!-- Brand Logo & Title -->
+      <div class="flex items-center gap-4 text-right w-full lg:w-auto">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#C5A059] to-[#DFBF7A] flex items-center justify-center text-[#070D18] shadow-lg shadow-amber-950/40 text-2xl flex-shrink-0">
+          <i class="fa-solid fa-crown"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold tracking-widest text-[#DFBF7A] uppercase font-mono">Amlaak Design</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">v2.0 Standalone & Local Ready</span>
+          </div>
+          <h1 class="text-lg sm:text-2xl font-black gold-gradient-text">Amlaak Video Library</h1>
+          <p class="text-xs text-slate-400 font-semibold">المنظومة المركزية لإدارة مكتبة فيديوهات المشاريع والمحتوى والتصاميم المعمارية</p>
+        </div>
+      </div>
+
+      <!-- Navigation Switcher Tabs -->
+      <nav class="flex flex-wrap items-center justify-center gap-2 bg-[#081120] p-1.5 rounded-xl border border-slate-800 w-full lg:w-auto">
+        <button onclick="switchTab('dashboard')" id="btnTabDashboard" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]">
+          <i class="fa-solid fa-chart-pie"></i> <span>لوحة المؤشرات</span>
+        </button>
+        <button onclick="switchTab('addVideo')" id="btnTabAddVideo" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up"></i> <span>إضافة فيديو</span>
+        </button>
+        <button onclick="switchTab('library')" id="btnTabLibrary" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-2">
+          <i class="fa-solid fa-film"></i> <span>مكتبة الفيديوهات</span>
+        </button>
+        <button onclick="switchTab('units')" id="btnTabUnits" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-2">
+          <i class="fa-solid fa-building"></i> <span>الوحدات والـ PDFs</span>
+        </button>
+        <button onclick="switchTab('settings')" id="btnTabSettings" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-2">
+          <i class="fa-solid fa-sliders"></i> <span>الإعدادات</span>
+        </button>
+      </nav>
+
+      <!-- Active User & Sync Badge -->
+      <div class="flex items-center gap-3 w-full lg:w-auto justify-end">
+        <div class="text-left hidden sm:block">
+          <div id="userEmailBadge" class="text-xs font-mono font-bold text-slate-200">admin@amlaak.com</div>
+          <div id="userRoleBadge" class="text-[10px] text-[#DFBF7A] font-bold">System Owner</div>
+        </div>
+        <button onclick="reloadCurrentView()" title="تحديث البيانات" class="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-[#DFBF7A] hover:border-amber-500/40 transition flex items-center justify-center">
+          <i id="syncIcon" class="fa-solid fa-arrows-rotate"></i>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 1: DASHBOARD                                             -->
+  <!-- ============================================================= -->
+  <section id="viewDashboard" class="tab-view space-y-6">
+    
+    <!-- Filter Date By & Range Header -->
+    <div class="gold-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-slate-300 font-bold">تصفية التاريخ حسب:</label>
+          <select id="dashDateType" class="input-dark px-3 py-1.5 rounded-lg text-xs font-bold" onchange="loadDashboard()">
+            <option value="Added Date">تاريخ الإضافة (Added Date)</option>
+            <option value="Shooting Date">تاريخ التصوير (Shooting Date)</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-slate-400">من:</label>
+          <input type="date" id="dashStartDate" class="input-dark px-2.5 py-1.5 rounded-lg text-xs" onchange="loadDashboard()">
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-slate-400">إلى:</label>
+          <input type="date" id="dashEndDate" class="input-dark px-2.5 py-1.5 rounded-lg text-xs" onchange="loadDashboard()">
+        </div>
+        <button onclick="clearDashboardDates()" class="text-xs text-slate-400 hover:text-rose-400 transition underline">مسح التواريخ</button>
+      </div>
+      <div class="text-xs text-amber-300/80 font-semibold flex items-center gap-1.5">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i> بيانات حية مطابقة لجدول Google Sheets
+      </div>
+    </div>
+
+    <!-- 6 PRIMARY KPI CARDS -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      
+      <!-- KPI 1: Logical Videos -->
+      <div class="gold-card rounded-2xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
+          <span>إجمالي الفيديوهات</span>
+          <i class="fa-solid fa-film text-[#DFBF7A]"></i>
+        </div>
+        <div id="kpiLogicalVideos" class="text-2xl sm:text-3xl font-black text-white font-num">0</div>
+        <div class="text-[10px] text-slate-400 mt-1">فيديوهات فريدة (Logical)</div>
+      </div>
+
+      <!-- KPI 2: Stored Versions -->
+      <div class="gold-card rounded-2xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
+          <span>النسخ المخزنة</span>
+          <i class="fa-solid fa-code-branch text-blue-400"></i>
+        </div>
+        <div id="kpiStoredVersions" class="text-2xl sm:text-3xl font-black text-white font-num">0</div>
+        <div class="text-[10px] text-slate-400 mt-1">ملفات فيديو فعلية على Drive</div>
+      </div>
+
+      <!-- KPI 3: Project Videos -->
+      <div class="gold-card rounded-2xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
+          <span>فيديوهات المشاريع</span>
+          <i class="fa-solid fa-hammer text-[#C5A059]"></i>
+        </div>
+        <div id="kpiProjectVideos" class="text-2xl sm:text-3xl font-black text-[#DFBF7A] font-num">0</div>
+        <div id="kpiProjectVersionsSub" class="text-[10px] text-slate-400 mt-1">0 نسخة مسجلة</div>
+      </div>
+
+      <!-- KPI 4: Marketing Content -->
+      <div class="gold-card rounded-2xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
+          <span>المحتوى التسويقي</span>
+          <i class="fa-solid fa-bullhorn text-sky-400"></i>
+        </div>
+        <div id="kpiMarketingVideos" class="text-2xl sm:text-3xl font-black text-sky-400 font-num">0</div>
+        <div id="kpiMarketingVersionsSub" class="text-[10px] text-slate-400 mt-1">0 نسخة مسجلة</div>
+      </div>
+
+      <!-- KPI 5: Units -->
+      <div class="gold-card rounded-2xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
+          <span>الوحدات المسجلة</span>
+          <i class="fa-solid fa-building text-emerald-400"></i>
+        </div>
+        <div id="kpiTotalUnits" class="text-2xl sm:text-3xl font-black text-emerald-400 font-num">0</div>
+        <div class="text-[10px] text-slate-400 mt-1">سجلات العملاء والوحدات</div>
+      </div>
+
+      <!-- KPI 6: Design PDFs -->
+      <div class="gold-card rounded-2xl p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
+          <span>مخططات الـ PDF</span>
+          <i class="fa-solid fa-file-pdf text-rose-400"></i>
+        </div>
+        <div id="kpiStoredPdfs" class="text-2xl sm:text-3xl font-black text-rose-400 font-num">0</div>
+        <div class="text-[10px] text-slate-400 mt-1">تصاميم معمارية مؤرشفة</div>
+      </div>
+
+    </div>
+
+    <!-- BREAKDOWN CARDS GRID -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      
+      <!-- BREAKDOWN 1: LOCATIONS -->
+      <div class="gold-card rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-sm text-white flex items-center gap-2">
+              <i class="fa-solid fa-location-dot text-[#DFBF7A]"></i> توزيع الفيديوهات حسب المنطقة
+            </h3>
+            <span class="text-[10px] text-slate-400 font-mono">Location</span>
+          </div>
+          <div id="chartLocationsList" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+            <div class="text-xs text-slate-500 text-center py-4">جاري التحميل...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BREAKDOWN 2: PROJECT STAGES -->
+      <div class="gold-card rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-sm text-white flex items-center gap-2">
+              <i class="fa-solid fa-layer-group text-blue-400"></i> مراحل التشطيب والتسليم
+            </h3>
+            <span class="text-[10px] text-slate-400 font-mono">Stage</span>
+          </div>
+          <div id="chartStagesList" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+            <div class="text-xs text-slate-500 text-center py-4">جاري التحميل...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BREAKDOWN 3: SPACE TYPES -->
+      <div class="gold-card rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-sm text-white flex items-center gap-2">
+              <i class="fa-solid fa-vector-square text-emerald-400"></i> نوع الفراغ المعماري
+            </h3>
+            <span class="text-[10px] text-slate-400 font-mono">Space Type</span>
+          </div>
+          <div id="chartSpacesList" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+            <div class="text-xs text-slate-500 text-center py-4">جاري التحميل...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BREAKDOWN 4: WORK CATEGORIES (Decision A Confirmed) -->
+      <div class="gold-card rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-sm text-white flex items-center gap-2">
+              <i class="fa-solid fa-trowel-bricks text-amber-400"></i> تصنيفات الأعمال الهندسية
+            </h3>
+            <span class="text-[10px] text-slate-400 font-mono">Work Category</span>
+          </div>
+          <div id="chartWorkCatList" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+            <div class="text-xs text-slate-500 text-center py-4">جاري التحميل...</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RECENT ACTIVITY AUDIT STREAM -->
+    <div class="gold-card rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-[#DFBF7A]"></i> أحدث العمليات والأنشطة (Audit Log)
+        </h3>
+        <span class="text-xs text-slate-400">سجل الأمان المباشر</span>
+      </div>
+      <div id="dashRecentActivityList" class="space-y-2.5">
+        <div class="text-xs text-slate-500 text-center py-4">جاري التحميل...</div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 2: ADD VIDEO                                             -->
+  <!-- ============================================================= -->
+  <section id="viewAddVideo" class="tab-view hidden max-w-4xl mx-auto space-y-6">
+    
+    <!-- SOURCE TYPE SWITCHER -->
+    <div class="gold-card rounded-2xl p-3 flex items-center justify-center gap-3">
+      <button type="button" onclick="setAddSource('Project Video')" id="btnSourceProject" class="flex-1 py-3 rounded-xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]">
+        <i class="fa-solid fa-house-chimney-crack"></i> <span>فيديو مشروع (Project Video)</span>
+      </button>
+      <button type="button" onclick="setAddSource('Marketing Content')" id="btnSourceMarketing" class="flex-1 py-3 rounded-xl font-bold text-xs sm:text-sm text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center justify-center gap-2">
+        <i class="fa-solid fa-bullhorn"></i> <span>محتوى تسويقي (Marketing Content)</span>
+      </button>
+    </div>
+
+    <!-- DRIVE PERMISSION REMINDER BANNER -->
+    <div class="rounded-xl p-4 bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-3">
+      <i class="fa-solid fa-triangle-exclamation text-amber-400 text-base mt-0.5"></i>
+      <div>
+        <strong class="font-bold">تنبيه صلاحيات Google Drive قبل الحفظ:</strong>
+        <p class="text-slate-300 mt-1 leading-relaxed">
+          المنظومة تقوم بإعادة تسمية ونقل الملف الأصلي نفسه (وليس إنشاء نسخة). يجب أن يكون ملف الفيديو على Drive مشاركاً بصلاحية 
+          <span class="text-[#DFBF7A] font-mono font-bold">Editor</span> مع حساب التطبيق (<span id="bannerExecuteEmail" class="font-mono underline">admin@amlaak.com</span>) قبل حفظ الرابط.
+        </p>
+      </div>
+    </div>
+
+    <!-- FORM: PROJECT VIDEO -->
+    <form id="formProjectVideo" onsubmit="submitProjectVideo(event)" class="gold-card rounded-2xl p-6 sm:p-8 space-y-6">
+      
+      <!-- Unit Selection Bar -->
+      <div class="p-4 rounded-xl bg-[#081120] border border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-bold text-[#DFBF7A] flex items-center gap-2">
+            <i class="fa-solid fa-link"></i> ربط الفيديو بوحدة سكنية / تجارية:
+          </label>
+          <div class="flex items-center gap-2 text-xs">
+            <input type="radio" name="unitMode" id="unitModeExisting" value="existing" checked onchange="toggleUnitMode()">
+            <label for="unitModeExisting" class="cursor-pointer text-slate-300">اختيار وحدة سابقة</label>
+            <input type="radio" name="unitMode" id="unitModeNew" value="new" class="mr-3" onchange="toggleUnitMode()">
+            <label for="unitModeNew" class="cursor-pointer text-slate-300">تسجيل وحدة جديدة</label>
+          </div>
+        </div>
+
+        <div id="unitSelectContainer" class="relative">
+          <input type="text" id="pvUnitSearch" placeholder="ابحث بكود الوحدة أو اسم العميل أو المنطقة..." class="w-full input-dark px-4 py-2.5 rounded-xl text-xs sm:text-sm" oninput="filterUnitSearch(this.value)" autocomplete="off">
+          <input type="hidden" id="pvSelectedUnitId">
+          <div id="pvUnitSearchResults" class="autocomplete-items hidden"></div>
+        </div>
+      </div>
+
+      <!-- Video Link -->
+      <div>
+        <label class="block text-xs font-bold text-slate-300 mb-1.5">
+          رابط الفيديو على Google Drive <span class="text-rose-400">*</span>
+        </label>
+        <input type="url" id="pvVideoLink" required placeholder="https://drive.google.com/file/d/.../view" class="w-full input-dark px-4 py-3 rounded-xl text-xs sm:text-sm font-mono-code" oninput="updateProjectVideoPreview()">
+        <p class="text-[11px] text-slate-400 mt-1">يقبل روابط Google Drive المباشرة أو معرّف الملف (File ID).</p>
+      </div>
+
+      <!-- Unit Information Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">اسم العميل <span class="text-rose-400">*</span></label>
+          <input type="text" id="pvClientName" required placeholder="مثال: أحمد حسن" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" oninput="updateProjectVideoPreview()">
+        </div>
+
+        <div class="relative">
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">الموقع / المنطقة <span class="text-rose-400">*</span></label>
+          <input type="text" id="pvLocation" required placeholder="مثال: التجمع الخامس" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" oninput="filterLocationSearch(this.value, 'pvLocationResults', 'pvLocation')" autocomplete="off">
+          <div id="pvLocationResults" class="autocomplete-items hidden"></div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">نوع الوحدة <span class="text-rose-400">*</span></label>
+          <select id="pvUnitType" required class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">المساحة (م²)</label>
+          <input type="number" id="pvArea" placeholder="مثال: 220" min="1" step="any" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-num" oninput="updateProjectVideoPreview()">
+        </div>
+      </div>
+
+      <!-- Video Classification Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">مرحلة الفيديو <span class="text-rose-400">*</span></label>
+          <select id="pvProjectVideoType" required class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">نوع الفراغ <span class="text-rose-400">*</span></label>
+          <select id="pvSpaceType" required class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
+        </div>
+
+        <!-- Work Category (Decision A Confirmed) -->
+        <div>
+          <label class="block text-xs font-bold text-[#DFBF7A] mb-1.5">تصنيف الأعمال (Work Category) <span class="text-rose-400">*</span></label>
+          <select id="pvWorkCategory" required class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm border-amber-500/40" onchange="updateProjectVideoPreview()"></select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">تاريخ التصوير <span class="text-rose-400">*</span></label>
+          <input type="date" id="pvShootingDate" required class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" oninput="updateProjectVideoPreview()">
+        </div>
+      </div>
+
+      <!-- Optional Unit Design PDF Attachment -->
+      <div class="p-4 rounded-xl bg-[#081120] border border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-bold text-slate-300 flex items-center gap-2">
+            <i class="fa-solid fa-file-pdf text-rose-400"></i> إرفاق ملف المخطط المعماري (PDF) — اختياري:
+          </label>
+          <span class="text-[10px] text-slate-500">يحفظ باسم الوحدة مع سجل النسخ V01</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input type="file" id="pvPdfFileInput" accept="application/pdf,.pdf" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700">
+          <input type="text" id="pvPdfTitle" placeholder="عنوان المخطط (اختياري، مثلاً: المخطط التنفيذي للديكور)" class="w-full input-dark px-3 py-2 rounded-lg text-xs">
+        </div>
+      </div>
+
+      <!-- Version Notes -->
+      <div>
+        <label class="block text-xs font-bold text-slate-300 mb-1.5">ملاحظات النسخة</label>
+        <input type="text" id="pvVersionNotes" placeholder="مثال: النسخة المعتمدة للتسليم النهائي بعد تعديل الإضاءة" class="w-full input-dark px-4 py-2.5 rounded-xl text-xs sm:text-sm">
+      </div>
+
+      <!-- Live Generated Filename Box -->
+      <div class="p-4 rounded-xl bg-gradient-to-r from-[#081120] to-[#0D1A30] border border-amber-500/30">
+        <div class="text-[10px] font-bold text-[#DFBF7A] mb-1 flex items-center gap-1.5">
+          <i class="fa-solid fa-tag"></i> الاسم المعتمد للملف على Drive (Naming Rule §12):
+        </div>
+        <div id="pvGeneratedFilenamePreview" class="text-xs sm:text-sm font-mono-code font-bold text-white break-all">
+          Client Name - Location - Project Video Type - Space Type - Shooting Date - V01.mp4
+        </div>
+        <div class="text-[10px] text-slate-400 mt-1">
+          * يتم تنقيح الرموز وإزالة الفواصل الزائدة تلقائياً. حقل تصنيف الأعمال (Work Category) لا يضاف لاسم الملف افتراضياً.
+        </div>
+      </div>
+
+      <!-- Submit Button -->
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button type="reset" class="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition">إعادة تعيين</button>
+        <button type="submit" id="btnSubmitProjectVideo" class="gold-btn px-8 py-3 rounded-xl text-sm font-black flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up"></i> <span>حفظ وتوثيق الفيديو</span>
+        </button>
+      </div>
+
+    </form>
+
+    <!-- FORM: MARKETING CONTENT -->
+    <form id="formMarketingContent" onsubmit="submitMarketingContent(event)" class="gold-card rounded-2xl p-6 sm:p-8 space-y-6 hidden">
+      <div>
+        <label class="block text-xs font-bold text-slate-300 mb-1.5">
+          رابط الفيديو على Google Drive <span class="text-rose-400">*</span>
+        </label>
+        <input type="url" id="mcVideoLink" required placeholder="https://drive.google.com/file/d/.../view" class="w-full input-dark px-4 py-3 rounded-xl text-xs sm:text-sm font-mono-code" oninput="updateMarketingContentPreview()">
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">نوع المحتوى التسويقي <span class="text-rose-400">*</span></label>
+          <select id="mcContentType" required class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" onchange="handleMarketingContentTypeChange()"></select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">موضوع الفيديو (Topic) <span class="text-rose-400">*</span></label>
+          <input type="text" id="mcTopic" required placeholder="مثال: أخطاء تأسيس السباكة" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" oninput="updateMarketingContentPreview()">
+        </div>
+
+        <div id="mcSpaceTypeContainer">
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">نوع الفراغ (اختياري)</label>
+          <select id="mcSpaceType" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" onchange="updateMarketingContentPreview()"></select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">تاريخ التصوير <span class="text-rose-400">*</span></label>
+          <input type="date" id="mcShootingDate" required class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" oninput="updateMarketingContentPreview()">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">ملاحظات النسخة</label>
+          <input type="text" id="mcVersionNotes" placeholder="مثال: نسخة Reels مقاس 9:16 مع تعديل النص والموسيقى" class="w-full input-dark px-4 py-2.5 rounded-xl text-xs sm:text-sm">
+        </div>
+      </div>
+
+      <!-- Live Generated Filename Box -->
+      <div class="p-4 rounded-xl bg-gradient-to-r from-[#081120] to-[#0D1A30] border border-blue-500/30">
+        <div class="text-[10px] font-bold text-sky-400 mb-1 flex items-center gap-1.5">
+          <i class="fa-solid fa-tag"></i> الاسم المعتمد للملف على Drive (Marketing Rule §12):
+        </div>
+        <div id="mcGeneratedFilenamePreview" class="text-xs sm:text-sm font-mono-code font-bold text-white break-all">
+          Content Type - Topic - Shooting Date - V01.mp4
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button type="reset" class="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition">إعادة تعيين</button>
+        <button type="submit" id="btnSubmitMarketingContent" class="gold-btn px-8 py-3 rounded-xl text-sm font-black flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up"></i> <span>حفظ وتوثيق المحتوى</span>
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 3: VIDEO LIBRARY                                         -->
+  <!-- ============================================================= -->
+  <section id="viewLibrary" class="tab-view hidden space-y-5">
+    <div class="gold-card rounded-2xl p-5 space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">بحث سريع:</label>
+          <div class="relative">
+            <input type="text" id="filterSearch" placeholder="بحث بالاسم، العميل، الكود، الموضوع..." class="w-full input-dark pr-9 pl-3 py-2 rounded-xl text-xs" oninput="debounceLibrarySearch()">
+            <i class="fa-solid fa-magnifying-glass absolute right-3 top-3 text-slate-500 text-xs"></i>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">مصدر الفيديو (Source):</label>
+          <select id="filterSource" class="w-full input-dark px-3 py-2 rounded-xl text-xs" onchange="loadLibrary()">
+            <option value="">كل المصادر</option>
+            <option value="Project Video">فيديوهات المشاريع</option>
+            <option value="Marketing Content">المحتوى التسويقي</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">المرحلة (Stage):</label>
+          <select id="filterStage" class="w-full input-dark px-3 py-2 rounded-xl text-xs" onchange="loadLibrary()">
+            <option value="">كل المراحل</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">نوع الفراغ (Space):</label>
+          <select id="filterSpace" class="w-full input-dark px-3 py-2 rounded-xl text-xs" onchange="loadLibrary()">
+            <option value="">كل الفراغات</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-800">
+        <div>
+          <label class="block text-[11px] font-bold text-[#DFBF7A] mb-1">تصنيف الأعمال (Work Category):</label>
+          <select id="filterWorkCat" class="w-full input-dark px-3 py-2 rounded-xl text-xs border-amber-500/30" onchange="loadLibrary()">
+            <option value="">كل تصنيفات الأعمال</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">المنطقة (Location):</label>
+          <select id="filterLocation" class="w-full input-dark px-3 py-2 rounded-xl text-xs" onchange="loadLibrary()">
+            <option value="">كل المناطق</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">تصفية التاريخ حسب:</label>
+          <select id="filterDateType" class="w-full input-dark px-3 py-2 rounded-xl text-xs" onchange="loadLibrary()">
+            <option value="Added Date">تاريخ الإضافة (Added Date)</option>
+            <option value="Shooting Date">تاريخ التصوير (Shooting Date)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-bold text-slate-400 mb-1">الفترة الزمنية:</label>
+          <div class="flex items-center gap-1">
+            <input type="date" id="filterStartDate" class="w-1/2 input-dark px-2 py-2 rounded-lg text-[11px]" onchange="loadLibrary()">
+            <input type="date" id="filterEndDate" class="w-1/2 input-dark px-2 py-2 rounded-lg text-[11px]" onchange="loadLibrary()">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between sm:justify-start gap-3 pt-4">
+          <label class="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-amber-300">
+            <input type="checkbox" id="filterIncludePrevious" class="w-4 h-4 rounded accent-[#C5A059]" onchange="loadLibrary()">
+            <span>عرض النسخ السابقة</span>
+          </label>
+          <button onclick="resetLibraryFilters()" class="text-[11px] text-slate-400 hover:text-rose-400 underline">مسح الفلاتر</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIBRARY RESULTS TABLE & COUNT -->
+    <div class="gold-card rounded-2xl overflow-hidden">
+      <div class="p-4 bg-[#081120] border-b border-slate-800 flex items-center justify-between">
+        <div class="text-xs font-bold text-slate-300 flex items-center gap-2">
+          <span>نتائج البحث:</span>
+          <span id="libraryResultsCount" class="font-num text-[#DFBF7A] text-sm font-black">0</span>
+          <span>فيديو / نسخة مطابقة</span>
+        </div>
+        <div class="text-[11px] text-slate-500">
+          * يتم عرض النسخ الحالية (Current Versions) فقط افتراضياً
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-right text-xs">
+          <thead class="bg-[#0B1528] text-slate-400 font-bold border-b border-slate-800">
+            <tr>
+              <th class="p-3.5 whitespace-nowrap">رقم الفيديو</th>
+              <th class="p-3.5 whitespace-nowrap">النسخة</th>
+              <th class="p-3.5 whitespace-nowrap">المصدر</th>
+              <th class="p-3.5 whitespace-nowrap">اسم الملف المعتمد (Drive Name)</th>
+              <th class="p-3.5 whitespace-nowrap">العميل / الموضوع</th>
+              <th class="p-3.5 whitespace-nowrap">المنطقة</th>
+              <th class="p-3.5 whitespace-nowrap">المرحلة / الفراغ</th>
+              <th class="p-3.5 whitespace-nowrap">تصنيف الأعمال</th>
+              <th class="p-3.5 whitespace-nowrap">تاريخ التصوير</th>
+              <th class="p-3.5 whitespace-nowrap text-center">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="libraryTableBody" class="divide-y divide-slate-800/60">
+            <tr>
+              <td colspan="10" class="p-8 text-center text-slate-500">جاري تحميل مكتبة الفيديوهات...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 4: UNITS & DESIGN PDFS                                   -->
+  <!-- ============================================================= -->
+  <section id="viewUnits" class="tab-view hidden space-y-6">
+    <div class="gold-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-building"></i>
+        </div>
+        <div>
+          <h2 class="text-base font-bold text-white">دليل الوحدات ومخططات الـ PDF المعمارية</h2>
+          <p class="text-xs text-slate-400">الوحدة هي المرجع الأساسي — الفيديوهات ومخططات التصميم ترتبط بكود الوحدة (Unit ID)</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <input type="text" id="unitsSearchInput" placeholder="بحث باسم العميل أو الكود أو المنطقة..." class="input-dark px-3 py-1.5 rounded-lg text-xs w-64" oninput="filterUnitsCatalog(this.value)">
+      </div>
+    </div>
+
+    <!-- Units Cards Grid -->
+    <div id="unitsCatalogGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="col-span-full p-8 text-center text-slate-500">جاري تحميل الوحدات...</div>
+    </div>
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 5: SETTINGS & SETUP                                      -->
+  <!-- ============================================================= -->
+  <section id="viewSettings" class="tab-view hidden max-w-3xl mx-auto space-y-6">
+    <div class="gold-card rounded-2xl p-6 sm:p-8 space-y-6">
+      <div>
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-[#DFBF7A]"></i> إعدادات المنظومة وربط الموارد
+        </h2>
+        <p class="text-xs text-slate-400 mt-1">إدارة تهيئة جداول Google Sheets ومجلدات Google Drive المعتمدة</p>
+      </div>
+
+      <div class="p-4 rounded-xl bg-[#081120] border border-slate-800 space-y-2 text-xs">
+        <div class="flex items-center justify-between">
+          <span class="text-slate-400">حالة الربط:</span>
+          <span id="configStatusBadge" class="font-bold text-emerald-400">جاهز ومتصل (Mock Engine Active)</span>
+        </div>
+        <div class="flex items-center justify-between font-mono-code">
+          <span class="text-slate-400">Spreadsheet ID:</span>
+          <span id="configSpreadsheetId" class="text-slate-200">1AmL44k_Sh33t_M4st3r_DB_2026</span>
+        </div>
+        <div class="flex items-center justify-between font-mono-code">
+          <span class="text-slate-400">Drive Root Folder ID:</span>
+          <span id="configRootFolderId" class="text-slate-200">1AmL44k_R00t_Driv3_F0ld3r_2026</span>
+        </div>
+      </div>
+
+      <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+        <div class="text-xs text-amber-200 leading-relaxed">
+          <strong>التهيئة الذاتية التكرارية (Idempotent Setup):</strong><br>
+          تشغيل التهيئة يقوم بفحص أو إنشاء مجلدات Drive الرئيسية الـ 3 وجدول البيانات وقوائم التصنيف وصلاحيات المستخدمين، دون تكرار أي ملف أو صف موجود مسبقاً.
+        </div>
+        <button onclick="triggerSystemSetup()" id="btnTriggerSetup" class="gold-btn px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2">
+          <i class="fa-solid fa-wrench"></i> <span>إعادة فحص / تهيئة المنظومة الآن</span>
+        </button>
+      </div>
+
+      <div>
+        <h3 class="text-sm font-bold text-white mb-2">قائمة المستخدمين المصرح لهم (Authorised Users)</h3>
+        <div class="overflow-x-auto rounded-xl border border-slate-800">
+          <table class="w-full text-right text-xs">
+            <thead class="bg-[#081120] text-slate-400">
+              <tr>
+                <th class="p-2.5">البريد الإلكتروني</th>
+                <th class="p-2.5">الدور (Role)</th>
+                <th class="p-2.5">الحالة</th>
+              </tr>
+            </thead>
+            <tbody id="configUsersTableBody" class="divide-y divide-slate-800">
+              <tr>
+                <td class="p-2.5 font-mono text-slate-200">admin@amlaak.com</td>
+                <td class="p-2.5 text-[#DFBF7A] font-bold">System Owner</td>
+                <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 font-bold">نشط</span></td>
+              </tr>
+              <tr>
+                <td class="p-2.5 font-mono text-slate-200">engineer@amlaak.com</td>
+                <td class="p-2.5 text-[#DFBF7A] font-bold">Authorised User 1</td>
+                <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 font-bold">نشط</span></td>
+              </tr>
+              <tr>
+                <td class="p-2.5 font-mono text-slate-200">marketing@amlaak.com</td>
+                <td class="p-2.5 text-[#DFBF7A] font-bold">Authorised User 2</td>
+                <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 font-bold">نشط</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODALS -->
+  <div id="modalBatchRename" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+    <div class="gold-card max-w-2xl w-full rounded-2xl p-6 sm:p-7 space-y-5 border-amber-500/60 shadow-2xl">
+      <div class="flex items-center gap-3 text-amber-300">
+        <div class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center text-xl text-amber-400">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-black text-white">تأكيد إعادة التسمية المجمعة لملفات Google Drive</h3>
+          <p class="text-xs text-amber-200/80">تعديل بيانات الوحدة سيغير أسماء الملفات الفيزيائية التالية المرتبطة بها:</p>
+        </div>
+      </div>
+      <div class="max-h-64 overflow-y-auto rounded-xl border border-slate-800 bg-[#081120] p-3 space-y-3">
+        <div id="batchRenameItemsList" class="space-y-3 text-xs"></div>
+      </div>
+      <div class="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-2">
+        <button type="button" onclick="cancelBatchRename()" class="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-800 transition">
+          إلغاء — الإبقاء على الأسماء الحالية في Drive
+        </button>
+        <button type="button" onclick="confirmBatchRename()" id="btnConfirmBatchRename" class="w-full sm:w-auto gold-btn px-6 py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2">
+          <i class="fa-solid fa-check"></i> <span>تأكيد وإعادة تسمية جميع الملفات</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalAddVersion" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+    <div class="gold-card max-w-xl w-full rounded-2xl p-6 space-y-5 border-blue-500/50 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-code-branch"></i>
+          </div>
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-white">إضافة نسخة جديدة للفيديو</h3>
+            <p id="mvVideoHeader" class="text-xs text-slate-400 font-mono">Video 0001</p>
+          </div>
+        </div>
+        <button onclick="closeAddVersionModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <form id="formAddVersion" onsubmit="submitAddVersion(event)" class="space-y-4">
+        <input type="hidden" id="mvVideoNumber">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">رابط الفيديو الجديد على Google Drive <span class="text-rose-400">*</span></label>
+          <input type="url" id="mvVideoLink" required placeholder="https://drive.google.com/file/d/.../view" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs font-mono-code" oninput="updateVersionModalPreview()">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">ملاحظات النسخة الجديدة</label>
+          <input type="text" id="mvVersionNotes" placeholder="مثال: تعديل ألوان وإعادة مونتاج" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs">
+        </div>
+        <div class="p-3.5 rounded-xl bg-[#081120] border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-400">رقم النسخة المستهدف:</span>
+            <span id="mvTargetVersionBadge" class="font-bold text-[#DFBF7A] font-mono">V02</span>
+          </div>
+          <div class="text-[11px] text-slate-400">
+            اسم الملف المقترح:
+            <div id="mvProposedFilename" class="text-white font-mono-code font-bold mt-1 break-all">Generating...</div>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button type="button" onclick="closeAddVersionModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white">إلغاء</button>
+          <button type="submit" id="btnSubmitAddVersion" class="gold-btn px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> <span>اعتماد وحفظ النسخة</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modalVersionHistory" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+    <div class="gold-card max-w-2xl w-full rounded-2xl p-6 space-y-4 border-slate-700 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/15 text-[#DFBF7A] flex items-center justify-center text-lg">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-white">سجل النسخ والتعديلات (Version History)</h3>
+            <p id="vhVideoTitle" class="text-xs text-slate-400 font-mono">Video 0001</p>
+          </div>
+        </div>
+        <button onclick="closeVersionHistoryModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div id="vhVersionsList" class="space-y-3 max-h-80 overflow-y-auto pr-1"></div>
+      <div class="flex justify-end pt-2">
+        <button onclick="closeVersionHistoryModal()" class="px-5 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-xs font-bold">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalUnitDetail" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+    <div class="gold-card max-w-3xl w-full rounded-2xl p-6 sm:p-7 space-y-5 border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-building"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 id="udClientName" class="text-base font-black text-white">أحمد حسن</h3>
+              <span id="udUnitIdBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-[#DFBF7A] font-mono font-bold">U-0001</span>
+            </div>
+            <p id="udLocationType" class="text-xs text-slate-400">التجمع الخامس • شقة سكنية (220 م²)</p>
+          </div>
+        </div>
+        <button onclick="closeUnitDetailModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div class="p-4 rounded-xl bg-[#081120] border border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-300">البيانات الأساسية للوحدة:</span>
+          <button onclick="toggleUnitEditMode()" id="btnToggleUnitEdit" class="text-xs text-[#DFBF7A] hover:underline font-bold">
+            <i class="fa-solid fa-pen-to-square"></i> تعديل بيانات الوحدة
+          </button>
+        </div>
+        <div id="unitEditFormContainer" class="hidden space-y-3 pt-2 border-t border-slate-800">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <input type="text" id="ueClientName" placeholder="اسم العميل" class="input-dark px-3 py-2 rounded-lg text-xs">
+            <input type="text" id="ueLocation" placeholder="الموقع" class="input-dark px-3 py-2 rounded-lg text-xs">
+            <select id="ueUnitType" class="input-dark px-3 py-2 rounded-lg text-xs"></select>
+            <input type="number" id="ueArea" placeholder="المساحة م²" class="input-dark px-3 py-2 rounded-lg text-xs font-num">
+          </div>
+          <div class="flex items-center justify-end gap-2">
+            <button onclick="toggleUnitEditMode()" class="px-3 py-1.5 rounded-lg text-xs text-slate-400">إلغاء</button>
+            <button onclick="saveUnitMasterEdit()" class="gold-btn px-4 py-1.5 rounded-lg text-xs font-bold">حفظ ونشر التعديل</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <h4 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-film text-[#DFBF7A]"></i> الفيديوهات المرتبطة بالوحدة:
+        </h4>
+        <div id="udVideosList" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+      </div>
+
+      <div class="space-y-3 pt-3 border-t border-slate-800">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-file-pdf text-rose-400"></i> مخططات التصميم الهندسي (PDF Versioning):
+          </h4>
+          <button onclick="openUploadPdfModalForCurrentUnit()" class="text-xs text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1">
+            <i class="fa-solid fa-upload"></i> رفع نسخة تصميم جديدة
+          </button>
+        </div>
+        <div id="udPdfsList" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-slate-800">
+        <button onclick="closeUnitDetailModal()" class="px-5 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-xs font-bold">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalUploadPdf" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+    <div class="gold-card max-w-lg w-full rounded-2xl p-6 space-y-5 border-rose-500/40 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-file-pdf"></i>
+          </div>
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-white">رفع مخطط تصميم معماري (PDF)</h3>
+            <p id="upModalUnitHeader" class="text-xs text-slate-400">Unit ID: U-0001</p>
+          </div>
+        </div>
+        <button onclick="closeUploadPdfModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <form id="formUploadPdf" onsubmit="submitUploadPdf(event)" class="space-y-4">
+        <input type="hidden" id="upUnitId">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">ملف المخطط (PDF فقط) <span class="text-rose-400">*</span></label>
+          <input type="file" id="upPdfFile" accept="application/pdf,.pdf" required class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">عنوان المستند (Document Title)</label>
+          <input type="text" id="upDocumentTitle" placeholder="مثال: المخطط التنفيذي وتوزيع الإضاءة المعتمد" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">ملاحظات النسخة (Version Notes)</label>
+          <input type="text" id="upVersionNotes" placeholder="مثال: النسخة المعتمدة بعد تعديل مسار التكييفات" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs">
+        </div>
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button type="button" onclick="closeUploadPdfModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white">إلغاء</button>
+          <button type="submit" id="btnSubmitUploadPdf" class="gold-btn px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2">
+            <i class="fa-solid fa-upload"></i> <span>رفع وأرشفة المخطط</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="fixed bottom-5 left-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+  <div id="globalLoadingOverlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#070D18]/80 backdrop-blur-sm hidden">
+    <div class="loader-spinner mb-3"></div>
+    <div id="globalLoadingText" class="text-xs font-bold text-white tracking-wide">جاري المعالجة...</div>
+  </div>
+
+  <!-- EMBEDDED LOCAL MOCK SIMULATOR & CLIENT CODE -->
+  <script>
+    // In-memory mock database for standalone local browser testing
+    var _mockDB = {
+      units: [
+        { unitId: 'U-0001', clientName: 'أحمد حسن', location: 'التجمع الخامس', unitType: 'Apartment', area: 220, createdDate: '2026-08-10 12:00:00' },
+        { unitId: 'U-0002', clientName: 'م. كريم سامي', location: 'الشيخ زايد', unitType: 'Standalone Villa', area: 380, createdDate: '2026-08-12 15:30:00' },
+        { unitId: 'U-0003', clientName: 'د. طارق مراد', location: 'القاهرة الجديدة', unitType: 'Duplex', area: 260, createdDate: '2026-08-15 10:15:00' }
+      ],
+      videos: [
+        {
+          videoNumber: '0001',
+          versionNumber: 'V01',
+          isCurrentVersion: false,
+          versionNotes: 'التصوير الأولي لمرحلة التأسيس',
+          videoName: 'Ahmed Hassan - New Cairo - Phase 1 - Reception - 2026-08-17 - V01.mp4',
+          videoSource: 'Project Video',
+          unitId: 'U-0001',
+          clientName: 'أحمد حسن',
+          location: 'التجمع الخامس',
+          unitType: 'Apartment',
+          area: 220,
+          projectVideoType: 'Phase 1',
+          spaceType: 'Reception',
+          workCategory: 'Electrical', // Decision A
+          shootingDate: '2026-08-17',
+          videoLink: 'https://drive.google.com/file/d/1MockDriveFileId0001_v1/view',
+          driveFileId: '1MockDriveFileId0001_v1',
+          addedDate: '2026-08-17 14:20:00'
+        },
+        {
+          videoNumber: '0001',
+          versionNumber: 'V02',
+          isCurrentVersion: true,
+          versionNotes: 'نسخة معدلة بعد معالجة الألوان والمونتاج',
+          videoName: 'Ahmed Hassan - New Cairo - Phase 1 - Reception - 2026-08-17 - V02.mp4',
+          videoSource: 'Project Video',
+          unitId: 'U-0001',
+          clientName: 'أحمد حسن',
+          location: 'التجمع الخامس',
+          unitType: 'Apartment',
+          area: 220,
+          projectVideoType: 'Phase 1',
+          spaceType: 'Reception',
+          workCategory: 'Electrical', // Decision A
+          shootingDate: '2026-08-17',
+          videoLink: 'https://drive.google.com/file/d/1MockDriveFileId0001_v2/view',
+          driveFileId: '1MockDriveFileId0001_v2',
+          addedDate: '2026-08-18 09:10:00'
+        },
+        {
+          videoNumber: '0002',
+          versionNumber: 'V01',
+          isCurrentVersion: true,
+          versionNotes: 'تسليم نهائي للفرش والديكور',
+          videoName: 'Karim Sami - Zayed - Final with Furniture - Full Unit - 2026-08-20 - V01.mp4',
+          videoSource: 'Project Video',
+          unitId: 'U-0002',
+          clientName: 'م. كريم سامي',
+          location: 'الشيخ زايد',
+          unitType: 'Standalone Villa',
+          area: 380,
+          projectVideoType: 'Final with Furniture',
+          spaceType: 'Full Unit',
+          workCategory: 'Decoration', // Decision A
+          shootingDate: '2026-08-20',
+          videoLink: 'https://drive.google.com/file/d/1MockDriveFileId0002_v1/view',
+          driveFileId: '1MockDriveFileId0002_v1',
+          addedDate: '2026-08-20 16:45:00'
+        },
+        {
+          videoNumber: '0003',
+          versionNumber: 'V01',
+          isCurrentVersion: true,
+          versionNotes: 'ريلز تسويقي لشرح أخطاء السباكة',
+          videoName: 'Educational - Plumbing Mistakes - 2026-08-22 - V01.mp4',
+          videoSource: 'Marketing Content',
+          unitId: '',
+          contentType: 'Educational',
+          topic: 'Plumbing Mistakes',
+          spaceType: '',
+          shootingDate: '2026-08-22',
+          videoLink: 'https://drive.google.com/file/d/1MockDriveFileId0003_v1/view',
+          driveFileId: '1MockDriveFileId0003_v1',
+          addedDate: '2026-08-22 11:30:00'
+        }
+      ],
+      pdfs: [
+        {
+          pdfRecordId: 'DOC-U0001-V01',
+          unitId: 'U-0001',
+          documentTitle: 'المخطط التنفيذي وتوزيع الإضاءة والتكييف',
+          pdfLink: 'https://drive.google.com/file/d/1MockPdfId0001_v1/view',
+          driveFileId: '1MockPdfId0001_v1',
+          pdfNumber: 'PDF-0001',
+          pdfVersionNumber: 'V01',
+          isCurrentVersion: true,
+          versionNotes: 'المخطط المعتمد للفيلا',
+          addedDate: '2026-08-10 12:30:00'
+        }
+      ],
+      audit: [
+        { timestamp: '2026-08-22 11:30:00', user: 'admin@amlaak.com', action: 'ADD_MARKETING_CONTENT', message: 'تم تسجيل محتوى تسويقي جديد: Educational - Plumbing Mistakes' },
+        { timestamp: '2026-08-20 16:45:00', user: 'engineer@amlaak.com', action: 'ADD_PROJECT_VIDEO', message: 'تم تسجيل فيديو مشروع: Karim Sami - Zayed - Final with Furniture' },
+        { timestamp: '2026-08-18 09:10:00', user: 'admin@amlaak.com', action: 'ADD_VIDEO_VERSION', message: 'تمت إضافة النسخة V02 للفيديو 0001' }
+      ]
+    };
+
+    function setupLocalPreviewMocks() {
+      window._localMockDispatcher = function(fnName, args, callback) {
+        setTimeout(function() {
+          if (fnName === 'apiGetInitialData') {
+            callback({
+              ok: true,
+              data: {
+                user: { email: 'admin@amlaak.com', role: 'System Owner', active: true, isAuthorized: true },
+                isConfigured: true,
+                lists: {
+                  videoSource: ['Project Video', 'Marketing Content'],
+                  unitType: ['Apartment', 'Studio', 'Duplex', 'Penthouse', 'Roof Apartment', 'Standalone Villa', 'Twin House', 'Townhouse', 'Chalet', 'Cabin', 'Office', 'Clinic', 'Retail / Commercial Unit', 'Restaurant / Café', 'Other'],
+                  projectVideoType: ['Red Brick', 'Phase 1', 'Phase 2', 'Final', 'Final with Furniture', 'Client Interview', 'Before & After'],
+                  spaceType: ['Full Unit', 'Reception', 'Kitchen', 'Bathroom', 'Bedroom', 'Dressing Room', 'Entrance', 'Terrace', 'Garden', 'Multiple Spaces', 'Other'],
+                  marketingContentType: ['Educational', 'Demonstration', 'Testimonial', 'Sales', 'Offer', 'Other'],
+                  workCategory: ['Roof', 'Ceiling', 'Materials', 'Furniture', 'Decoration', 'HDF', 'Ceramics', 'Electrical', 'Gypsum Board', 'Air Conditioning', 'Sound System', 'Doors', 'Windows', 'Painting', 'Plastering'],
+                  locations: ['التجمع الخامس', 'الشيخ زايد', 'القاهرة الجديدة', 'المعادي', 'السادس من أكتوبر', 'الساحل الشمالي']
+                }
+              }
+            });
+          } else if (fnName === 'apiGetDashboard') {
+            var vList = _mockDB.videos;
+            var distinctLog = {};
+            var projLog = {};
+            var mktLog = {};
+            var projVer = 0;
+            var mktVer = 0;
+
+            vList.forEach(function(v) {
+              distinctLog[v.videoNumber] = true;
+              if (v.videoSource === 'Project Video') {
+                projLog[v.videoNumber] = true;
+                projVer++;
+              } else {
+                mktLog[v.videoNumber] = true;
+                mktVer++;
+              }
+            });
+
+            callback({
+              ok: true,
+              data: {
+                kpis: {
+                  totalLogicalVideos: Object.keys(distinctLog).length,
+                  totalStoredVersions: vList.length,
+                  totalProjectVideos: Object.keys(projLog).length,
+                  projectVersionsCount: projVer,
+                  totalMarketingContent: Object.keys(mktLog).length,
+                  marketingVersionsCount: mktVer,
+                  totalUnits: _mockDB.units.length,
+                  totalStoredPdfs: _mockDB.pdfs.length
+                },
+                breakdowns: {
+                  locations: [{ name: 'التجمع الخامس', count: 1 }, { name: 'الشيخ زايد', count: 1 }],
+                  stages: [{ name: 'Phase 1', count: 1 }, { name: 'Final with Furniture', count: 1 }],
+                  spaces: [{ name: 'Reception', count: 1 }, { name: 'Full Unit', count: 1 }],
+                  workCategories: [{ name: 'Electrical', count: 1 }, { name: 'Decoration', count: 1 }],
+                  timeline: {}
+                },
+                recentActivity: _mockDB.audit
+              }
+            });
+          } else if (fnName === 'apiGetVideos') {
+            var filters = args[0] || {};
+            var resVideos = _mockDB.videos.filter(function(v) {
+              if (!filters.includePreviousVersions && !v.isCurrentVersion) return false;
+              if (filters.videoSource && v.videoSource !== filters.videoSource) return false;
+              if (filters.projectVideoType && v.projectVideoType !== filters.projectVideoType) return false;
+              if (filters.spaceType && v.spaceType !== filters.spaceType) return false;
+              if (filters.workCategory && v.workCategory !== filters.workCategory) return false;
+              if (filters.location && v.location !== filters.location) return false;
+              if (filters.searchQuery) {
+                var q = filters.searchQuery.toLowerCase();
+                if ((v.clientName || '').toLowerCase().indexOf(q) === -1 &&
+                    (v.topic || '').toLowerCase().indexOf(q) === -1 &&
+                    (v.videoName || '').toLowerCase().indexOf(q) === -1) return false;
+              }
+              return true;
+            });
+            callback({ ok: true, data: resVideos });
+          } else if (fnName === 'apiAddProjectVideo') {
+            var p = args[0];
+            var nextNum = '000' + (_mockDB.videos.length + 1);
+            var newVid = {
+              videoNumber: nextNum,
+              versionNumber: 'V01',
+              isCurrentVersion: true,
+              versionNotes: p.versionNotes || 'النسخة الأصلية الأولى',
+              videoName: p.clientName + ' - ' + p.location + ' - ' + p.projectVideoType + ' - ' + p.spaceType + ' - ' + p.shootingDate + ' - V01.mp4',
+              videoSource: 'Project Video',
+              unitId: p.unitId || 'U-0004',
+              clientName: p.clientName,
+              location: p.location,
+              unitType: p.unitType,
+              area: p.area,
+              projectVideoType: p.projectVideoType,
+              spaceType: p.spaceType,
+              workCategory: p.workCategory,
+              shootingDate: p.shootingDate,
+              videoLink: p.videoLink,
+              driveFileId: 'MockFile_' + Date.now(),
+              addedDate: new Date().toISOString().replace('T', ' ').substring(0, 19)
+            };
+            _mockDB.videos.push(newVid);
+            _mockDB.audit.unshift({
+              timestamp: newVid.addedDate,
+              user: 'admin@amlaak.com',
+              action: 'ADD_PROJECT_VIDEO',
+              message: 'تم تسجيل فيديو مشروع: ' + newVid.videoName
+            });
+            callback({ ok: true, data: { video: newVid } });
+          } else if (fnName === 'apiAddMarketingContent') {
+            var mp = args[0];
+            var mNextNum = '000' + (_mockDB.videos.length + 1);
+            var mVid = {
+              videoNumber: mNextNum,
+              versionNumber: 'V01',
+              isCurrentVersion: true,
+              versionNotes: mp.versionNotes || 'النسخة الأصلية الأولى',
+              videoName: mp.contentType + ' - ' + mp.topic + ' - ' + mp.shootingDate + ' - V01.mp4',
+              videoSource: 'Marketing Content',
+              contentType: mp.contentType,
+              topic: mp.topic,
+              shootingDate: mp.shootingDate,
+              videoLink: mp.videoLink,
+              driveFileId: 'MockFile_' + Date.now(),
+              addedDate: new Date().toISOString().replace('T', ' ').substring(0, 19)
+            };
+            _mockDB.videos.push(mVid);
+            _mockDB.audit.unshift({
+              timestamp: mVid.addedDate,
+              user: 'admin@amlaak.com',
+              action: 'ADD_MARKETING_CONTENT',
+              message: 'تم تسجيل محتوى تسويقي: ' + mVid.videoName
+            });
+            callback({ ok: true, data: { video: mVid } });
+          } else if (fnName === 'apiAddNewVersion') {
+            var vp = args[0];
+            var matched = _mockDB.videos.filter(function(x) { return x.videoNumber === vp.videoNumber; });
+            matched.forEach(function(m) { m.isCurrentVersion = false; });
+            var base = matched[0];
+            var nextV = 'V0' + (matched.length + 1);
+            var vRec = Object.assign({}, base, {
+              versionNumber: nextV,
+              isCurrentVersion: true,
+              versionNotes: vp.versionNotes,
+              videoLink: vp.videoLink,
+              driveFileId: 'MockFileVer_' + Date.now(),
+              addedDate: new Date().toISOString().replace('T', ' ').substring(0, 19)
+            });
+            vRec.videoName = vRec.videoName.replace(/- V\d+\.mp4/, '- ' + nextV + '.mp4');
+            _mockDB.videos.push(vRec);
+            callback({ ok: true, data: vRec });
+          } else if (fnName === 'apiGetUnits') {
+            var uList = _mockDB.units.map(function(u) {
+              var uVids = _mockDB.videos.filter(function(v) { return v.unitId === u.unitId; });
+              var uPdfs = _mockDB.pdfs.filter(function(p) { return p.unitId === u.unitId; });
+              return Object.assign({}, u, { videoCount: uVids.length, pdfCount: uPdfs.length });
+            });
+            callback({ ok: true, data: uList });
+          } else if (fnName === 'apiGetUnitDetail') {
+            var targetUId = args[0];
+            var foundUnit = _mockDB.units.find(function(u) { return u.unitId === targetUId; });
+            var uVids = _mockDB.videos.filter(function(v) { return v.unitId === targetUId; });
+            var uPdfs = _mockDB.pdfs.filter(function(p) { return p.unitId === targetUId; });
+            callback({
+              ok: true,
+              data: {
+                unit: foundUnit,
+                videos: [{
+                  videoNumber: uVids[0] ? uVids[0].videoNumber : '0001',
+                  projectVideoType: uVids[0] ? uVids[0].projectVideoType : '',
+                  spaceType: uVids[0] ? uVids[0].spaceType : '',
+                  currentVersion: uVids.find(function(x) { return x.isCurrentVersion; }) || uVids[0],
+                  versions: uVids
+                }],
+                pdfs: uPdfs
+              }
+            });
+          } else if (fnName === 'apiUpdateUnit') {
+            var uId = args[0];
+            var f = args[1];
+            var exec = args[2];
+            var uTarget = _mockDB.units.find(function(x) { return x.unitId === uId; });
+            if (uTarget) {
+              if (f.clientName) uTarget.clientName = f.clientName;
+              if (f.location) uTarget.location = f.location;
+              if (f.unitType) uTarget.unitType = f.unitType;
+              if (f.area) uTarget.area = f.area;
+            }
+            if (!exec) {
+              callback({
+                ok: true,
+                data: {
+                  requiresBatchRename: true,
+                  proposedRenames: [
+                    {
+                      entityType: 'Video',
+                      entityId: '0001-V02',
+                      fileId: 'MockDriveFileId0001_v2',
+                      currentName: 'Ahmed Hassan - New Cairo - Phase 1 - Reception - 2026-08-17 - V02.mp4',
+                      proposedName: (f.clientName || 'Ahmed Hassan') + ' - ' + (f.location || 'New Cairo') + ' - Phase 1 - Reception - 2026-08-17 - V02.mp4'
+                    }
+                  ]
+                }
+              });
+            } else {
+              callback({
+                ok: true,
+                data: { message: 'تمت إعادة تسمية 1 ملف بنجاح في Google Drive.' }
+              });
+            }
+          } else if (fnName === 'apiUploadPdf') {
+            var pdfPayload = args[0];
+            var newPdf = {
+              pdfRecordId: 'DOC-' + pdfPayload.unitId + '-V02',
+              unitId: pdfPayload.unitId,
+              documentTitle: pdfPayload.documentTitle,
+              pdfLink: 'https://drive.google.com/file/d/MockNewPdf/view',
+              driveFileId: 'MockNewPdf_' + Date.now(),
+              pdfNumber: 'PDF-0002',
+              pdfVersionNumber: 'V02',
+              isCurrentVersion: true,
+              versionNotes: pdfPayload.versionNotes,
+              addedDate: new Date().toISOString().replace('T', ' ').substring(0, 19)
+            };
+            _mockDB.pdfs.push(newPdf);
+            callback({ ok: true, data: newPdf });
+          } else if (fnName === 'apiGetSystemConfig') {
+            callback({
+              ok: true,
+              data: {
+                spreadsheetId: '1AmL44k_Sh33t_M4st3r_DB_2026',
+                rootFolderId: '1AmL44k_R00t_Driv3_F0ld3r_2026',
+                users: [
+                  { email: 'admin@amlaak.com', role: 'System Owner', active: true },
+                  { email: 'engineer@amlaak.com', role: 'Authorised User 1', active: true },
+                  { email: 'marketing@amlaak.com', role: 'Authorised User 2', active: true }
+                ]
+              }
+            });
+          } else if (fnName === 'apiSetupSystem') {
+            callback({
+              ok: true,
+              data: { message: 'تم فحص وتهيئة المنظومة بنجاح (المجلدات وقواعد البيانات).' }
+            });
+          } else {
+            callback({ ok: true, data: {} });
+          }
+        }, 150);
+      };
+
+      // Call initial load
+      initApp();
+    }
+  </script>
+</body>
+</html>

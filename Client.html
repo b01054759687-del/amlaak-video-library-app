@@ -1,0 +1,1228 @@
+<script>
+/**
+ * Amlaak Video Library — Client-Side Application Engine
+ * Orchestrates UI state, async google.script.run calls, validation, and real-time previews.
+ */
+
+var AppState = {
+  currentUser: null,
+  isConfigured: false,
+  lists: {
+    videoSource: [],
+    unitType: [],
+    projectVideoType: [],
+    spaceType: [],
+    marketingContentType: [],
+    workCategory: [],
+    locations: []
+  },
+  allUnits: [],
+  allVideos: [],
+  currentTab: 'dashboard',
+  selectedAddSource: 'Project Video',
+  activeUnitForDetail: null,
+  activeVideoForVersion: null,
+  pendingBatchRename: null,
+  debounceTimer: null
+};
+
+// =============================================================
+// INITIALIZATION & LIFECYCLE
+// =============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  initApp();
+});
+
+function initApp() {
+  showGlobalLoading('جاري الاتصال بالمنظومة والتحقق من الصلاحيات...');
+
+  // Fallback mock if running outside Apps Script container for local preview/tests
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    console.warn('Running outside Google Apps Script container. Using local mock dispatcher.');
+    setupLocalPreviewMocks();
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(function(response) {
+      hideGlobalLoading();
+      if (!response.ok) {
+        showToast('error', response.message || 'فشل تحميل بيانات التهيئة.');
+        return;
+      }
+
+      var data = response.data;
+      AppState.currentUser = data.user;
+      AppState.lists = data.lists;
+      AppState.isConfigured = data.isConfigured;
+
+      // Update User Badge in Header
+      var emailBadge = document.getElementById('userEmailBadge');
+      var roleBadge = document.getElementById('userRoleBadge');
+      if (data.user && data.user.email) {
+        emailBadge.textContent = data.user.email;
+        roleBadge.textContent = data.user.role || 'مصرح له';
+        document.getElementById('bannerExecuteEmail').textContent = data.user.email;
+      } else {
+        emailBadge.textContent = 'غير مسجل';
+        roleBadge.textContent = 'غير مصرح';
+      }
+
+      // Populate Dropdowns
+      populateTaxonomyDropdowns();
+
+      // Load initial Dashboard
+      loadDashboard();
+      // Pre-load Units and Library
+      loadUnitsCatalog();
+    })
+    .withFailureHandler(function(err) {
+      hideGlobalLoading();
+      showToast('error', 'خطأ في الاتصال بالخادم: ' + (err.message || err));
+    })
+    .apiGetInitialData();
+}
+
+function reloadCurrentView() {
+  var icon = document.getElementById('syncIcon');
+  if (icon) icon.classList.add('fa-spin');
+
+  if (AppState.currentTab === 'dashboard') {
+    loadDashboard(function() { if (icon) icon.classList.remove('fa-spin'); });
+  } else if (AppState.currentTab === 'library') {
+    loadLibrary(function() { if (icon) icon.classList.remove('fa-spin'); });
+  } else if (AppState.currentTab === 'units') {
+    loadUnitsCatalog(function() { if (icon) icon.classList.remove('fa-spin'); });
+  } else if (AppState.currentTab === 'settings') {
+    loadSettings(function() { if (icon) icon.classList.remove('fa-spin'); });
+  } else {
+    if (icon) icon.classList.remove('fa-spin');
+  }
+}
+
+// =============================================================
+// NAVIGATION CONTROLLER
+// =============================================================
+function switchTab(tabId) {
+  AppState.currentTab = tabId;
+
+  var tabs = ['dashboard', 'addVideo', 'library', 'units', 'settings'];
+  tabs.forEach(function(t) {
+    var view = document.getElementById('view' + capitalizeFirst(t));
+    var btn = document.getElementById('btnTab' + capitalizeFirst(t));
+    if (view && btn) {
+      if (t === tabId) {
+        view.classList.remove('hidden');
+        btn.className = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]';
+      } else {
+        view.classList.add('hidden');
+        btn.className = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-2';
+      }
+    }
+  });
+
+  if (tabId === 'dashboard') loadDashboard();
+  else if (tabId === 'library') loadLibrary();
+  else if (tabId === 'units') loadUnitsCatalog();
+  else if (tabId === 'settings') loadSettings();
+}
+
+function capitalizeFirst(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// =============================================================
+// DROPDOWNS POPULATOR
+// =============================================================
+function populateTaxonomyDropdowns() {
+  var lists = AppState.lists;
+
+  function fillSelect(selectId, items, defaultText) {
+    var el = document.getElementById(selectId);
+    if (!el) return;
+    el.innerHTML = '';
+    if (defaultText) {
+      var defOpt = document.createElement('option');
+      defOpt.value = '';
+      defOpt.textContent = defaultText;
+      el.appendChild(defOpt);
+    }
+    (items || []).forEach(function(item) {
+      var opt = document.createElement('option');
+      opt.value = item;
+      opt.textContent = item;
+      el.appendChild(opt);
+    });
+  }
+
+  // Project Video Form
+  fillSelect('pvUnitType', lists.unitType, '-- اختر نوع الوحدة --');
+  fillSelect('pvProjectVideoType', lists.projectVideoType, '-- اختر مرحلة الفيديو --');
+  fillSelect('pvSpaceType', lists.spaceType, '-- اختر نوع الفراغ --');
+  fillSelect('pvWorkCategory', lists.workCategory, '-- اختر تصنيف الأعمال --');
+
+  // Marketing Form
+  fillSelect('mcContentType', lists.marketingContentType, '-- اختر نوع المحتوى --');
+  fillSelect('mcSpaceType', lists.spaceType, '-- فراغ عام / بدون تحديد --');
+
+  // Filters
+  fillSelect('filterStage', lists.projectVideoType, 'كل المراحل');
+  fillSelect('filterSpace', lists.spaceType, 'كل الفراغات');
+  fillSelect('filterWorkCat', lists.workCategory, 'كل تصنيفات الأعمال');
+  fillSelect('filterLocation', lists.locations, 'كل المناطق');
+
+  // Modals
+  fillSelect('ueUnitType', lists.unitType);
+}
+
+// =============================================================
+// DASHBOARD CONTROLLER (§19)
+// =============================================================
+function loadDashboard(callback) {
+  var filters = {
+    dateFilterType: document.getElementById('dashDateType').value,
+    startDate: document.getElementById('dashStartDate').value,
+    endDate: document.getElementById('dashEndDate').value
+  };
+
+  callApi('apiGetDashboard', [filters], function(res) {
+    if (callback) callback();
+    if (!res.ok) {
+      showToast('error', res.message);
+      return;
+    }
+
+    var data = res.data;
+    var kpis = data.kpis;
+    var breakdowns = data.breakdowns;
+
+    // Render KPIs
+    document.getElementById('kpiLogicalVideos').textContent = kpis.totalLogicalVideos;
+    document.getElementById('kpiStoredVersions').textContent = kpis.totalStoredVersions;
+    document.getElementById('kpiProjectVideos').textContent = kpis.totalProjectVideos;
+    document.getElementById('kpiProjectVersionsSub').textContent = kpis.projectVersionsCount + ' نسخة مسجلة';
+    document.getElementById('kpiMarketingVideos').textContent = kpis.totalMarketingContent;
+    document.getElementById('kpiMarketingVersionsSub').textContent = kpis.marketingVersionsCount + ' نسخة مسجلة';
+    document.getElementById('kpiTotalUnits').textContent = kpis.totalUnits;
+    document.getElementById('kpiStoredPdfs').textContent = kpis.totalStoredPdfs;
+
+    // Render Breakdown distributions
+    renderBreakdownList('chartLocationsList', breakdowns.locations, 'fa-location-dot', 'text-[#DFBF7A]');
+    renderBreakdownList('chartStagesList', breakdowns.stages, 'fa-layer-group', 'text-blue-400');
+    renderBreakdownList('chartSpacesList', breakdowns.spaces, 'fa-vector-square', 'text-emerald-400');
+    renderBreakdownList('chartWorkCatList', breakdowns.workCategories, 'fa-trowel-bricks', 'text-amber-400');
+
+    // Render Recent Activity Stream
+    var actContainer = document.getElementById('dashRecentActivityList');
+    actContainer.innerHTML = '';
+    if (!data.recentActivity || data.recentActivity.length === 0) {
+      actContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-3">لا توجد عمليات مسجلة حتى الآن.</div>';
+    } else {
+      data.recentActivity.forEach(function(act) {
+        var row = document.createElement('div');
+        row.className = 'flex items-center justify-between p-2.5 rounded-xl bg-[#081120] border border-slate-800 text-xs';
+        row.innerHTML = 
+          '<div class="flex items-center gap-2.5">' +
+            '<span class="w-2 h-2 rounded-full bg-emerald-400"></span>' +
+            '<div>' +
+              '<span class="font-bold text-white">' + escapeHtml(act.message || act.action) + '</span>' +
+              '<div class="text-[10px] text-slate-400 mt-0.5">' + escapeHtml(act.user) + ' • <span class="font-num">' + escapeHtml(act.timestamp) + '</span></div>' +
+            '</div>' +
+          '</div>' +
+          '<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-[#DFBF7A]">' + escapeHtml(act.action) + '</span>';
+        actContainer.appendChild(row);
+      });
+    }
+  });
+}
+
+function renderBreakdownList(containerId, items, iconClass, colorClass) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (!items || items.length === 0) {
+    container.innerHTML = '<div class="text-xs text-slate-500 text-center py-3">لا توجد بيانات متاحة.</div>';
+    return;
+  }
+
+  var maxCount = items[0].count || 1;
+
+  items.forEach(function(item) {
+    var pct = Math.round((item.count / maxCount) * 100);
+    var row = document.createElement('div');
+    row.className = 'space-y-1';
+    row.innerHTML = 
+      '<div class="flex items-center justify-between text-xs">' +
+        '<span class="text-slate-200 font-semibold truncate flex items-center gap-1.5">' +
+          '<i class="fa-solid ' + iconClass + ' ' + colorClass + ' text-[10px]"></i> ' + escapeHtml(item.name) +
+        '</span>' +
+        '<span class="font-num font-bold text-white text-[11px]">' + item.count + '</span>' +
+      '</div>' +
+      '<div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">' +
+        '<div class="h-full bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] rounded-full" style="width: ' + pct + '%"></div>' +
+      '</div>';
+    container.appendChild(row);
+  });
+}
+
+function clearDashboardDates() {
+  document.getElementById('dashStartDate').value = '';
+  document.getElementById('dashEndDate').value = '';
+  loadDashboard();
+}
+
+// =============================================================
+// ADD VIDEO CONTROLLER (§10, §11, §12)
+// =============================================================
+function setAddSource(source) {
+  AppState.selectedAddSource = source;
+  var btnProj = document.getElementById('btnSourceProject');
+  var btnMkt = document.getElementById('btnSourceMarketing');
+  var formProj = document.getElementById('formProjectVideo');
+  var formMkt = document.getElementById('formMarketingContent');
+
+  if (source === 'Project Video') {
+    btnProj.className = 'flex-1 py-3 rounded-xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]';
+    btnMkt.className = 'flex-1 py-3 rounded-xl font-bold text-xs sm:text-sm text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center justify-center gap-2';
+    formProj.classList.remove('hidden');
+    formMkt.classList.add('hidden');
+  } else {
+    btnMkt.className = 'flex-1 py-3 rounded-xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]';
+    btnProj.className = 'flex-1 py-3 rounded-xl font-bold text-xs sm:text-sm text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center justify-center gap-2';
+    formMkt.classList.remove('hidden');
+    formProj.classList.add('hidden');
+  }
+}
+
+function toggleUnitMode() {
+  var isExisting = document.getElementById('unitModeExisting').checked;
+  var searchContainer = document.getElementById('unitSelectContainer');
+  if (isExisting) {
+    searchContainer.classList.remove('hidden');
+  } else {
+    searchContainer.classList.add('hidden');
+    document.getElementById('pvSelectedUnitId').value = '';
+    document.getElementById('pvClientName').value = '';
+    document.getElementById('pvLocation').value = '';
+    document.getElementById('pvArea').value = '';
+    updateProjectVideoPreview();
+  }
+}
+
+function filterUnitSearch(query) {
+  var resultsBox = document.getElementById('pvUnitSearchResults');
+  if (!query || query.trim().length < 1) {
+    resultsBox.classList.add('hidden');
+    return;
+  }
+  var q = query.toLowerCase().trim();
+  var matches = (AppState.allUnits || []).filter(function(u) {
+    return (u.clientName && u.clientName.toLowerCase().indexOf(q) !== -1) ||
+           (u.unitId && u.unitId.toLowerCase().indexOf(q) !== -1) ||
+           (u.location && u.location.toLowerCase().indexOf(q) !== -1);
+  });
+
+  resultsBox.innerHTML = '';
+  if (matches.length === 0) {
+    resultsBox.innerHTML = '<div class="autocomplete-item text-slate-500 text-center text-xs">لا توجد وحدات مطابقة. اختر "تسجيل وحدة جديدة" للإضافة.</div>';
+    resultsBox.classList.remove('hidden');
+    return;
+  }
+
+  matches.forEach(function(u) {
+    var div = document.createElement('div');
+    div.className = 'autocomplete-item text-xs flex items-center justify-between';
+    div.innerHTML = 
+      '<div>' +
+        '<strong class="text-white">' + escapeHtml(u.clientName) + '</strong>' +
+        '<div class="text-[10px] text-slate-400">' + escapeHtml(u.location) + ' • ' + escapeHtml(u.unitType) + '</div>' +
+      '</div>' +
+      '<span class="font-mono text-[#DFBF7A] text-[10px]">' + u.unitId + '</span>';
+    div.onclick = function() {
+      selectUnitForProjectVideo(u);
+    };
+    resultsBox.appendChild(div);
+  });
+  resultsBox.classList.remove('hidden');
+}
+
+function selectUnitForProjectVideo(unit) {
+  document.getElementById('pvSelectedUnitId').value = unit.unitId;
+  document.getElementById('pvUnitSearch').value = unit.clientName + ' (' + unit.unitId + ' - ' + unit.location + ')';
+  document.getElementById('pvClientName').value = unit.clientName;
+  document.getElementById('pvLocation').value = unit.location;
+  document.getElementById('pvUnitType').value = unit.unitType;
+  if (unit.area) document.getElementById('pvArea').value = unit.area;
+  document.getElementById('pvUnitSearchResults').classList.add('hidden');
+  updateProjectVideoPreview();
+}
+
+function filterLocationSearch(query, resultsId, targetInputId) {
+  var box = document.getElementById(resultsId);
+  if (!query || query.trim().length < 1) {
+    box.classList.add('hidden');
+    return;
+  }
+  var q = query.toLowerCase().trim();
+  var matches = (AppState.lists.locations || []).filter(function(loc) {
+    return loc.toLowerCase().indexOf(q) !== -1;
+  });
+
+  box.innerHTML = '';
+  matches.forEach(function(loc) {
+    var div = document.createElement('div');
+    div.className = 'autocomplete-item text-xs text-white';
+    div.textContent = loc;
+    div.onclick = function() {
+      document.getElementById(targetInputId).value = loc;
+      box.classList.add('hidden');
+      updateProjectVideoPreview();
+    };
+    resultsBox.appendChild(div);
+  });
+  if (matches.length > 0) box.classList.remove('hidden');
+  else box.classList.add('hidden');
+}
+
+function updateProjectVideoPreview() {
+  var client = document.getElementById('pvClientName').value.trim();
+  var loc = document.getElementById('pvLocation').value.trim();
+  var stage = document.getElementById('pvProjectVideoType').value.trim();
+  var space = document.getElementById('pvSpaceType').value.trim();
+  var date = document.getElementById('pvShootingDate').value.trim();
+
+  var parts = [];
+  if (client) parts.push(client);
+  if (loc) parts.push(loc);
+  if (stage) parts.push(stage);
+  if (space) parts.push(space);
+  if (date) parts.push(date);
+  parts.push('V01');
+
+  var previewEl = document.getElementById('pvGeneratedFilenamePreview');
+  var name = parts.join(' - ') + '.mp4';
+  previewEl.textContent = name;
+}
+
+function handleMarketingContentTypeChange() {
+  var type = document.getElementById('mcContentType').value;
+  var spaceContainer = document.getElementById('mcSpaceTypeContainer');
+  var spaceSelect = document.getElementById('mcSpaceType');
+
+  // Educational hides and clears Space Type per Section 11 & 12
+  if (type === 'Educational') {
+    spaceContainer.classList.add('hidden');
+    spaceSelect.value = '';
+  } else {
+    spaceContainer.classList.remove('hidden');
+  }
+  updateMarketingContentPreview();
+}
+
+function updateMarketingContentPreview() {
+  var type = document.getElementById('mcContentType').value.trim();
+  var topic = document.getElementById('mcTopic').value.trim();
+  var space = document.getElementById('mcSpaceType').value.trim();
+  var date = document.getElementById('mcShootingDate').value.trim();
+
+  if (type === 'Educational') space = '';
+
+  var parts = [];
+  if (type) parts.push(type);
+  if (topic) parts.push(topic);
+  if (space) parts.push(space);
+  if (date) parts.push(date);
+  parts.push('V01');
+
+  var previewEl = document.getElementById('mcGeneratedFilenamePreview');
+  previewEl.textContent = parts.join(' - ') + '.mp4';
+}
+
+function submitProjectVideo(e) {
+  e.preventDefault();
+  var btn = document.getElementById('btnSubmitProjectVideo');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري المعالجة والرفع...';
+
+  var payload = {
+    unitId: document.getElementById('pvSelectedUnitId').value || '',
+    videoLink: document.getElementById('pvVideoLink').value.trim(),
+    clientName: document.getElementById('pvClientName').value.trim(),
+    location: document.getElementById('pvLocation').value.trim(),
+    unitType: document.getElementById('pvUnitType').value,
+    area: document.getElementById('pvArea').value,
+    projectVideoType: document.getElementById('pvProjectVideoType').value,
+    spaceType: document.getElementById('pvSpaceType').value,
+    workCategory: document.getElementById('pvWorkCategory').value, // Decision A
+    shootingDate: document.getElementById('pvShootingDate').value,
+    versionNotes: document.getElementById('pvVersionNotes').value.trim()
+  };
+
+  // Check if PDF is attached
+  var pdfFileInput = document.getElementById('pvPdfFileInput');
+  if (pdfFileInput.files && pdfFileInput.files.length > 0) {
+    var file = pdfFileInput.files[0];
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+      var base64 = evt.target.result.split(',')[1];
+      payload.pdfFileBase64 = base64;
+      payload.pdfFileName = file.name;
+      payload.pdfDocumentTitle = document.getElementById('pvPdfTitle').value.trim();
+      executeSaveProjectVideo(payload, btn);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    executeSaveProjectVideo(payload, btn);
+  }
+}
+
+function executeSaveProjectVideo(payload, btn) {
+  callApi('apiAddProjectVideo', [payload], function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>حفظ وتوثيق الفيديو</span>';
+
+    if (!res.ok) {
+      showToast('error', res.message);
+      return;
+    }
+
+    showToast('success', 'تم حفظ وتوثيق فيديو المشروع بنجاح: ' + res.data.video.videoName);
+    document.getElementById('formProjectVideo').reset();
+    document.getElementById('pvSelectedUnitId').value = '';
+    loadDashboard();
+    loadUnitsCatalog();
+    switchTab('library');
+  });
+}
+
+function submitMarketingContent(e) {
+  e.preventDefault();
+  var btn = document.getElementById('btnSubmitMarketingContent');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري الحفظ...';
+
+  var payload = {
+    videoLink: document.getElementById('mcVideoLink').value.trim(),
+    contentType: document.getElementById('mcContentType').value,
+    topic: document.getElementById('mcTopic').value.trim(),
+    spaceType: document.getElementById('mcSpaceType').value,
+    shootingDate: document.getElementById('mcShootingDate').value,
+    versionNotes: document.getElementById('mcVersionNotes').value.trim()
+  };
+
+  callApi('apiAddMarketingContent', [payload], function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>حفظ وتوثيق المحتوى</span>';
+
+    if (!res.ok) {
+      showToast('error', res.message);
+      return;
+    }
+
+    showToast('success', 'تم حفظ وتوثيق المحتوى التسويقي بنجاح: ' + res.data.video.videoName);
+    document.getElementById('formMarketingContent').reset();
+    loadDashboard();
+    switchTab('library');
+  });
+}
+
+// =============================================================
+// VIDEO LIBRARY CONTROLLER (§16, §18)
+// =============================================================
+function debounceLibrarySearch() {
+  clearTimeout(AppState.debounceTimer);
+  AppState.debounceTimer = setTimeout(function() {
+    loadLibrary();
+  }, 300);
+}
+
+function loadLibrary(callback) {
+  var filters = {
+    searchQuery: document.getElementById('filterSearch').value.trim(),
+    videoSource: document.getElementById('filterSource').value,
+    projectVideoType: document.getElementById('filterStage').value,
+    spaceType: document.getElementById('filterSpace').value,
+    workCategory: document.getElementById('filterWorkCat').value, // Decision A
+    location: document.getElementById('filterLocation').value,
+    dateFilterType: document.getElementById('filterDateType').value,
+    startDate: document.getElementById('filterStartDate').value,
+    endDate: document.getElementById('filterEndDate').value,
+    includePreviousVersions: document.getElementById('filterIncludePrevious').checked
+  };
+
+  var tbody = document.getElementById('libraryTableBody');
+  tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-500">جاري تحميل الفيديوهات وتطبيق الفلاتر...</td></tr>';
+
+  callApi('apiGetVideos', [filters], function(res) {
+    if (callback) callback();
+    if (!res.ok) {
+      tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-rose-400">' + escapeHtml(res.message) + '</td></tr>';
+      return;
+    }
+
+    var videos = res.data || [];
+    AppState.allVideos = videos;
+    document.getElementById('libraryResultsCount').textContent = videos.length;
+
+    if (videos.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-500">لا توجد فيديوهات مطابقة لمعايير البحث الحالية.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = '';
+    videos.forEach(function(v) {
+      var tr = document.createElement('tr');
+      tr.className = 'hover:bg-slate-800/40 transition';
+
+      var isCur = v.isCurrentVersion;
+      var verBadge = isCur 
+        ? '<span class="badge-current text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">' + escapeHtml(v.versionNumber) + ' [Current]</span>'
+        : '<span class="badge-previous text-[10px] px-2 py-0.5 rounded-full font-mono">' + escapeHtml(v.versionNumber) + ' [Previous]</span>';
+
+      var srcBadge = v.videoSource === 'Project Video'
+        ? '<span class="badge-project text-[10px] px-2 py-0.5 rounded-full font-bold">مشروع</span>'
+        : '<span class="badge-marketing text-[10px] px-2 py-0.5 rounded-full font-bold">تسويقي</span>';
+
+      var driveLink = v.videoLink || ('https://drive.google.com/file/d/' + v.driveFileId + '/view');
+
+      tr.innerHTML = 
+        '<td class="p-3.5 font-mono text-[#DFBF7A] font-bold">' + escapeHtml(v.videoNumber) + '</td>' +
+        '<td class="p-3.5 whitespace-nowrap">' + verBadge + '</td>' +
+        '<td class="p-3.5 whitespace-nowrap">' + srcBadge + '</td>' +
+        '<td class="p-3.5 font-mono-code text-white font-semibold max-w-xs truncate" title="' + escapeHtml(v.videoName) + '">' +
+          escapeHtml(v.videoName) +
+        '</td>' +
+        '<td class="p-3.5 text-slate-300 font-bold whitespace-nowrap">' + escapeHtml(v.clientName || v.topic || '—') + '</td>' +
+        '<td class="p-3.5 text-slate-400 whitespace-nowrap">' + escapeHtml(v.location || '—') + '</td>' +
+        '<td class="p-3.5 text-slate-400 whitespace-nowrap">' + escapeHtml((v.projectVideoType || '') + (v.spaceType ? ' / ' + v.spaceType : '')) + '</td>' +
+        '<td class="p-3.5 text-amber-300/90 font-semibold whitespace-nowrap">' + escapeHtml(v.workCategory || '—') + '</td>' +
+        '<td class="p-3.5 font-num text-slate-400 whitespace-nowrap">' + escapeHtml(v.shootingDate || '—') + '</td>' +
+        '<td class="p-3.5 text-center whitespace-nowrap">' +
+          '<div class="flex items-center justify-center gap-2">' +
+            '<a href="' + driveLink + '" target="_blank" title="فتح الملف على Google Drive" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition">' +
+              '<i class="fa-solid fa-arrow-up-right-from-square"></i>' +
+            '</a>' +
+            '<button onclick="openAddVersionModal(\'' + v.videoNumber + '\')" title="إضافة نسخة جديدة" class="p-1.5 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/30 transition">' +
+              '<i class="fa-solid fa-code-branch"></i>' +
+            '</button>' +
+            '<button onclick="openVersionHistoryModal(\'' + v.videoNumber + '\')" title="سجل النسخ والتعديلات" class="p-1.5 rounded-lg bg-amber-500/15 text-[#DFBF7A] hover:bg-amber-500/30 transition">' +
+              '<i class="fa-solid fa-clock-rotate-left"></i>' +
+            '</button>' +
+          '</div>' +
+        '</td>';
+
+      tbody.appendChild(tr);
+    });
+  });
+}
+
+function resetLibraryFilters() {
+  document.getElementById('filterSearch').value = '';
+  document.getElementById('filterSource').value = '';
+  document.getElementById('filterStage').value = '';
+  document.getElementById('filterSpace').value = '';
+  document.getElementById('filterWorkCat').value = '';
+  document.getElementById('filterLocation').value = '';
+  document.getElementById('filterStartDate').value = '';
+  document.getElementById('filterEndDate').value = '';
+  document.getElementById('filterIncludePrevious').checked = false;
+  loadLibrary();
+}
+
+// =============================================================
+// ADD VERSION MODAL CONTROLLER (§14)
+// =============================================================
+function openAddVersionModal(videoNumber) {
+  var matching = (AppState.allVideos || []).filter(function(v) {
+    return v.videoNumber === videoNumber;
+  });
+
+  if (matching.length === 0) return;
+
+  var currentVer = matching.find(function(v) { return v.isCurrentVersion; }) || matching[0];
+  AppState.activeVideoForVersion = currentVer;
+
+  document.getElementById('mvVideoNumber').value = videoNumber;
+  document.getElementById('mvVideoHeader').textContent = 'Video ' + videoNumber + ' • ' + (currentVer.clientName || currentVer.topic);
+  document.getElementById('mvVideoLink').value = '';
+  document.getElementById('mvVersionNotes').value = '';
+
+  // Calculate next version
+  var maxVer = 0;
+  matching.forEach(function(v) {
+    var match = String(v.versionNumber).match(/V?(\d+)/i);
+    if (match && match[1]) {
+      var n = parseInt(match[1], 10);
+      if (n > maxVer) maxVer = n;
+    }
+  });
+  var nextVerStr = 'V' + (maxVer + 1 < 10 ? '0' + (maxVer + 1) : String(maxVer + 1));
+  document.getElementById('mvTargetVersionBadge').textContent = nextVerStr;
+
+  updateVersionModalPreview();
+  document.getElementById('modalAddVersion').classList.remove('hidden');
+}
+
+function closeAddVersionModal() {
+  document.getElementById('modalAddVersion').classList.add('hidden');
+}
+
+function updateVersionModalPreview() {
+  var v = AppState.activeVideoForVersion;
+  if (!v) return;
+
+  var nextVer = document.getElementById('mvTargetVersionBadge').textContent;
+  var isProject = v.videoSource === 'Project Video';
+
+  var parts = [];
+  if (isProject) {
+    if (v.clientName) parts.push(v.clientName);
+    if (v.location) parts.push(v.location);
+    if (v.projectVideoType) parts.push(v.projectVideoType);
+    if (v.spaceType) parts.push(v.spaceType);
+    if (v.shootingDate) parts.push(v.shootingDate);
+    parts.push(nextVer);
+  } else {
+    if (v.contentType) parts.push(v.contentType);
+    if (v.topic) parts.push(v.topic);
+    if (v.spaceType) parts.push(v.spaceType);
+    if (v.shootingDate) parts.push(v.shootingDate);
+    parts.push(nextVer);
+  }
+
+  document.getElementById('mvProposedFilename').textContent = parts.join(' - ') + '.mp4';
+}
+
+function submitAddVersion(e) {
+  e.preventDefault();
+  var btn = document.getElementById('btnSubmitAddVersion');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري اعتماد النسخة...';
+
+  var payload = {
+    videoNumber: document.getElementById('mvVideoNumber').value,
+    videoLink: document.getElementById('mvVideoLink').value.trim(),
+    versionNotes: document.getElementById('mvVersionNotes').value.trim()
+  };
+
+  callApi('apiAddNewVersion', [payload], function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-plus"></i> <span>اعتماد وحفظ النسخة</span>';
+
+    if (!res.ok) {
+      showToast('error', res.message);
+      return;
+    }
+
+    showToast('success', 'تمت إضافة النسخة الجديدة بنجاح: ' + res.data.videoName);
+    closeAddVersionModal();
+    loadDashboard();
+    loadLibrary();
+  });
+}
+
+// =============================================================
+// VERSION HISTORY MODAL CONTROLLER (§16)
+// =============================================================
+function openVersionHistoryModal(videoNumber) {
+  var matching = (AppState.allVideos || []).filter(function(v) {
+    return v.videoNumber === videoNumber;
+  });
+
+  if (matching.length === 0) return;
+
+  document.getElementById('vhVideoTitle').textContent = 'Video ' + videoNumber + ' • ' + (matching[0].clientName || matching[0].topic);
+
+  // Sort descending by version number
+  matching.sort(function(a, b) {
+    var vA = parseInt(String(a.versionNumber).replace(/\D/g, ''), 10) || 0;
+    var vB = parseInt(String(b.versionNumber).replace(/\D/g, ''), 10) || 0;
+    return vB - vA;
+  });
+
+  var container = document.getElementById('vhVersionsList');
+  container.innerHTML = '';
+
+  matching.forEach(function(ver) {
+    var isCur = ver.isCurrentVersion;
+    var div = document.createElement('div');
+    div.className = 'p-3.5 rounded-xl ' + (isCur ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-[#081120] border border-slate-800') + ' space-y-2';
+
+    var driveLink = ver.videoLink || ('https://drive.google.com/file/d/' + ver.driveFileId + '/view');
+
+    div.innerHTML = 
+      '<div class="flex items-center justify-between">' +
+        '<div class="flex items-center gap-2">' +
+          '<span class="font-mono font-bold text-sm ' + (isCur ? 'text-emerald-400' : 'text-slate-300') + '">' + escapeHtml(ver.versionNumber) + '</span>' +
+          (isCur ? '<span class="badge-current text-[10px] px-2 py-0.5 rounded-full font-bold">النسخة الحالية (Current)</span>' : '<span class="badge-previous text-[10px] px-2 py-0.5 rounded-full">نسخة سابقة (Previous)</span>') +
+        '</div>' +
+        '<a href="' + driveLink + '" target="_blank" class="text-xs text-[#DFBF7A] hover:underline font-bold flex items-center gap-1">' +
+          '<span>فتح في Drive</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>' +
+        '</a>' +
+      '</div>' +
+      '<div class="text-xs font-mono-code text-white break-all">' + escapeHtml(ver.videoName) + '</div>' +
+      '<div class="text-[11px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800/60">' +
+        '<span>ملاحظات: ' + escapeHtml(ver.versionNotes || 'لا توجد ملاحظات') + '</span>' +
+        '<span class="font-num">' + escapeHtml(ver.addedDate || '') + '</span>' +
+      '</div>';
+
+    container.appendChild(div);
+  });
+
+  document.getElementById('modalVersionHistory').classList.remove('hidden');
+}
+
+function closeVersionHistoryModal() {
+  document.getElementById('modalVersionHistory').classList.add('hidden');
+}
+
+// =============================================================
+// UNITS & DESIGN PDFS CONTROLLER (§15, §17, DECISION C §2.3)
+// =============================================================
+function loadUnitsCatalog(callback) {
+  callApi('apiGetUnits', [], function(res) {
+    if (callback) callback();
+    if (!res.ok) {
+      showToast('error', res.message);
+      return;
+    }
+
+    var units = res.data || [];
+    AppState.allUnits = units;
+    renderUnitsCatalog(units);
+  });
+}
+
+function renderUnitsCatalog(units) {
+  var grid = document.getElementById('unitsCatalogGrid');
+  grid.innerHTML = '';
+
+  if (units.length === 0) {
+    grid.innerHTML = '<div class="col-span-full p-8 text-center text-slate-500">لا توجد وحدات مسجلة حتى الآن.</div>';
+    return;
+  }
+
+  units.forEach(function(u) {
+    var card = document.createElement('div');
+    card.className = 'gold-card rounded-2xl p-5 space-y-4 hover:border-amber-500/50 transition flex flex-col justify-between';
+    card.innerHTML = 
+      '<div>' +
+        '<div class="flex items-center justify-between mb-2">' +
+          '<span class="text-xs font-mono font-bold text-[#DFBF7A] px-2 py-0.5 rounded bg-[#081120] border border-amber-500/20">' + u.unitId + '</span>' +
+          '<span class="text-xs text-slate-400">' + escapeHtml(u.unitType) + '</span>' +
+        '</div>' +
+        '<h3 class="text-base font-bold text-white mb-1">' + escapeHtml(u.clientName) + '</h3>' +
+        '<div class="text-xs text-slate-400 flex items-center gap-2">' +
+          '<span><i class="fa-solid fa-location-dot text-[#DFBF7A] text-[10px]"></i> ' + escapeHtml(u.location) + '</span>' +
+          (u.area ? '<span>• ' + u.area + ' م²</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">' +
+        '<div class="flex items-center gap-3 text-slate-300">' +
+          '<span title="الفيديوهات المرتبطة"><i class="fa-solid fa-film text-[#DFBF7A] ml-1"></i> ' + u.videoCount + '</span>' +
+          '<span title="مخططات الـ PDF"><i class="fa-solid fa-file-pdf text-rose-400 ml-1"></i> ' + u.pdfCount + '</span>' +
+        '</div>' +
+        '<button onclick="openUnitDetail(\'' + u.unitId + '\')" class="text-xs font-bold text-[#DFBF7A] hover:underline flex items-center gap-1">' +
+          '<span>التفاصيل</span> <i class="fa-solid fa-arrow-left text-[10px]"></i>' +
+        '</button>' +
+      '</div>';
+    grid.appendChild(card);
+  });
+}
+
+function filterUnitsCatalog(query) {
+  if (!query || query.trim().length === 0) {
+    renderUnitsCatalog(AppState.allUnits);
+    return;
+  }
+  var q = query.toLowerCase().trim();
+  var filtered = AppState.allUnits.filter(function(u) {
+    return (u.clientName && u.clientName.toLowerCase().indexOf(q) !== -1) ||
+           (u.unitId && u.unitId.toLowerCase().indexOf(q) !== -1) ||
+           (u.location && u.location.toLowerCase().indexOf(q) !== -1);
+  });
+  renderUnitsCatalog(filtered);
+}
+
+function openUnitDetail(unitId) {
+  showGlobalLoading('جاري جلب تفاصيل الوحدة...');
+  callApi('apiGetUnitDetail', [unitId], function(res) {
+    hideGlobalLoading();
+    if (!res.ok) {
+      showToast('error', res.message);
+      return;
+    }
+
+    var detail = res.data;
+    AppState.activeUnitDetail = detail;
+
+    document.getElementById('udClientName').textContent = detail.unit.clientName;
+    document.getElementById('udUnitIdBadge').textContent = detail.unit.unitId;
+    document.getElementById('udLocationType').textContent = detail.unit.location + ' • ' + detail.unit.unitType + (detail.unit.area ? ' (' + detail.unit.area + ' م²)' : '');
+
+    // Reset edit mode
+    document.getElementById('unitEditFormContainer').classList.add('hidden');
+    document.getElementById('ueClientName').value = detail.unit.clientName;
+    document.getElementById('ueLocation').value = detail.unit.location;
+    document.getElementById('ueUnitType').value = detail.unit.unitType;
+    document.getElementById('ueArea').value = detail.unit.area || '';
+
+    // Render Videos
+    var vContainer = document.getElementById('udVideosList');
+    vContainer.innerHTML = '';
+    if (detail.videos.length === 0) {
+      vContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-2">لا توجد فيديوهات مرتبطة بهذه الوحدة بعد.</div>';
+    } else {
+      detail.videos.forEach(function(v) {
+        var vDiv = document.createElement('div');
+        vDiv.className = 'p-2.5 rounded-xl bg-[#081120] border border-slate-800 text-xs flex items-center justify-between';
+        var curVer = v.currentVersion || (v.versions[0] || {});
+        vDiv.innerHTML = 
+          '<div>' +
+            '<div class="flex items-center gap-2">' +
+              '<span class="font-mono text-[#DFBF7A] font-bold">Video ' + v.videoNumber + '</span>' +
+              '<span class="badge-current text-[10px] px-1.5 py-0.5 rounded">' + curVer.versionNumber + '</span>' +
+              '<span class="text-slate-300 font-semibold">' + escapeHtml(v.projectVideoType) + ' (' + escapeHtml(v.spaceType) + ')</span>' +
+            '</div>' +
+            '<div class="text-[10px] font-mono-code text-slate-400 mt-0.5 truncate max-w-sm">' + escapeHtml(curVer.videoName) + '</div>' +
+          '</div>' +
+          '<div class="flex items-center gap-2">' +
+            '<button onclick="openAddVersionModal(\'' + v.videoNumber + '\')" class="p-1 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-xs" title="إضافة نسخة"><i class="fa-solid fa-code-branch"></i></button>' +
+            '<button onclick="openVersionHistoryModal(\'' + v.videoNumber + '\')" class="p-1 rounded bg-amber-500/20 text-[#DFBF7A] hover:bg-amber-500/30 text-xs" title="سجل النسخ"><i class="fa-solid fa-clock-rotate-left"></i></button>' +
+          '</div>';
+        vContainer.appendChild(vDiv);
+      });
+    }
+
+    // Render PDFs (Decision B Version History)
+    var pContainer = document.getElementById('udPdfsList');
+    pContainer.innerHTML = '';
+    if (detail.pdfs.length === 0) {
+      pContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-2">لا توجد مخططات PDF معمارية لهذه الوحدة.</div>';
+    } else {
+      detail.pdfs.forEach(function(pdf) {
+        var isCur = pdf.isCurrentVersion;
+        var pDiv = document.createElement('div');
+        pDiv.className = 'p-2.5 rounded-xl ' + (isCur ? 'bg-rose-500/10 border border-rose-500/30' : 'bg-[#081120] border border-slate-800') + ' text-xs flex items-center justify-between';
+        var pdfLink = pdf.pdfLink || ('https://drive.google.com/file/d/' + pdf.driveFileId + '/view');
+        pDiv.innerHTML = 
+          '<div>' +
+            '<div class="flex items-center gap-2">' +
+              '<i class="fa-solid fa-file-pdf text-rose-400"></i>' +
+              '<span class="font-bold text-white">' + escapeHtml(pdf.documentTitle) + '</span>' +
+              '<span class="font-mono text-[10px] px-1.5 py-0.5 rounded ' + (isCur ? 'badge-current' : 'badge-previous') + '">' + pdf.pdfVersionNumber + '</span>' +
+            '</div>' +
+            '<div class="text-[10px] text-slate-400 mt-0.5">' + escapeHtml(pdf.versionNotes || '') + ' • ' + escapeHtml(pdf.addedDate || '') + '</div>' +
+          '</div>' +
+          '<a href="' + pdfLink + '" target="_blank" class="text-xs text-rose-400 hover:underline font-bold flex items-center gap-1">' +
+            '<span>عرض PDF</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>' +
+          '</a>';
+        pContainer.appendChild(pDiv);
+      });
+    }
+
+    document.getElementById('modalUnitDetail').classList.remove('hidden');
+  });
+}
+
+function closeUnitDetailModal() {
+  document.getElementById('modalUnitDetail').classList.add('hidden');
+}
+
+function toggleUnitEditMode() {
+  var form = document.getElementById('unitEditFormContainer');
+  form.classList.toggle('hidden');
+}
+
+/**
+ * Saves unit master edit with Decision C propagation.
+ */
+function saveUnitMasterEdit() {
+  var detail = AppState.activeUnitDetail;
+  if (!detail) return;
+
+  var unitId = detail.unit.unitId;
+  var updatedFields = {
+    clientName: document.getElementById('ueClientName').value.trim(),
+    location: document.getElementById('ueLocation').value.trim(),
+    unitType: document.getElementById('ueUnitType').value,
+    area: document.getElementById('ueArea').value
+  };
+
+  showGlobalLoading('جاري تحديث بيانات الوحدة ونشر التغييرات...');
+  callApi('apiUpdateUnit', [unitId, updatedFields, false], function(res) {
+    hideGlobalLoading();
+    if (!res.ok) {
+      showToast('error', res.message);
+      return;
+    }
+
+    var data = res.data;
+    if (data.requiresBatchRename && data.proposedRenames && data.proposedRenames.length > 0) {
+      // Show Batch Rename Screen (Decision C §2.3)
+      AppState.pendingBatchRename = {
+        unitId: unitId,
+        fields: updatedFields,
+        renames: data.proposedRenames
+      };
+      showBatchRenameModal(data.proposedRenames);
+    } else {
+      showToast('success', data.message || 'تم تحديث بيانات الوحدة بنجاح.');
+      toggleUnitEditMode();
+      openUnitDetail(unitId);
+      loadUnitsCatalog();
+      loadDashboard();
+    }
+  });
+}
+
+// =============================================================
+// BATCH RENAME MODAL CONTROLLER (DECISION C §2.3)
+// =============================================================
+function showBatchRenameModal(proposedList) {
+  var container = document.getElementById('batchRenameItemsList');
+  container.innerHTML = '';
+
+  proposedList.forEach(function(item) {
+    var div = document.createElement('div');
+    div.className = 'p-3 rounded-lg bg-[#070D18] border border-slate-800 space-y-1.5';
+    div.innerHTML = 
+      '<div class="flex items-center justify-between text-[11px]">' +
+        '<span class="font-bold text-[#DFBF7A]">' + escapeHtml(item.entityType) + ' (' + escapeHtml(item.entityId) + ')</span>' +
+        '<span class="font-mono text-slate-500 text-[10px]">Drive File: ' + escapeHtml(item.fileId) + '</span>' +
+      '</div>' +
+      '<div class="text-[11px] text-rose-400/90 font-mono-code truncate line-through">الاسم الحالي: ' + escapeHtml(item.currentName) + '</div>' +
+      '<div class="text-[11px] text-emerald-400 font-mono-code font-bold">الاسم المقترح: ' + escapeHtml(item.proposedName) + '</div>';
+    container.appendChild(div);
+  });
+
+  document.getElementById('modalBatchRename').classList.remove('hidden');
+}
+
+function cancelBatchRename() {
+  document.getElementById('modalBatchRename').classList.add('hidden');
+  AppState.pendingBatchRename = null;
+  showToast('info', 'تم الإبقاء على أسماء الملفات الحالية في Google Drive، مع تحديث بيانات الشيت.');
+  if (AppState.activeUnitDetail) {
+    openUnitDetail(AppState.activeUnitDetail.unit.unitId);
+  }
+}
+
+function confirmBatchRename() {
+  var pending = AppState.pendingBatchRename;
+  if (!pending) return;
+
+  var btn = document.getElementById('btnConfirmBatchRename');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري إعادة تسمية الملفات في Drive...';
+
+  callApi('apiUpdateUnit', [pending.unitId, pending.fields, true], function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> <span>تأكيد وإعادة تسمية جميع الملفات</span>';
+    document.getElementById('modalBatchRename').classList.add('hidden');
+
+    if (!res.ok) {
+      showToast('error', res.message);
+      return;
+    }
+
+    showToast('success', res.data.message || 'تمت إعادة تسمية الملفات وتوثيق العملية في سجل الأمان.');
+    AppState.pendingBatchRename = null;
+    if (AppState.activeUnitDetail) {
+      openUnitDetail(AppState.activeUnitDetail.unit.unitId);
+    }
+    loadLibrary();
+    loadDashboard();
+  });
+}
+
+// =============================================================
+// UPLOAD DESIGN PDF MODAL CONTROLLER (§15)
+// =============================================================
+function openUploadPdfModalForCurrentUnit() {
+  var detail = AppState.activeUnitDetail;
+  if (!detail) return;
+
+  document.getElementById('upUnitId').value = detail.unit.unitId;
+  document.getElementById('upModalUnitHeader').textContent = 'الوحدة: ' + detail.unit.clientName + ' (' + detail.unit.unitId + ')';
+  document.getElementById('upDocumentTitle').value = '';
+  document.getElementById('upVersionNotes').value = '';
+  document.getElementById('upPdfFile').value = '';
+
+  document.getElementById('modalUploadPdf').classList.remove('hidden');
+}
+
+function closeUploadPdfModal() {
+  document.getElementById('modalUploadPdf').classList.add('hidden');
+}
+
+function submitUploadPdf(e) {
+  e.preventDefault();
+  var fileInput = document.getElementById('upPdfFile');
+  if (!fileInput.files || fileInput.files.length === 0) {
+    showToast('error', 'يرجى اختيار ملف PDF صالح.');
+    return;
+  }
+
+  var file = fileInput.files[0];
+  var btn = document.getElementById('btnSubmitUploadPdf');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري رفع المخطط...';
+
+  var reader = new FileReader();
+  reader.onload = function(evt) {
+    var base64 = evt.target.result.split(',')[1];
+    var payload = {
+      unitId: document.getElementById('upUnitId').value,
+      fileName: file.name,
+      documentTitle: document.getElementById('upDocumentTitle').value.trim() || file.name,
+      versionNotes: document.getElementById('upVersionNotes').value.trim(),
+      base64Content: base64
+    };
+
+    callApi('apiUploadPdf', [payload], function(res) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-upload"></i> <span>رفع وأرشفة المخطط</span>';
+
+      if (!res.ok) {
+        showToast('error', res.message);
+        return;
+      }
+
+      showToast('success', 'تم رفع المخطط المعماري بنجاح.');
+      closeUploadPdfModal();
+      if (AppState.activeUnitDetail) {
+        openUnitDetail(AppState.activeUnitDetail.unit.unitId);
+      }
+      loadUnitsCatalog();
+      loadDashboard();
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+// =============================================================
+// SETTINGS & SETUP CONTROLLER (§5)
+// =============================================================
+function loadSettings(callback) {
+  callApi('apiGetSystemConfig', [], function(res) {
+    if (callback) callback();
+    if (!res.ok) {
+      showToast('error', res.message);
+      return;
+    }
+
+    var cfg = res.data;
+    document.getElementById('configSpreadsheetId').textContent = cfg.spreadsheetId || 'غير محدد';
+    document.getElementById('configRootFolderId').textContent = cfg.rootFolderId || 'غير محدد';
+
+    var tbody = document.getElementById('configUsersTableBody');
+    tbody.innerHTML = '';
+    if (!cfg.users || cfg.users.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center text-slate-500">لا يوجد مستخدمون مسجلون.</td></tr>';
+    } else {
+      cfg.users.forEach(function(u) {
+        var tr = document.createElement('tr');
+        tr.innerHTML = 
+          '<td class="p-2.5 font-mono text-slate-200">' + escapeHtml(u.email) + '</td>' +
+          '<td class="p-2.5 text-[#DFBF7A] font-bold">' + escapeHtml(u.role) + '</td>' +
+          '<td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 font-bold">نشط</span></td>';
+        tbody.appendChild(tr);
+      });
+    }
+  });
+}
+
+function triggerSystemSetup() {
+  if (!confirm('هل تريد تشغيل فحص وتهيئة المنظومة الآن؟ العملية آمنة ولا تقوم بحذف أو تكرار أي بيانات.')) {
+    return;
+  }
+
+  var btn = document.getElementById('btnTriggerSetup');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري فحص وتهيئة المنظومة...';
+
+  callApi('apiSetupSystem', [{}], function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-wrench"></i> <span>إعادة فحص / تهيئة المنظومة الآن</span>';
+
+    if (!res.ok) {
+      showToast('error', res.message);
+      return;
+    }
+
+    showToast('success', res.data.message || 'تمت تهيئة المنظومة بنجاح.');
+    loadSettings();
+    initApp();
+  });
+}
+
+// =============================================================
+// UNIVERSAL API CALL & FEEDBACK HELPERS
+// =============================================================
+function callApi(fnName, args, callback) {
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    var runner = google.script.run
+      .withSuccessHandler(function(response) {
+        callback(response);
+      })
+      .withFailureHandler(function(err) {
+        callback({ ok: false, message: err.message || err.toString() });
+      });
+
+    runner[fnName].apply(runner, args);
+  } else if (window._localMockDispatcher) {
+    window._localMockDispatcher(fnName, args, callback);
+  } else {
+    callback({ ok: false, message: 'Google Apps Script API runner unavailable.' });
+  }
+}
+
+function showToast(type, message) {
+  var container = document.getElementById('toastContainer');
+  if (!container) return;
+
+  var toast = document.createElement('div');
+  var bgClass = type === 'error' ? 'bg-rose-950/95 border-rose-500 text-rose-200' :
+                type === 'info' ? 'bg-sky-950/95 border-sky-500 text-sky-200' :
+                'bg-[#0B1528]/95 border-amber-500 text-amber-200';
+  var iconClass = type === 'error' ? 'fa-circle-xmark text-rose-400' :
+                  type === 'info' ? 'fa-circle-info text-sky-400' :
+                  'fa-circle-check text-emerald-400';
+
+  toast.className = 'p-3.5 rounded-xl border shadow-xl backdrop-blur-md text-xs font-bold flex items-start gap-3 transition duration-300 pointer-events-auto ' + bgClass;
+  toast.innerHTML = 
+    '<i class="fa-solid ' + iconClass + ' text-base mt-0.5"></i>' +
+    '<div class="flex-1 leading-relaxed">' + escapeHtml(message) + '</div>' +
+    '<button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>';
+
+  container.appendChild(toast);
+  setTimeout(function() {
+    toast.style.opacity = '0';
+    setTimeout(function() { toast.remove(); }, 300);
+  }, 5000);
+}
+
+function showGlobalLoading(text) {
+  var el = document.getElementById('globalLoadingOverlay');
+  var txt = document.getElementById('globalLoadingText');
+  if (txt && text) txt.textContent = text;
+  if (el) el.classList.remove('hidden');
+}
+
+function hideGlobalLoading() {
+  var el = document.getElementById('globalLoadingOverlay');
+  if (el) el.classList.add('hidden');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+</script>
