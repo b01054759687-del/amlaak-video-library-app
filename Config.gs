@@ -107,7 +107,11 @@ var Config = (function() {
   function getProperty(key, optDefault) {
     var props = PropertiesService.getScriptProperties();
     var val = props.getProperty(key);
-    return (val !== null && val !== undefined && val !== '') ? val : (optDefault || '');
+    if (val !== null && val !== undefined && val !== '') return val;
+    // Default configured production resources
+    if (key === PROPERTY_KEYS.SPREADSHEET_ID) return '1KLsNGiIGSyd2vTz95Qmfw0np6jayX-JJZWX3wmmgzZ4';
+    if (key === PROPERTY_KEYS.ROOT_FOLDER_ID) return '172YFf4GteBT5x_WxQxr-ldo79f0XuRrh';
+    return (optDefault || '');
   }
 
   function setProperty(key, value) {
