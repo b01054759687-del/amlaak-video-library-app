@@ -2208,11 +2208,52 @@ window.handleUnitsSearchInput = handleUnitsSearchInput;
 window.applyLibraryFilter = applyLibraryFilter;
 window.changeLibraryPage = changeLibraryPage;
 window.setAddVideoSource = setAddVideoSource;
+window.setAddSource = setAddSource; // alias: HTML onclick="setAddSource(...)" maps to this function
 window.triggerPdfFileSelect = triggerPdfFileSelect;
 window.handlePdfFileSelected = handlePdfFileSelected;
 window.copyToClipboard = copyToClipboard;
 window.showToast = showToast;
 window.escapeHtml = escapeHtml;
+
+// Missing exports — modal close buttons, pagination, batch rename, unit edit, settings
+window.cancelBatchRename = cancelBatchRename;
+window.clearDashboardDates = clearDashboardDates;
+window.closeAddVersionModal = closeAddVersionModal;
+window.closeEditVideoMetadataModal = closeEditVideoMetadataModal;
+window.closeNewUnitModal = closeNewUnitModal;
+window.closeUnitDetailModal = closeUnitDetailModal;
+window.closeUploadPdfModal = closeUploadPdfModal;
+window.closeVersionHistoryModal = closeVersionHistoryModal;
+window.closeVideoPreviewModal = closeVideoPreviewModal;
+window.confirmBatchRename = confirmBatchRename;
+window.nextLibraryPage = nextLibraryPage;
+window.openUploadPdfModalForCurrentUnit = openUploadPdfModalForCurrentUnit;
+window.prevLibraryPage = prevLibraryPage;
+window.resetLibraryFilters = resetLibraryFilters;
+window.saveUnitMasterEdit = saveUnitMasterEdit;
+window.toggleUnitEditMode = toggleUnitEditMode;
+window.triggerSystemSetup = triggerSystemSetup;
+
+// Second batch: onchange / oninput / onsubmit handlers (form live previews, filters, submissions)
+window.loadDashboard = loadDashboard;
+window.submitProjectVideo = submitProjectVideo;
+window.toggleUnitMode = toggleUnitMode;
+window.filterUnitSearch = filterUnitSearch;
+window.updateProjectVideoPreview = updateProjectVideoPreview;
+window.filterLocationSearch = filterLocationSearch;
+window.submitMarketingContent = submitMarketingContent;
+window.updateMarketingContentPreview = updateMarketingContentPreview;
+window.handleMarketingContentTypeChange = handleMarketingContentTypeChange;
+window.debounceLibrarySearch = debounceLibrarySearch;
+window.resetLibraryPageAndLoad = resetLibraryPageAndLoad;
+window.changeLibraryPageSize = changeLibraryPageSize;
+window.filterUnitsCatalog = filterUnitsCatalog;
+window.submitNewUnit = submitNewUnit;
+window.submitEditVideoMetadata = submitEditVideoMetadata;
+window.updateEditMetaPreview = updateEditMetaPreview;
+window.submitAddVersion = submitAddVersion;
+window.updateVersionModalPreview = updateVersionModalPreview;
+window.submitUploadPdf = submitUploadPdf;
 
 window.useLocalDemoMode = function() {
   window.FORCE_LOCAL_MOCKS = true;

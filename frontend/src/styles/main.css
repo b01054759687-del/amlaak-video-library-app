@@ -583,3 +583,45 @@ input[type="file"]::file-selector-button:hover {
   .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .lg\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
+
+@media (min-width: 640px) {
+  .sm\:p-8 { padding: 2rem; }
+}
+
+/* ============================================================
+   MISSING UTILITY CLASSES — Audit Fix (auto-generated)
+   All classes used in index.html that were absent from CSS
+   ============================================================ */
+
+/* Layout */
+.max-w-md { max-width: 28rem; }
+.flex-col-reverse { flex-direction: column-reverse; }
+.h-14 { height: 3.5rem; }
+.w-14 { width: 3.5rem; }
+.mx-4 { margin-left: 1rem; margin-right: 1rem; }
+.rounded-2xl { border-radius: 1rem; }
+.min-h-\[44px\] { min-height: 44px; }
+
+/* Tab view container — direct-controlled visibility */
+.tab-view { display: block; }
+.tab-view.hidden { display: none; }
+
+/* Accent colour (range/checkbox tint) */
+.accent-\[\#C5A059\] { accent-color: #C5A059; }
+
+/* Hover utilities */
+.hover\:bg-slate-800\/40:hover { background-color: rgba(30, 41, 59, 0.4); }
+
+/* File input styling (::file-selector-button pseudo-element) */
+.file\:mr-2::file-selector-button { margin-right: 0.5rem; }
+.file\:px-3::file-selector-button { padding-left: 0.75rem; padding-right: 0.75rem; }
+.file\:px-4::file-selector-button { padding-left: 1rem; padding-right: 1rem; }
+.file\:py-1\.5::file-selector-button { padding-top: 0.375rem; padding-bottom: 0.375rem; }
+.file\:py-2::file-selector-button { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.file\:border-0::file-selector-button { border-width: 0; }
+.file\:rounded-lg::file-selector-button { border-radius: 0.5rem; }
+.file\:font-semibold::file-selector-button { font-weight: 600; }
+.file\:text-xs::file-selector-button { font-size: 0.75rem; line-height: 1rem; }
+.file\:text-slate-200::file-selector-button { color: #E2E8F0; }
+.file\:bg-slate-800::file-selector-button { background-color: #1E293B; }
+.hover\:file\:bg-slate-700:hover::file-selector-button { background-color: #334155; }
