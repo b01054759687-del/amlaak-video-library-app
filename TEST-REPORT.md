@@ -1,51 +1,73 @@
-<div dir="rtl" style="text-align: right;">
+# Amlaak Video Library — Production Test Execution Report
 
-# تقرير نتائج الاختبارات الفعلي — Amlaak Video Library Test Execution Report
-
-يوثق هذا التقرير النتائج الفعلية لتشغيل حزم الاختبارات المؤتمتة لاختبار منطق المنظومة والمعمارية وقواعد التسمية وسيناريوهات الصلاحيات.
-
----
-
-## 📊 ملخص نتائج التنفيذ (Execution Summary)
-
-- **تاريخ ووقت التنفيذ:** 2026-09-09 20:01:20 (توقيت القاهرة)
-- **بيئة الاختبار:** Node.js v24.14.0 على Windows
-- **إجمالي الاختبارات المنفذة:** 23 اختباراً
-- **الحالة الإجمالية:** **23 ناجح (PASSED) — 0 فاشل (FAILED) — بنسبة نجاح 100%**
+## 1. Executive Summary
+- **Execution Date**: 2026-09-10
+- **Target Branch**: `feat/github-pages-cloud-run-production`
+- **Total Test Suites**: 4
+- **Total Tests Executed**: 71
+- **Passed**: 71 (100%)
+- **Failed**: 0 (0%)
+- **Regressions**: 0
 
 ---
 
-## 📋 السجل التفصيلي لنتائج الاختبارات
+## 2. Test Suite Breakdown
 
-| # | اسم الاختبار | النوع | النتيجة | الملاحظات الهندسية |
-|---|---|---|---|---|
-| 1 | استخراج File ID من رابط Drive قياسي (`/file/d/`) | Unit | **PASSED** | استخراج المعرّف المكون من 33+ محرف بدقة |
-| 2 | استخراج File ID من رابط Query Param (`?id=`) | Unit | **PASSED** | معالجة الروابط القديمة والبديلة |
-| 3 | قبول معرّف File ID الخام المباشر | Unit | **PASSED** | التحقق من طول وصيغة المعرّف |
-| 4 | رفض المعرفات غير الصالحة أو الفارغة | Unit | **PASSED** | التحقق الصارم وعدم قبول قيم وهمية |
-| 5 | تنقيح الرموز المحظورة في أسماء الملفات | Unit | **PASSED** | إزالة رموز `\ / : * ? " < > |` بالكامل |
-| 6 | دمج المسافات والفواصل المكررة مع صيانة شرطات التاريخ | Unit | **PASSED** | معالجة الفواصل الزائدة مع إبقاء صيغة `YYYY-MM-DD` سليمة |
-| 7 | استخراج امتدادات الملفات المتنوعة (`mp4`, `mov`, إلخ) | Unit | **PASSED** | الحفاظ التام على امتداد الملف الأصلي |
-| 8 | توليد اسم فيديو المشروع القياسي (§12) | Unit | **PASSED** | مطابقة صيغة `Client - Location - Stage - Space - Date - V02.mp4` |
-| 9 | استبعاد تصنيف الأعمال من اسم الملف (القرار A) | Unit | **PASSED** | `Work Category` حقل تصنيف مستقل ولا يدخل في الاسم الفيزيائي |
-| 10 | إخفاء الفراغ للمحتوى التسويقي التعليمي (`Educational`) | Unit | **PASSED** | حذف نوع الفراغ تلقائياً دون ترك فواصل مضاعفة |
-| 11 | تضمين الفراغ للمحتوى التسويقي التوضيحي (`Demonstration`) | Unit | **PASSED** | إدراج نوع الفراغ عند توفره |
-| 12 | الترقيم المتسلسل التلقائي للفيديوهات (`0001` -> `0002`) | Unit | **PASSED** | ترقيم رباعي الخانات ذكي ومحمي بـ LockService |
-| 13 | الترقيم المتسلسل للنسخ (`V01` -> `V02` -> `V10`) | Unit | **PASSED** | توليد متناسق لأكواد النسخ الفيزيائية |
-| 14 | تنسيق كود الوحدة المعمارية (`U-0001`, `U-0025`) | Unit | **PASSED** | كود فريد وغير قابل للتكرار |
-| 15 | نشر تصحيحات الوحدة وحساب أسماء الملفات (القرار C) | Unit | **PASSED** | كشف التغييرات في أسماء الملفات الناتجة عن تعديل موقع أو عميل الوحدة |
-| 16 | حساب مؤشرات الفيديوهات المنطقية دون تضخيم بالنسخ (§19) | Unit | **PASSED** | حساب الفيديوهات الفريدة بدقة بغض النظر عن عدد نسخها |
-| 17 | معالجة خلو حقلي Duration و Orientation بسلاسة (§7.2) | Unit | **PASSED** | حفظ وعرض السجل دون اشتراط وجودهما |
-| 18 | استنتاج الاتجاه (Landscape / Portrait) بشرط الأبعاد | Unit | **PASSED** | استنتاج الاتجاه فقط عند توفر العرض والارتفاع الموثوقين |
-| 19 | فحص صلاحية Editor المسبقة لحساب التطبيق على Drive (§6) | Integration | **PASSED** | إطلاق رسالة الخطأ الصريحة المحددة عند غياب الصلاحية |
-| 20 | قبول الملف عند توفر صلاحية Editor | Integration | **PASSED** | نجاح التحقق والمتابعة |
-| 21 | انتقال النسخ من الحالية إلى السابقة دون مسح القديم (§14) | Integration | **PASSED** | قلب النسخة السابقة إلى `No` وحفظ الملف الفيزيائي بالكامل |
-| 22 | حفظ تسلسل نسخ مخططات التصميم المعماري (القرار B) | Integration | **PASSED** | إدارة سجل النسخ `Current` / `Previous` لكل وحدة |
-| 23 | صمود إعادة التسمية المجمعة أمام الأعطال الجزئية (القرار C) | Integration | **PASSED** | إعادة تسمية الملفات الناجحة ورفع تقرير دقيق بالملفات الفاشلة |
+### Suite 1: Legacy Core Unit Tests (`tests/unit-tests.js`)
+- **Tests**: 44
+- **Status**: PASSED (44/44)
+- **Coverage**:
+  - Google Drive File ID extraction (URL, param, raw, regex rejection).
+  - Filename sanitization (OS reserved characters, duplicate whitespace).
+  - Section 12 naming rules for Project Videos and Marketing Content.
+  - Decision A: Strict exclusion of Work Category from physical video filenames.
+  - Sequential increments (Video Number, Version Number, Unit ID).
+  - Decision C: Unit metadata propagation and affected Drive file identification.
+  - Dashboard KPIs and distinct video calculation.
+  - Duration and orientation graceful handling.
+  - 15 approved Work Categories acceptance and validation.
+  - PDF versioning invariant (V01 -> V02, single Current flag).
+  - Stage 2.5 frontend workflows (New Unit modal, Edit Metadata, XSS sanitization, ARIA dialogs).
+
+### Suite 2: Integration Simulation Suite (`tests/integration-simulation.js`)
+- **Tests**: 7
+- **Status**: PASSED (7/7)
+- **Coverage**:
+  - Drive Editor permission prerequisite check.
+  - Video version transitions and physical file preservation.
+  - Unit design PDF versioning and flipping (Current vs Previous).
+  - Decision C propagation and partial failure resilience.
+  - Consolidated single round-trip bootstrap simulation.
+  - Idempotent schema migration simulation.
+
+### Suite 3: Backend REST API Suite (`backend/tests/backend.test.js`)
+- **Tests**: 13
+- **Status**: PASSED (13/13)
+- **Coverage**:
+  - `GET /api/v1/health`: 200 OK unauthenticated.
+  - `GET /api/v1/bootstrap`: 401 on missing auth, 403 on un-allowlisted email, 200 on authorized user.
+  - `POST /api/v1/units`: Unit creation and validation.
+  - `POST /api/v1/videos/project`: Filename generation excluding Work Category and duplicate check.
+  - `GET /api/v1/videos/:vNum/versions`: Descending version history.
+  - `POST /api/v1/videos/version`: Adding version and flipping previous.
+  - `PATCH /api/v1/videos/:driveId/metadata`: Proposed rename flag calculation.
+  - `POST /api/v1/pdfs`: PDF promotion and version invariant.
+  - `GET /api/v1/config`: Owner role enforcement.
+  - `GET /api/v1/videos`: Server-side pagination.
+
+### Suite 4: Modern Frontend Suite (`frontend/tests/frontend.test.js`)
+- **Tests**: 7
+- **Status**: PASSED (7/7)
+- **Coverage**:
+  - English and LTR configuration (`lang="en" dir="ltr"`).
+  - Removal of Play CDN (`cdn.tailwindcss.com`).
+  - Link to precompiled luxury stylesheet (`src/styles/main.css`).
+  - Google Identity Services client script present without embedded secrets.
+  - Decoupling from `google.script.run` to REST client.
+  - Sequence token protection against out-of-order asynchronous search responses.
+  - Pagination boundary computation.
 
 ---
 
-## 🎯 الخلاصة الفنية
-كافة المتطلبات الوظيفية والمعمارية وشروط الصلاحيات وقواعد التسمية وقرارات التصميم (A و B و C) تم التحقق منها هندسياً بنجاح تام، والكود جاهز للربط الفوري بحساب Google أو النشر للإنتاج.
-
-</div>
+## 3. Verification Sign-Off
+All automated tests have completed with zero errors and 100% pass rate.

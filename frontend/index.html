@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<!--
+  Amlaak Video Library — Production Frontend (GitHub Pages)
+  Architecture: Static GitHub Pages Frontend -> Secure Cloud Run REST API -> Sheets/Drive
+  Strict 100% English LTR, Precompiled Luxury Stylesheet (Zero CDN Runtime)
+-->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amlaak Video Library | Engineering Media &amp; Design Archive</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="src/styles/main.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body class="p-3 sm:p-5 md:p-8">
+
+  <!-- ============================================================= -->
+  <!-- TOP BRAND HEADER & NAVIGATION                                  -->
+  <!-- ============================================================= -->
+  <header class="gold-card p-4 sm:p-5 mb-6">
+    <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
+
+      <!-- Brand mark -->
+      <div class="flex items-center gap-3.5 w-full lg:w-auto">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#DFBF7A] to-[#9A7329] flex items-center justify-center text-[#070D18] shadow-lg shadow-amber-950/40 text-xl flex-shrink-0">
+          <i class="fa-solid fa-crown"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-bold tracking-[0.14em] text-[#DFBF7A] uppercase font-mono-code">Amlaak Design</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">v2.0</span>
+          </div>
+          <h1 class="text-lg sm:text-xl font-black gold-gradient-text leading-tight">Video Library</h1>
+        </div>
+      </div>
+
+      <!-- Nav -->
+      <nav class="flex flex-wrap items-center justify-center gap-1.5 bg-[#081120] p-1.5 rounded-xl border border-slate-800/80 w-full lg:w-auto">
+        <button onclick="switchTab('dashboard')" id="btnTabDashboard" class="tab-btn active">
+          <i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span>
+        </button>
+        <button onclick="switchTab('addVideo')" id="btnTabAddVideo" class="tab-btn">
+          <i class="fa-solid fa-cloud-arrow-up"></i> <span>Add Video</span>
+        </button>
+        <button onclick="switchTab('library')" id="btnTabLibrary" class="tab-btn">
+          <i class="fa-solid fa-film"></i> <span>Video Library</span>
+        </button>
+        <button onclick="switchTab('units')" id="btnTabUnits" class="tab-btn">
+          <i class="fa-solid fa-building"></i> <span>Units &amp; PDFs</span>
+        </button>
+        <button onclick="switchTab('settings')" id="btnTabSettings" class="tab-btn">
+          <i class="fa-solid fa-sliders"></i> <span>Settings</span>
+        </button>
+      </nav>
+
+      <!-- Session status -->
+      <div class="flex items-center gap-3 w-full lg:w-auto justify-end">
+        <div class="text-right hidden sm:block">
+          <div id="userEmailBadge" class="text-xs font-mono-code font-bold text-slate-200">louyashra@gmail.com</div>
+          <div id="userRoleBadge" class="text-[10px] text-[#DFBF7A] font-bold">Checking role…</div>
+        </div>
+        <button onclick="reloadCurrentView()" title="Refresh data" class="w-9 h-9 rounded-lg bg-slate-800/70 border border-slate-700 text-slate-300 hover:text-[#DFBF7A] hover:border-amber-500/40 transition flex items-center justify-center">
+          <i id="syncIcon" class="fa-solid fa-arrows-rotate text-xs"></i>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 1: DASHBOARD                                              -->
+  <!-- ============================================================= -->
+  <section id="viewDashboard" class="tab-view space-y-5">
+
+    <!-- Date filter bar -->
+    <div class="gold-card p-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-slate-300 font-bold">Filter date by</label>
+          <select id="dashDateType" class="input-dark px-3 py-1.5 text-xs font-bold" onchange="loadDashboard()">
+            <option value="Added Date">Added Date</option>
+            <option value="Shooting Date">Shooting Date</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-slate-400">From</label>
+          <input type="date" id="dashStartDate" class="input-dark px-2.5 py-1.5 text-xs" onchange="loadDashboard()">
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-xs text-slate-400">To</label>
+          <input type="date" id="dashEndDate" class="input-dark px-2.5 py-1.5 text-xs" onchange="loadDashboard()">
+        </div>
+        <button onclick="clearDashboardDates()" class="text-xs text-slate-400 hover:text-rose-400 transition underline">Clear dates</button>
+      </div>
+      <div class="text-xs text-amber-300/80 font-semibold flex items-center gap-1.5">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i> Live data from Google Sheets
+      </div>
+    </div>
+
+    <!-- 6 KPI stat tiles -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+
+      <div class="gold-card p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] mb-2">
+          <span>Total Videos</span>
+          <i class="fa-solid fa-film text-[#DFBF7A]"></i>
+        </div>
+        <div id="kpiLogicalVideos" class="text-2xl sm:text-3xl font-black text-white font-num">0</div>
+        <div class="text-[10px] text-slate-400 mt-1">Distinct logical videos</div>
+      </div>
+
+      <div class="gold-card p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] mb-2">
+          <span>Stored Versions</span>
+          <i class="fa-solid fa-code-branch text-blue-400"></i>
+        </div>
+        <div id="kpiStoredVersions" class="text-2xl sm:text-3xl font-black text-white font-num">0</div>
+        <div class="text-[10px] text-slate-400 mt-1">Physical files on Drive</div>
+      </div>
+
+      <div class="gold-card p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] mb-2">
+          <span>Project Videos</span>
+          <i class="fa-solid fa-hammer text-[#C5A059]"></i>
+        </div>
+        <div id="kpiProjectVideos" class="text-2xl sm:text-3xl font-black text-[#DFBF7A] font-num">0</div>
+        <div id="kpiProjectVersionsSub" class="text-[10px] text-slate-400 mt-1">0 versions recorded</div>
+      </div>
+
+      <div class="gold-card p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] mb-2">
+          <span>Marketing Content</span>
+          <i class="fa-solid fa-bullhorn text-sky-400"></i>
+        </div>
+        <div id="kpiMarketingVideos" class="text-2xl sm:text-3xl font-black text-sky-400 font-num">0</div>
+        <div id="kpiMarketingVersionsSub" class="text-[10px] text-slate-400 mt-1">0 versions recorded</div>
+      </div>
+
+      <div class="gold-card p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] mb-2">
+          <span>Units on File</span>
+          <i class="fa-solid fa-building text-emerald-400"></i>
+        </div>
+        <div id="kpiTotalUnits" class="text-2xl sm:text-3xl font-black text-emerald-400 font-num">0</div>
+        <div class="text-[10px] text-slate-400 mt-1">Client &amp; unit records</div>
+      </div>
+
+      <div class="gold-card p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] mb-2">
+          <span>Design PDFs</span>
+          <i class="fa-solid fa-file-pdf text-rose-400"></i>
+        </div>
+        <div id="kpiStoredPdfs" class="text-2xl sm:text-3xl font-black text-rose-400 font-num">0</div>
+        <div class="text-[10px] text-slate-400 mt-1">Archived design plans</div>
+      </div>
+
+    </div>
+
+    <!-- Breakdown cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+      <div class="gold-card p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-sm text-white flex items-center gap-2">
+            <i class="fa-solid fa-location-dot text-[#DFBF7A]"></i> Videos by Location
+          </h3>
+          <span class="text-[10px] text-slate-500 font-mono-code">Location</span>
+        </div>
+        <div id="chartLocationsList" class="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+          <div class="text-xs text-slate-500 text-center py-4">Loading…</div>
+        </div>
+      </div>
+
+      <div class="gold-card p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-sm text-white flex items-center gap-2">
+            <i class="fa-solid fa-layer-group text-blue-400"></i> Finishing Stage
+          </h3>
+          <span class="text-[10px] text-slate-500 font-mono-code">Stage</span>
+        </div>
+        <div id="chartStagesList" class="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+          <div class="text-xs text-slate-500 text-center py-4">Loading…</div>
+        </div>
+      </div>
+
+      <div class="gold-card p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-sm text-white flex items-center gap-2">
+            <i class="fa-solid fa-vector-square text-emerald-400"></i> Space Type
+          </h3>
+          <span class="text-[10px] text-slate-500 font-mono-code">Space Type</span>
+        </div>
+        <div id="chartSpacesList" class="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+          <div class="text-xs text-slate-500 text-center py-4">Loading…</div>
+        </div>
+      </div>
+
+      <div class="gold-card p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-sm text-white flex items-center gap-2">
+            <i class="fa-solid fa-trowel-bricks text-amber-400"></i> Work Category
+          </h3>
+          <span class="text-[10px] text-slate-500 font-mono-code">Work Category</span>
+        </div>
+        <div id="chartWorkCatList" class="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+          <div class="text-xs text-slate-500 text-center py-4">Loading…</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Recent activity -->
+    <div class="gold-card p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-[#DFBF7A]"></i> Recent Activity
+        </h3>
+        <span class="text-xs text-slate-500">Audit Log</span>
+      </div>
+      <div id="dashRecentActivityList" class="space-y-2">
+        <div class="text-xs text-slate-500 text-center py-4">Loading…</div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 2: ADD VIDEO                                              -->
+  <!-- ============================================================= -->
+  <section id="viewAddVideo" class="tab-view hidden max-w-4xl mx-auto space-y-5">
+
+    <div class="gold-card p-2 flex items-center gap-2">
+      <button type="button" onclick="setAddSource('Project Video')" id="btnSourceProject" class="flex-1 py-3 rounded-lg font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]">
+        <i class="fa-solid fa-house-chimney-crack"></i> <span>Project Video</span>
+      </button>
+      <button type="button" onclick="setAddSource('Marketing Content')" id="btnSourceMarketing" class="flex-1 py-3 rounded-lg font-bold text-xs sm:text-sm text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center justify-center gap-2">
+        <i class="fa-solid fa-bullhorn"></i> <span>Marketing Content</span>
+      </button>
+    </div>
+
+    <div class="rounded-xl p-4 bg-amber-500/10 border border-amber-500/25 text-xs flex items-start gap-3">
+      <i class="fa-solid fa-triangle-exclamation text-amber-400 text-base mt-0.5"></i>
+      <div class="text-slate-300 leading-relaxed">
+        <strong class="text-amber-200 font-bold">Before you save a link:</strong>
+        the app renames and moves the original file — it never copies it. The Drive file must already be shared as
+        <span class="text-[#DFBF7A] font-mono-code font-bold">Editor</span> with the app account
+        (<span id="bannerExecuteEmail" class="font-mono-code underline">louyashra@gmail.com</span>) before you paste its link, or the save will fail with a clear permission error.
+      </div>
+    </div>
+
+    <!-- FORM: PROJECT VIDEO -->
+    <form id="formProjectVideo" onsubmit="submitProjectVideo(event)" class="gold-card p-6 sm:p-7 space-y-5">
+
+      <div class="p-4 rounded-xl bg-[#081120] border border-slate-800 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <label class="text-xs font-bold text-[#DFBF7A] flex items-center gap-2">
+            <i class="fa-solid fa-link"></i> Link this video to a unit
+          </label>
+          <div class="flex items-center gap-4 text-xs">
+            <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+              <input type="radio" name="unitMode" id="unitModeExisting" value="existing" checked onchange="toggleUnitMode()"> Existing unit
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+              <input type="radio" name="unitMode" id="unitModeNew" value="new" onchange="toggleUnitMode()"> New unit
+            </label>
+          </div>
+        </div>
+
+        <div id="unitSelectContainer" class="relative">
+          <input type="text" id="pvUnitSearch" placeholder="Search by unit ID, client name or location…" class="w-full input-dark px-4 py-2.5 text-xs sm:text-sm" oninput="filterUnitSearch(this.value)" autocomplete="off">
+          <input type="hidden" id="pvSelectedUnitId">
+          <div id="pvUnitSearchResults" class="autocomplete-items hidden"></div>
+        </div>
+
+        <div id="pvUnitLockedBadge" class="hidden p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs flex items-center justify-between">
+          <span class="flex items-center gap-2">
+            <i class="fa-solid fa-lock text-blue-400"></i>
+            <span>Central metadata locked from Unit record. Central edits must be done via "Units &amp; PDFs".</span>
+          </span>
+          <button type="button" onclick="switchTab('units')" class="text-xs text-[#DFBF7A] underline hover:text-white font-bold">View Unit</button>
+        </div>
+      </div>
+
+      <div>
+        <label for="pvVideoLink" class="field-label">Google Drive video link <span class="field-required">*</span></label>
+        <input type="url" id="pvVideoLink" required placeholder="https://drive.google.com/file/d/…/view" class="w-full input-dark px-4 py-3 text-xs sm:text-sm font-mono-code" oninput="updateProjectVideoPreview()">
+        <p class="text-[11px] text-slate-500 mt-1">Accepts a Drive share link or a bare File ID.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <label for="pvClientName" class="field-label">Client name <span class="field-required">*</span></label>
+          <input type="text" id="pvClientName" required placeholder="e.g. Ahmed Hassan" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="updateProjectVideoPreview()">
+        </div>
+        <div class="relative">
+          <label for="pvLocation" class="field-label">Location <span class="field-required">*</span></label>
+          <input type="text" id="pvLocation" required placeholder="e.g. New Cairo" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="filterLocationSearch(this.value, 'pvLocationResults', 'pvLocation')" autocomplete="off">
+          <div id="pvLocationResults" class="autocomplete-items hidden"></div>
+        </div>
+        <div>
+          <label for="pvUnitType" class="field-label">Unit type <span class="field-required">*</span></label>
+          <select id="pvUnitType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
+        </div>
+        <div>
+          <label for="pvArea" class="field-label">Area (sqm)</label>
+          <input type="number" id="pvArea" placeholder="e.g. 220" min="1" step="any" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm font-num" oninput="updateProjectVideoPreview()">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <label for="pvProjectVideoType" class="field-label">Project video type <span class="field-required">*</span></label>
+          <select id="pvProjectVideoType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
+        </div>
+        <div>
+          <label for="pvSpaceType" class="field-label">Space type <span class="field-required">*</span></label>
+          <select id="pvSpaceType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
+        </div>
+        <div>
+          <label for="pvWorkCategory" class="field-label text-[#DFBF7A]">Work category <span class="field-required">*</span></label>
+          <select id="pvWorkCategory" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm border-amber-500/35" onchange="updateProjectVideoPreview()"></select>
+        </div>
+        <div>
+          <label for="pvShootingDate" class="field-label">Shooting date <span class="field-required">*</span></label>
+          <input type="date" id="pvShootingDate" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="updateProjectVideoPreview()">
+        </div>
+      </div>
+
+      <div class="p-4 rounded-xl bg-[#081120] border border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <label for="pvPdfFileInput" class="text-xs font-bold text-slate-300 flex items-center gap-2">
+            <i class="fa-solid fa-file-pdf text-rose-400"></i> Attach unit design PDF — optional
+          </label>
+          <span id="pvPdfVersionNotice" class="text-[10px] text-slate-500">Saved to the unit as version V01</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input type="file" id="pvPdfFileInput" accept="application/pdf,.pdf" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700">
+          <input type="text" id="pvPdfTitle" placeholder="Document title (optional), e.g. Approved lighting layout" class="w-full input-dark px-3 py-2 text-xs">
+        </div>
+      </div>
+
+      <div>
+        <label for="pvVersionNotes" class="field-label">Version notes</label>
+        <input type="text" id="pvVersionNotes" placeholder="e.g. Approved cut for final handover, lighting corrected" class="w-full input-dark px-4 py-2.5 text-xs sm:text-sm">
+      </div>
+
+      <div class="p-4 rounded-xl bg-gradient-to-r from-[#081120] to-[#0D1A30] border border-amber-500/25">
+        <div class="text-[10px] font-bold text-[#DFBF7A] mb-1 flex items-center gap-1.5">
+          <i class="fa-solid fa-tag"></i> Drive filename that will be generated
+        </div>
+        <div id="pvGeneratedFilenamePreview" class="text-xs sm:text-sm font-mono-code font-bold text-white break-all">
+          Client Name - Location - Project Video Type - Space Type - Shooting Date - V01.mp4
+        </div>
+        <div class="text-[10px] text-slate-500 mt-1">
+          Empty optional fields are omitted automatically. Work Category is not added to the filename by default.
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2.5 pt-1">
+        <button type="reset" class="ghost-btn px-5 py-2.5 text-xs">Reset</button>
+        <button type="submit" id="btnSubmitProjectVideo" class="gold-btn px-8 py-3 text-sm font-black flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up"></i> <span>Save Video</span>
+        </button>
+      </div>
+
+    </form>
+
+    <!-- FORM: MARKETING CONTENT -->
+    <form id="formMarketingContent" onsubmit="submitMarketingContent(event)" class="gold-card p-6 sm:p-7 space-y-5 hidden">
+
+      <div>
+        <label class="field-label">Google Drive video link <span class="field-required">*</span></label>
+        <input type="url" id="mcVideoLink" required placeholder="https://drive.google.com/file/d/…/view" class="w-full input-dark px-4 py-3 text-xs sm:text-sm font-mono-code" oninput="updateMarketingContentPreview()">
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div>
+          <label class="field-label">Content type <span class="field-required">*</span></label>
+          <select id="mcContentType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="handleMarketingContentTypeChange()"></select>
+        </div>
+        <div>
+          <label class="field-label">Topic <span class="field-required">*</span></label>
+          <input type="text" id="mcTopic" required placeholder="e.g. Plumbing rough-in mistakes" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="updateMarketingContentPreview()">
+        </div>
+        <div id="mcSpaceTypeContainer">
+          <label class="field-label">Space type (optional)</label>
+          <select id="mcSpaceType" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateMarketingContentPreview()"></select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="field-label">Shooting date <span class="field-required">*</span></label>
+          <input type="date" id="mcShootingDate" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="updateMarketingContentPreview()">
+        </div>
+        <div>
+          <label class="field-label">Version notes</label>
+          <input type="text" id="mcVersionNotes" placeholder="e.g. 9:16 Reels cut, updated caption and music" class="w-full input-dark px-4 py-2.5 text-xs sm:text-sm">
+        </div>
+      </div>
+
+      <div class="p-4 rounded-xl bg-gradient-to-r from-[#081120] to-[#0D1A30] border border-blue-500/25">
+        <div class="text-[10px] font-bold text-sky-400 mb-1 flex items-center gap-1.5">
+          <i class="fa-solid fa-tag"></i> Drive filename that will be generated
+        </div>
+        <div id="mcGeneratedFilenamePreview" class="text-xs sm:text-sm font-mono-code font-bold text-white break-all">
+          Content Type - Topic - Shooting Date - V01.mp4
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2.5 pt-1">
+        <button type="reset" class="ghost-btn px-5 py-2.5 text-xs">Reset</button>
+        <button type="submit" id="btnSubmitMarketingContent" class="gold-btn px-8 py-3 text-sm font-black flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up"></i> <span>Save Content</span>
+        </button>
+      </div>
+
+    </form>
+
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 3: VIDEO LIBRARY                                          -->
+  <!-- ============================================================= -->
+  <section id="viewLibrary" class="tab-view hidden space-y-4">
+
+    <div class="gold-card p-5 space-y-4">
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <div>
+          <label for="filterSearch" class="text-[11px] font-bold text-slate-400 mb-1 block">Search (Client, Unit, Topic, Video #)</label>
+          <div class="relative">
+            <input type="text" id="filterSearch" placeholder="Search library…" class="w-full input-dark pl-9 pr-3 py-2 text-xs" oninput="debounceLibrarySearch()">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
+          </div>
+        </div>
+        <div>
+          <label for="filterSource" class="text-[11px] font-bold text-slate-400 mb-1 block">Video Source</label>
+          <select id="filterSource" class="w-full input-dark px-3 py-2 text-xs" onchange="resetLibraryPageAndLoad()">
+            <option value="">All sources</option>
+            <option value="Project Video">Project Video</option>
+            <option value="Marketing Content">Marketing Content</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterContentType" class="text-[11px] font-bold text-slate-400 mb-1 block">Marketing Content Type</label>
+          <select id="filterContentType" class="w-full input-dark px-3 py-2 text-xs" onchange="resetLibraryPageAndLoad()">
+            <option value="">All marketing types</option>
+            <option value="Ad / Hook">Ad / Hook</option>
+            <option value="Reel / Short">Reel / Short</option>
+            <option value="Before / After">Before / After</option>
+            <option value="Construction Walkthrough">Construction Walkthrough</option>
+            <option value="Client Interview">Client Interview</option>
+            <option value="Team Showcase">Team Showcase</option>
+            <option value="Material Selection">Material Selection</option>
+            <option value="Educational">Educational</option>
+            <option value="Service Overview">Service Overview</option>
+            <option value="Milestone / Teaser">Milestone / Teaser</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterStage" class="text-[11px] font-bold text-slate-400 mb-1 block">Project Video Type / Stage</label>
+          <select id="filterStage" class="w-full input-dark px-3 py-2 text-xs" onchange="resetLibraryPageAndLoad()">
+            <option value="">All stages</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-3 border-t border-slate-800">
+        <div>
+          <label for="filterSpace" class="text-[11px] font-bold text-slate-400 mb-1 block">Space Type</label>
+          <select id="filterSpace" class="w-full input-dark px-3 py-2 text-xs" onchange="resetLibraryPageAndLoad()">
+            <option value="">All spaces</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterWorkCat" class="text-[11px] font-bold text-[#DFBF7A] mb-1 block">Work Category</label>
+          <select id="filterWorkCat" class="w-full input-dark px-3 py-2 text-xs border-amber-500/25" onchange="resetLibraryPageAndLoad()">
+            <option value="">All categories</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterLocation" class="text-[11px] font-bold text-slate-400 mb-1 block">Location</label>
+          <select id="filterLocation" class="w-full input-dark px-3 py-2 text-xs" onchange="resetLibraryPageAndLoad()">
+            <option value="">All locations</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterUnitType" class="text-[11px] font-bold text-slate-400 mb-1 block">Unit Type</label>
+          <select id="filterUnitType" class="w-full input-dark px-3 py-2 text-xs" onchange="resetLibraryPageAndLoad()">
+            <option value="">All unit types</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Area Range (sqm)</label>
+          <div class="flex items-center gap-1.5">
+            <input type="number" id="filterAreaMin" placeholder="Min" min="1" class="w-1/2 input-dark px-2 py-2 text-[11px] font-num" oninput="debounceLibrarySearch()">
+            <input type="number" id="filterAreaMax" placeholder="Max" min="1" class="w-1/2 input-dark px-2 py-2 text-[11px] font-num" oninput="debounceLibrarySearch()">
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-slate-800 items-end">
+        <div>
+          <label for="filterDateType" class="text-[11px] font-bold text-slate-400 mb-1 block">Filter Date By</label>
+          <select id="filterDateType" class="w-full input-dark px-3 py-2 text-xs" onchange="resetLibraryPageAndLoad()">
+            <option value="Added Date">Added Date</option>
+            <option value="Shooting Date">Shooting Date</option>
+          </select>
+        </div>
+        <div class="md:col-span-2">
+          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Date Range</label>
+          <div class="flex items-center gap-2">
+            <input type="date" id="filterStartDate" class="w-1/2 input-dark px-2 py-2 text-[11px]" onchange="resetLibraryPageAndLoad()">
+            <span class="text-slate-500 text-xs">to</span>
+            <input type="date" id="filterEndDate" class="w-1/2 input-dark px-2 py-2 text-[11px]" onchange="resetLibraryPageAndLoad()">
+          </div>
+        </div>
+        <div class="flex items-center justify-between gap-3 pb-1">
+          <label class="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-amber-300">
+            <input type="checkbox" id="filterIncludePrevious" class="w-4 h-4 rounded accent-[#C5A059]" onchange="resetLibraryPageAndLoad()">
+            <span>Include previous versions</span>
+          </label>
+          <button onclick="resetLibraryFilters()" class="text-[11px] text-slate-400 hover:text-rose-400 underline">Clear</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="gold-card overflow-hidden">
+      <div class="p-4 bg-[#081120] border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+        <div class="text-xs font-bold text-slate-300 flex items-center gap-2">
+          <span>Results:</span>
+          <span id="libraryResultsCount" class="font-num text-[#DFBF7A] text-sm font-black">0</span>
+          <span>matching videos / versions</span>
+        </div>
+        <div class="text-[11px] text-slate-500">Current versions shown by default</div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-[#0B1528] text-slate-400 font-bold border-b border-slate-800">
+            <tr>
+              <th class="p-3.5 whitespace-nowrap">Video #</th>
+              <th class="p-3.5 whitespace-nowrap">Version</th>
+              <th class="p-3.5 whitespace-nowrap">Source</th>
+              <th class="p-3.5 whitespace-nowrap">Drive filename</th>
+              <th class="p-3.5 whitespace-nowrap">Client / Topic</th>
+              <th class="p-3.5 whitespace-nowrap">Location</th>
+              <th class="p-3.5 whitespace-nowrap">Stage / Space</th>
+              <th class="p-3.5 whitespace-nowrap">Work category</th>
+              <th class="p-3.5 whitespace-nowrap">Shooting date</th>
+              <th class="p-3.5 whitespace-nowrap text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="libraryTableBody" class="divide-y divide-slate-800/60">
+            <tr><td colspan="10" class="p-8 text-center text-slate-500">Loading video library…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination Toolbar -->
+      <div id="libraryPaginationBar" class="p-3.5 bg-[#081120] border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2 text-slate-400">
+          <span>Show</span>
+          <select id="libraryPageSize" class="input-dark px-2 py-1 text-xs" onchange="changeLibraryPageSize(this.value)">
+            <option value="10">10</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+          <span>per page</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="libraryPageIndicator" class="text-slate-300 font-mono-code">Page 1 of 1</span>
+          <div class="flex items-center gap-1.5">
+            <button id="btnLibPrevPage" onclick="prevLibraryPage()" class="ghost-btn px-2.5 py-1 text-xs" disabled aria-label="Previous page">
+              <i class="fa-solid fa-chevron-left"></i> Prev
+            </button>
+            <button id="btnLibNextPage" onclick="nextLibraryPage()" class="ghost-btn px-2.5 py-1 text-xs" disabled aria-label="Next page">
+              Next <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 4: UNITS & DESIGN PDFS                                    -->
+  <!-- ============================================================= -->
+  <section id="viewUnits" class="tab-view hidden space-y-5">
+
+    <div class="gold-card p-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-building"></i>
+        </div>
+        <div>
+          <h2 class="text-base font-bold text-white">Units &amp; Design PDFs</h2>
+          <p class="text-xs text-slate-400">The unit is the source of truth — videos and design PDFs both relate to it by Unit ID</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <input type="text" id="unitsSearchInput" placeholder="Search client, unit ID or location…" class="input-dark px-3 py-1.5 text-xs w-64" oninput="filterUnitsCatalog(this.value)">
+        <button onclick="openNewUnitModal()" class="gold-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5">
+          <i class="fa-solid fa-plus"></i> <span>New Unit</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="unitsCatalogGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="col-span-full p-8 text-center text-slate-500">Loading units…</div>
+    </div>
+
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- VIEW 5: SETTINGS                                               -->
+  <!-- ============================================================= -->
+  <section id="viewSettings" class="tab-view hidden max-w-3xl mx-auto space-y-5">
+
+    <div class="gold-card p-6 sm:p-7 space-y-6">
+      <div>
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-[#DFBF7A]"></i> System Settings
+        </h2>
+        <p class="text-xs text-slate-400 mt-1">Manage the Google Sheets and Drive resources this app is connected to</p>
+      </div>
+
+      <div class="p-4 rounded-xl bg-[#081120] border border-slate-800 space-y-2 text-xs">
+        <div class="flex items-center justify-between">
+          <span class="text-slate-400">Connection status</span>
+          <span id="configStatusBadge" class="font-bold text-emerald-400">Connected</span>
+        </div>
+        <div class="flex items-center justify-between font-mono-code">
+          <span class="text-slate-400">Spreadsheet ID</span>
+          <span id="configSpreadsheetId" class="text-slate-200">Loading…</span>
+        </div>
+        <div class="flex items-center justify-between font-mono-code">
+          <span class="text-slate-400">Drive root folder ID</span>
+          <span id="configRootFolderId" class="text-slate-200">Loading…</span>
+        </div>
+      </div>
+
+      <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-3">
+        <div class="text-xs text-amber-200 leading-relaxed">
+          <strong>Idempotent setup:</strong> running setup checks or creates the 3 main Drive folders, the spreadsheet, the taxonomy lists, and user permissions — without duplicating anything that already exists.
+        </div>
+        <button onclick="triggerSystemSetup()" id="btnTriggerSetup" class="gold-btn px-6 py-2.5 text-xs font-black flex items-center gap-2">
+          <i class="fa-solid fa-wrench"></i> <span>Run / Re-check Setup</span>
+        </button>
+      </div>
+
+      <div>
+        <h3 class="text-sm font-bold text-white mb-2">Authorised Users</h3>
+        <div class="overflow-x-auto rounded-xl border border-slate-800">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-[#081120] text-slate-400">
+              <tr>
+                <th class="p-2.5">Email</th>
+                <th class="p-2.5">Role</th>
+                <th class="p-2.5">Status</th>
+              </tr>
+            </thead>
+            <tbody id="configUsersTableBody" class="divide-y divide-slate-800">
+              <tr><td colspan="3" class="p-4 text-center text-slate-500">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- MODAL: NEW UNIT CREATION                                       -->
+  <!-- ============================================================= -->
+  <div id="modalNewUnit" role="dialog" aria-modal="true" aria-labelledby="modalNewUnitTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+    <div class="gold-card max-w-lg w-full p-6 space-y-5 border-amber-500/40 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-building"></i>
+          </div>
+          <div>
+            <h3 id="modalNewUnitTitle" class="text-base font-bold text-white">Create New Unit</h3>
+            <p class="text-xs text-slate-400">Add a client unit record to central database</p>
+          </div>
+        </div>
+        <button onclick="closeNewUnitModal()" class="text-slate-400 hover:text-white" aria-label="Close new unit modal">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="formNewUnit" onsubmit="submitNewUnit(event)" class="space-y-4">
+        <div>
+          <label for="nuClientName" class="field-label">Client Name <span class="field-required">*</span></label>
+          <input type="text" id="nuClientName" required placeholder="e.g. Eng. Tarek Nour" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm">
+        </div>
+
+        <div class="relative">
+          <label for="nuLocation" class="field-label">Location / Compound <span class="field-required">*</span></label>
+          <input type="text" id="nuLocation" required placeholder="e.g. New Cairo" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="filterLocationSearch(this.value, 'nuLocationResults', 'nuLocation')" autocomplete="off">
+          <div id="nuLocationResults" class="autocomplete-items hidden"></div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="nuUnitType" class="field-label">Unit Type <span class="field-required">*</span></label>
+            <select id="nuUnitType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm"></select>
+          </div>
+          <div>
+            <label for="nuArea" class="field-label">Area (sqm)</label>
+            <input type="number" id="nuArea" min="1" step="any" placeholder="e.g. 280" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm font-num">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+          <button type="button" onclick="closeNewUnitModal()" class="ghost-btn px-4 py-2 text-xs">Cancel</button>
+          <button type="submit" id="btnSubmitNewUnit" class="gold-btn px-6 py-2.5 text-xs font-black flex items-center gap-2">
+            <i class="fa-solid fa-check"></i> <span>Create Unit</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- MODAL: EDIT VIDEO METADATA                                     -->
+  <!-- ============================================================= -->
+  <div id="modalEditVideoMetadata" role="dialog" aria-modal="true" aria-labelledby="modalEditMetaTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+    <div class="gold-card max-w-xl w-full p-6 space-y-5 border-amber-500/40 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-[#DFBF7A]/15 text-[#DFBF7A] flex items-center justify-center text-lg">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </div>
+          <div>
+            <h3 id="modalEditMetaTitle" class="text-base font-bold text-white">Edit Video Metadata</h3>
+            <p id="emHeaderSubtitle" class="text-xs text-slate-400 font-mono-code">Video 0001 (V01)</p>
+          </div>
+        </div>
+        <button onclick="closeEditVideoMetadataModal()" class="text-slate-400 hover:text-white" aria-label="Close edit metadata modal">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="formEditVideoMetadata" onsubmit="submitEditVideoMetadata(event)" class="space-y-4">
+        <input type="hidden" id="emDriveFileId">
+        <input type="hidden" id="emVideoNumber">
+        <input type="hidden" id="emVersionNumber">
+        <input type="hidden" id="emVideoSource">
+
+        <!-- Project Video fields -->
+        <div id="emProjectFieldsContainer" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="emSpaceType" class="field-label">Space Type <span class="field-required">*</span></label>
+              <select id="emSpaceType" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateEditMetaPreview()"></select>
+            </div>
+            <div>
+              <label for="emWorkCategory" class="field-label text-[#DFBF7A]">Work Category <span class="field-required">*</span></label>
+              <select id="emWorkCategory" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm border-amber-500/35" onchange="updateEditMetaPreview()"></select>
+            </div>
+          </div>
+          <div>
+            <label for="emShootingDate" class="field-label">Shooting Date <span class="field-required">*</span></label>
+            <input type="date" id="emShootingDate" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateEditMetaPreview()">
+          </div>
+        </div>
+
+        <!-- Marketing Content fields -->
+        <div id="emMarketingFieldsContainer" class="space-y-4 hidden">
+          <div>
+            <label for="emContentType" class="field-label">Marketing Content Type <span class="field-required">*</span></label>
+            <select id="emContentType" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateEditMetaPreview()"></select>
+          </div>
+          <div>
+            <label for="emTopic" class="field-label">Topic <span class="field-required">*</span></label>
+            <input type="text" id="emTopic" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="updateEditMetaPreview()">
+          </div>
+          <div id="emMarketingSpaceContainer">
+            <label for="emMarketingSpaceType" class="field-label">Space Type (Optional)</label>
+            <select id="emMarketingSpaceType" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateEditMetaPreview()"></select>
+          </div>
+          <div>
+            <label for="emMarketingShootingDate" class="field-label">Shooting Date <span class="field-required">*</span></label>
+            <input type="date" id="emMarketingShootingDate" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateEditMetaPreview()">
+          </div>
+        </div>
+
+        <!-- Filename comparison preview -->
+        <div class="p-3.5 rounded-xl bg-[#081120] border border-slate-800 space-y-2 text-xs">
+          <div>
+            <span class="text-slate-400 font-bold block mb-0.5">Current Drive Filename:</span>
+            <div id="emCurrentFilename" class="text-slate-300 font-mono-code break-all">Loading…</div>
+          </div>
+          <div>
+            <span class="text-slate-400 font-bold block mb-0.5">Proposed Drive Filename:</span>
+            <div id="emProposedFilename" class="text-[#DFBF7A] font-mono-code font-bold break-all">Loading…</div>
+          </div>
+        </div>
+
+        <!-- Drive rename confirmation warning -->
+        <div id="emRenameNotice" class="hidden p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/35 text-amber-200 text-xs space-y-2">
+          <div class="flex items-start gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5"></i>
+            <div>
+              <strong>Filename Modification Notice:</strong>
+              This edit modifies standard naming attributes. The physical file on Google Drive will be renamed to maintain absolute consistency.
+            </div>
+          </div>
+          <label class="flex items-center gap-2 cursor-pointer font-bold text-white pt-1">
+            <input type="checkbox" id="emConfirmRename" class="w-4 h-4 rounded accent-[#C5A059]">
+            <span>I authorize renaming this file on Google Drive</span>
+          </label>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+          <button type="button" onclick="closeEditVideoMetadataModal()" class="ghost-btn px-4 py-2 text-xs">Cancel</button>
+          <button type="submit" id="btnSubmitEditMetadata" class="gold-btn px-6 py-2.5 text-xs font-black flex items-center gap-2">
+            <i class="fa-solid fa-floppy-disk"></i> <span>Save Changes</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- MODAL: EMBEDDED VIDEO PREVIEW                                  -->
+  <!-- ============================================================= -->
+  <div id="modalVideoPreview" role="dialog" aria-modal="true" aria-labelledby="modalVideoPreviewTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/95 backdrop-blur-md p-3 sm:p-5 hidden">
+    <div class="gold-card max-w-4xl w-full p-4 sm:p-6 space-y-4 border-slate-700 shadow-2xl flex flex-col max-h-[90vh]">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 flex-shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-9 h-9 rounded-lg bg-red-500/15 text-red-400 flex items-center justify-center text-base flex-shrink-0">
+            <i class="fa-solid fa-play"></i>
+          </div>
+          <div class="min-w-0">
+            <h3 id="modalVideoPreviewTitle" class="text-sm sm:text-base font-bold text-white truncate">Video Preview</h3>
+            <p id="vpFileIdSubtitle" class="text-[11px] text-slate-400 font-mono-code truncate">Drive ID</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <a id="vpDirectDriveLink" href="#" target="_blank" rel="noopener noreferrer" class="ghost-btn px-3 py-1.5 text-xs flex items-center gap-1.5 text-[#DFBF7A]">
+            <span>Open in Drive</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+          </a>
+          <button onclick="closeVideoPreviewModal()" class="text-slate-400 hover:text-white p-1" aria-label="Close preview modal">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Video iframe container -->
+      <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden flex items-center justify-center border border-slate-800">
+        <div id="vpLoadingSpinner" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400 bg-black/60 z-10">
+          <div class="loader-spinner"></div>
+          <span class="text-xs">Loading secure video stream…</span>
+        </div>
+        <iframe id="vpIframe" class="w-full h-full border-0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+      </div>
+
+      <div class="flex items-center justify-between text-[11px] text-slate-400 flex-shrink-0 pt-1">
+        <span>Google Drive Video Stream Preview</span>
+        <span class="text-slate-500">If stream cannot play inside iframe, use "Open in Drive"</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- MODAL: BATCH RENAME CONFIRMATION (Decision C, execution prompt §2.3) -->
+  <!-- ============================================================= -->
+  <div id="modalBatchRename" role="dialog" aria-modal="true" aria-labelledby="modalBatchRenameTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+    <div class="gold-card max-w-2xl w-full p-6 sm:p-7 space-y-5 border-amber-500/55 shadow-2xl">
+      <div class="flex items-center gap-3 text-amber-300">
+        <div class="w-11 h-11 rounded-lg bg-amber-500/15 flex items-center justify-center text-lg text-amber-400">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div>
+          <h3 id="modalBatchRenameTitle" class="text-base font-black text-white">Confirm batch rename on Google Drive</h3>
+          <p class="text-xs text-amber-200/80">This unit correction changes the generated filename for the files below.</p>
+        </div>
+      </div>
+
+      <div class="max-h-64 overflow-y-auto rounded-xl border border-slate-800 bg-[#081120] p-3 space-y-3">
+        <div id="batchRenameItemsList" class="space-y-3 text-xs"></div>
+      </div>
+
+      <div class="text-[11px] text-slate-400 leading-relaxed bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+        Sheet metadata has already been updated. Choosing <strong class="text-white">"Confirm &amp; Rename All"</strong> renames the original files on Google Drive and logs the change in the Audit Log.
+      </div>
+
+      <div class="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 pt-1">
+        <button type="button" onclick="cancelBatchRename()" class="w-full sm:w-auto ghost-btn px-5 py-2.5 text-xs">
+          Cancel — keep current Drive filenames
+        </button>
+        <button type="button" onclick="confirmBatchRename()" id="btnConfirmBatchRename" class="w-full sm:w-auto gold-btn px-6 py-2.5 text-xs font-black flex items-center justify-center gap-2">
+          <i class="fa-solid fa-check"></i> <span>Confirm &amp; Rename All</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- MODAL: ADD NEW VERSION -->
+  <!-- ============================================================= -->
+  <div id="modalAddVersion" role="dialog" aria-modal="true" aria-labelledby="modalAddVersionTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+    <div class="gold-card max-w-xl w-full p-6 space-y-5 border-blue-500/45 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-code-branch"></i>
+          </div>
+          <div>
+            <h3 id="modalAddVersionTitle" class="text-sm sm:text-base font-bold text-white">Add New Version</h3>
+            <p id="mvVideoHeader" class="text-xs text-slate-400 font-mono-code">Video 0001</p>
+          </div>
+        </div>
+        <button onclick="closeAddVersionModal()" class="text-slate-400 hover:text-white" aria-label="Close add version modal"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <form id="formAddVersion" onsubmit="submitAddVersion(event)" class="space-y-4">
+        <input type="hidden" id="mvVideoNumber">
+
+        <div>
+          <label for="mvVideoLink" class="field-label">New Google Drive video link <span class="field-required">*</span></label>
+          <input type="url" id="mvVideoLink" required placeholder="https://drive.google.com/file/d/…/view" class="w-full input-dark px-3.5 py-2.5 text-xs font-mono-code" oninput="updateVersionModalPreview()">
+        </div>
+
+        <div>
+          <label for="mvVersionNotes" class="field-label">Version notes (reason for the edit)</label>
+          <input type="text" id="mvVersionNotes" placeholder="e.g. Colour grading pass, re-cut to 16:9" class="w-full input-dark px-3.5 py-2.5 text-xs">
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-[#081120] border border-slate-800 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-400">Target version number</span>
+            <span id="mvTargetVersionBadge" class="font-bold text-[#DFBF7A] font-mono-code">V02</span>
+          </div>
+          <div class="text-[11px] text-slate-400">
+            Proposed filename
+            <div id="mvProposedFilename" class="text-white font-mono-code font-bold mt-1 break-all">Generating…</div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-1">
+          <button type="button" onclick="closeAddVersionModal()" class="ghost-btn px-4 py-2 text-xs">Cancel</button>
+          <button type="submit" id="btnSubmitAddVersion" class="gold-btn px-6 py-2.5 text-xs font-black flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> <span>Save New Version</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- MODAL: VERSION HISTORY -->
+  <!-- ============================================================= -->
+  <div id="modalVersionHistory" role="dialog" aria-modal="true" aria-labelledby="modalVersionHistoryTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+    <div class="gold-card max-w-2xl w-full p-6 space-y-4 border-slate-700 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-amber-500/15 text-[#DFBF7A] flex items-center justify-center text-lg">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <div>
+            <h3 id="modalVersionHistoryTitle" class="text-base font-bold text-white">Version History</h3>
+            <p id="vhVideoTitle" class="text-xs text-slate-400 font-mono-code">Video 0001</p>
+          </div>
+        </div>
+        <button onclick="closeVersionHistoryModal()" class="text-slate-400 hover:text-white" aria-label="Close version history modal"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div id="vhVersionsList" class="space-y-3 max-h-80 overflow-y-auto pr-1"></div>
+
+      <div class="flex justify-end pt-2">
+        <button onclick="closeVersionHistoryModal()" class="ghost-btn px-5 py-2 text-xs bg-slate-800/60">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- MODAL: UNIT DETAIL -->
+  <!-- ============================================================= -->
+  <div id="modalUnitDetail" role="dialog" aria-modal="true" aria-labelledby="modalUnitDetailTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+    <div class="gold-card max-w-3xl w-full p-6 sm:p-7 space-y-5 border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-building"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 id="udClientName" class="text-base font-black text-white">Ahmed Hassan</h3>
+              <span id="udUnitIdBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-[#DFBF7A] font-mono-code font-bold">U-0001</span>
+            </div>
+            <p id="udLocationType" class="text-xs text-slate-400">New Cairo • Apartment (220 sqm)</p>
+          </div>
+        </div>
+        <button onclick="closeUnitDetailModal()" class="text-slate-400 hover:text-white" aria-label="Close unit detail modal"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div class="p-4 rounded-xl bg-[#081120] border border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-300">Master Unit Record</span>
+          <button onclick="toggleUnitEditMode()" id="btnToggleUnitEdit" class="text-xs text-[#DFBF7A] hover:underline font-bold">
+            <i class="fa-solid fa-pen-to-square"></i> Edit unit
+          </button>
+        </div>
+        <div id="unitEditFormContainer" class="hidden space-y-3 pt-2 border-t border-slate-800">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <input type="text" id="ueClientName" placeholder="Client name" class="input-dark px-3 py-2 text-xs">
+            <input type="text" id="ueLocation" placeholder="Location" class="input-dark px-3 py-2 text-xs">
+            <select id="ueUnitType" class="input-dark px-3 py-2 text-xs"></select>
+            <input type="number" id="ueArea" placeholder="Area (sqm)" class="input-dark px-3 py-2 text-xs font-num">
+          </div>
+          <p class="text-[10px] text-amber-300/80 leading-relaxed">
+            Saving here corrects the master record. Every linked video and PDF is updated automatically; if any generated filename changes as a result, you'll see the batch rename screen before anything on Drive is touched.
+          </p>
+          <div class="flex items-center justify-end gap-2">
+            <button onclick="toggleUnitEditMode()" class="ghost-btn px-3 py-1.5 text-xs">Cancel</button>
+            <button onclick="saveUnitMasterEdit()" class="gold-btn px-4 py-1.5 text-xs font-bold">Save &amp; Propagate</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <h4 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-film text-[#DFBF7A]"></i> Linked videos
+        </h4>
+        <div id="udVideosList" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+      </div>
+
+      <div class="space-y-3 pt-3 border-t border-slate-800">
+        <div class="flex items-center justify-between">
+          <h4 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-file-pdf text-rose-400"></i> Design PDFs (versioned)
+          </h4>
+          <button onclick="openUploadPdfModalForCurrentUnit()" class="text-xs text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1">
+            <i class="fa-solid fa-upload"></i> Upload new version
+          </button>
+        </div>
+        <div id="udPdfsList" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-slate-800">
+        <button onclick="closeUnitDetailModal()" class="ghost-btn px-5 py-2 text-xs bg-slate-800/60">Close</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- MODAL: UPLOAD DESIGN PDF -->
+  <!-- ============================================================= -->
+  <div id="modalUploadPdf" role="dialog" aria-modal="true" aria-labelledby="modalUploadPdfTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+    <div class="gold-card max-w-lg w-full p-6 space-y-5 border-rose-500/35 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-rose-500/15 text-rose-400 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-file-pdf"></i>
+          </div>
+          <div>
+            <h3 id="modalUploadPdfTitle" class="text-sm sm:text-base font-bold text-white">Upload Design PDF</h3>
+            <p id="upModalUnitHeader" class="text-xs text-slate-400">Unit ID: U-0001</p>
+          </div>
+        </div>
+        <button onclick="closeUploadPdfModal()" class="text-slate-400 hover:text-white" aria-label="Close upload PDF modal"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <form id="formUploadPdf" onsubmit="submitUploadPdf(event)" class="space-y-4">
+        <input type="hidden" id="upUnitId">
+
+        <div>
+          <label class="field-label">Design file (PDF only) <span class="field-required">*</span></label>
+          <input type="file" id="upPdfFile" accept="application/pdf,.pdf" required class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700">
+        </div>
+        <div>
+          <label class="field-label">Document title</label>
+          <input type="text" id="upDocumentTitle" placeholder="e.g. Approved execution &amp; lighting layout" class="w-full input-dark px-3.5 py-2.5 text-xs">
+        </div>
+        <div>
+          <label class="field-label">Version notes</label>
+          <input type="text" id="upVersionNotes" placeholder="e.g. Approved after AC routing correction" class="w-full input-dark px-3.5 py-2.5 text-xs">
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-1">
+          <button type="button" onclick="closeUploadPdfModal()" class="ghost-btn px-4 py-2 text-xs">Cancel</button>
+          <button type="submit" id="btnSubmitUploadPdf" class="gold-btn px-6 py-2.5 text-xs font-black flex items-center gap-2">
+            <i class="fa-solid fa-upload"></i> <span>Upload &amp; Archive</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toasts & global loading -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+  <div id="globalLoadingOverlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#070D18]/80 backdrop-blur-sm hidden">
+    <div class="loader-spinner mb-3"></div>
+    <div id="globalLoadingText" class="text-xs font-bold text-white tracking-wide">Working…</div>
+  </div>
+
+  <!-- Google Sign-In & Auth Modal -->
+  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md hidden" role="dialog" aria-modal="true">
+    <div class="gold-card p-6 sm:p-8 max-w-md w-full mx-4 border-amber-500/40 text-center">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#DFBF7A] to-[#9A7329] flex items-center justify-center text-[#070D18] shadow-lg shadow-amber-950/40 text-2xl mx-auto mb-4">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+      <h2 class="text-xl font-bold text-white mb-2">Amlaak Video Library Authentication</h2>
+      <p class="text-xs text-slate-300 leading-relaxed mb-6">Please sign in with your authorised Amlaak Google Workspace account to access production engineering archives.</p>
+      <div id="gsiModalButtonContainer" class="flex justify-center mb-4 min-h-[44px]"></div>
+      <button onclick="window.useLocalDemoMode()" class="ghost-btn text-xs text-slate-400 hover:text-white px-3 py-1.5 border border-slate-700 rounded-lg">
+        Continue in Local Preview Mode
+      </button>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
