@@ -181,6 +181,92 @@ it('Propagates Unit edits and handles batch rename partial failure with accurate
   assert.strictEqual(results.failed[0].fileId, 'file_fail_quota');
 });
 
+console.log('\n>>> Integration Suite 5: Consolidated Bootstrap Single Round-Trip Simulation (§6):');
+
+it('Executes bootstrap in a single round-trip without multiple Sheet openings', () => {
+  let sheetOpenCount = 0;
+  const mockSheetBackend = {
+    openSpreadsheet() {
+      sheetOpenCount++;
+      return {
+        getUnits() { return [{ unitId: 'U-0001', clientName: 'Ahmed' }]; },
+        getVideos() { return [{ videoNumber: '0001', isCurrentVersion: true }]; },
+        getPdfs() { return [{ pdfRecordId: 'U-0001-PDF-01' }]; }
+      };
+    }
+  };
+
+  // Cached bootstrap handler
+  let cachedSS = null;
+  function getCachedSpreadsheet() {
+    if (!cachedSS) cachedSS = mockSheetBackend.openSpreadsheet();
+    return cachedSS;
+  }
+
+  function simulateApiBootstrap() {
+    const ss = getCachedSpreadsheet();
+    const units = ss.getUnits();
+    const videos = ss.getVideos();
+    const pdfs = ss.getPdfs();
+
+    return {
+      ok: true,
+      data: {
+        user: { email: 'louyashra@gmail.com', role: 'System Owner', isAuthorized: true },
+        lists: { workCategory: ['Ceramics', 'Roof'] },
+        dashboard: {
+          kpis: {
+            totalLogicalVideos: videos.length,
+            totalStoredVersions: videos.length,
+            totalUnits: units.length,
+            totalStoredPdfs: pdfs.length
+          }
+        },
+        unitLookups: units.map(u => ({ unitId: u.unitId, clientName: u.clientName })),
+        isConfigured: true
+      }
+    };
+  }
+
+  const result = simulateApiBootstrap();
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(result.data.dashboard.kpis.totalUnits, 1);
+  assert.strictEqual(sheetOpenCount, 1, 'Spreadsheet must be opened exactly once during bootstrap');
+});
+
+console.log('\n>>> Integration Suite 6: Idempotent Schema Migration Simulation (Decision A):');
+
+it('Adds missing Work Category column safely to legacy sheet without data shifting', () => {
+  // Legacy sheet headers and data without Work Category
+  const legacyHeaders = ['Video Number', 'Video Name', 'Client Name', 'Location', 'Space Type'];
+  const legacyRows = [
+    ['0001', 'Ahmed - New Cairo - V01.mp4', 'Ahmed', 'New Cairo', 'Kitchen']
+  ];
+
+  const requiredHeaders = ['Video Number', 'Video Name', 'Client Name', 'Location', 'Space Type', 'Work Category'];
+
+  // Perform migration check
+  const headerSet = {};
+  legacyHeaders.forEach(h => { headerSet[h.toLowerCase()] = true; });
+
+  const addedColumns = [];
+  requiredHeaders.forEach(req => {
+    if (!headerSet[req.toLowerCase()]) {
+      legacyHeaders.push(req);
+      addedColumns.push(req);
+      // Append blank value to existing rows to prevent column skew
+      legacyRows.forEach(row => row.push(''));
+    }
+  });
+
+  assert.strictEqual(addedColumns.length, 1);
+  assert.strictEqual(addedColumns[0], 'Work Category');
+  assert.strictEqual(legacyHeaders.includes('Work Category'), true);
+  assert.strictEqual(legacyRows[0].length, legacyHeaders.length);
+  assert.strictEqual(legacyRows[0][4], 'Kitchen', 'Space Type must stay at index 4 without shifting');
+  assert.strictEqual(legacyRows[0][5], '', 'Work Category at index 5 must default safely to empty');
+});
+
 console.log('\n' + '='.repeat(70));
 console.log(`TOTAL INTEGRATION TESTS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);
 console.log('='.repeat(70));

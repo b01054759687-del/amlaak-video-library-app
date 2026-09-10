@@ -1129,48 +1129,56 @@ document.addEventListener('DOMContentLoaded', function() {
   initApp();
 });
 
+var isBootstrapping = false;
+
 function initApp() {
-  showGlobalLoading('Connecting and checking permissions…');
+  if (isBootstrapping || (AppState && AppState.isBootstrapped)) return;
+  isBootstrapping = true;
+
+  showGlobalLoading('Connecting and initializing Amlaak Video Library…');
 
   if (typeof google === 'undefined' || !google.script || !google.script.run) {
     console.warn('Running outside the Google Apps Script container. Using local preview mocks.');
     setupLocalPreviewMocks();
+    isBootstrapping = false;
     return;
   }
 
-  google.script.run
-    .withSuccessHandler(function(response) {
-      hideGlobalLoading();
-      if (!response.ok) {
-        showToast('error', response.message || 'Failed to load initial configuration.');
-        return;
-      }
+  callApi('apiGetAppBootstrapData', [], function(response) {
+    hideGlobalLoading();
+    isBootstrapping = false;
 
-      var data = response.data;
-      AppState.currentUser = data.user;
-      AppState.lists = data.lists;
-      AppState.isConfigured = data.isConfigured;
+    if (!response.ok) {
+      showToast('error', response.message || 'Failed to load initial configuration.');
+      return;
+    }
 
-      var emailBadge = document.getElementById('userEmailBadge');
-      var roleBadge = document.getElementById('userRoleBadge');
-      if (data.user && data.user.email) {
-        emailBadge.textContent = data.user.email;
-        roleBadge.textContent = data.user.role || 'Authorised';
-        document.getElementById('bannerExecuteEmail').textContent = data.user.email;
-      } else {
-        emailBadge.textContent = 'Not signed in';
-        roleBadge.textContent = 'Not authorised';
-      }
+    AppState.isBootstrapped = true;
+    var data = response.data;
+    AppState.currentUser = data.user;
+    AppState.lists = data.lists;
+    AppState.isConfigured = data.isConfigured;
+    AppState.unitLookups = data.unitLookups || [];
 
-      populateTaxonomyDropdowns();
-      loadDashboard();
-      loadUnitsCatalog();
-    })
-    .withFailureHandler(function(err) {
-      hideGlobalLoading();
-      showToast('error', 'Server connection error: ' + (err.message || err));
-    })
-    .apiGetInitialData();
+    var emailBadge = document.getElementById('userEmailBadge');
+    var roleBadge = document.getElementById('userRoleBadge');
+    if (data.user && data.user.email) {
+      emailBadge.textContent = data.user.email;
+      roleBadge.textContent = data.user.role || 'Authorised';
+      document.getElementById('bannerExecuteEmail').textContent = data.user.email;
+    } else {
+      emailBadge.textContent = 'Not signed in';
+      roleBadge.textContent = 'Not authorised';
+    }
+
+    populateTaxonomyDropdowns();
+
+    // Render dashboard immediately with zero extra network round-trips
+    if (data.dashboard) {
+      renderDashboardData(data.dashboard);
+      AppState.dashboardLoaded = true;
+    }
+  });
 }
 
 function reloadCurrentView() {
@@ -1278,45 +1286,50 @@ function loadDashboard(callback) {
       return;
     }
 
-    var data = res.data;
-    var kpis = data.kpis;
-    var breakdowns = data.breakdowns;
-
-    document.getElementById('kpiLogicalVideos').textContent = kpis.totalLogicalVideos;
-    document.getElementById('kpiStoredVersions').textContent = kpis.totalStoredVersions;
-    document.getElementById('kpiProjectVideos').textContent = kpis.totalProjectVideos;
-    document.getElementById('kpiProjectVersionsSub').textContent = kpis.projectVersionsCount + ' versions recorded';
-    document.getElementById('kpiMarketingVideos').textContent = kpis.totalMarketingContent;
-    document.getElementById('kpiMarketingVersionsSub').textContent = kpis.marketingVersionsCount + ' versions recorded';
-    document.getElementById('kpiTotalUnits').textContent = kpis.totalUnits;
-    document.getElementById('kpiStoredPdfs').textContent = kpis.totalStoredPdfs;
-
-    renderBreakdownList('chartLocationsList', breakdowns.locations, 'fa-location-dot', 'text-[#DFBF7A]');
-    renderBreakdownList('chartStagesList', breakdowns.stages, 'fa-layer-group', 'text-blue-400');
-    renderBreakdownList('chartSpacesList', breakdowns.spaces, 'fa-vector-square', 'text-emerald-400');
-    renderBreakdownList('chartWorkCatList', breakdowns.workCategories, 'fa-trowel-bricks', 'text-amber-400');
-
-    var actContainer = document.getElementById('dashRecentActivityList');
-    actContainer.innerHTML = '';
-    if (!data.recentActivity || data.recentActivity.length === 0) {
-      actContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-3">No activity recorded yet.</div>';
-    } else {
-      data.recentActivity.forEach(function(act) {
-        var row = document.createElement('div');
-        row.className = 'flex items-center justify-between p-2.5 rounded-xl bg-[#081120] border border-slate-800 text-xs';
-        row.innerHTML =
-          '<div class="flex items-center gap-2.5">' +
-            '<span class="w-2 h-2 rounded-full bg-emerald-400"></span>' +
-            '<div>' +
-              '<span class="font-bold text-white">' + escapeHtml(act.message || act.action) + '</span>' +
-              '<div class="text-[10px] text-slate-400 mt-0.5">' + escapeHtml(act.user) + ' &bull; <span class="font-num">' + escapeHtml(act.timestamp) + '</span></div>' +
-            '</div>' +
-          '</div>' +
-          '<span class="text-[10px] font-mono-code px-2 py-0.5 rounded bg-slate-800 text-[#DFBF7A]">' + escapeHtml(act.action) + '</span>';
-        actContainer.appendChild(row);
-      });
-    }
+    renderDashboardData(res.data);
+    AppState.dashboardLoaded = true;
   });
+}
+
+function renderDashboardData(data) {
+  if (!data) return;
+  var kpis = data.kpis || {};
+  var breakdowns = data.breakdowns || {};
+
+  document.getElementById('kpiLogicalVideos').textContent = kpis.totalLogicalVideos || 0;
+  document.getElementById('kpiStoredVersions').textContent = kpis.totalStoredVersions || 0;
+  document.getElementById('kpiProjectVideos').textContent = kpis.totalProjectVideos || 0;
+  document.getElementById('kpiProjectVersionsSub').textContent = (kpis.projectVersionsCount || 0) + ' versions recorded';
+  document.getElementById('kpiMarketingVideos').textContent = kpis.totalMarketingContent || 0;
+  document.getElementById('kpiMarketingVersionsSub').textContent = (kpis.marketingVersionsCount || 0) + ' versions recorded';
+  document.getElementById('kpiTotalUnits').textContent = kpis.totalUnits || 0;
+  document.getElementById('kpiStoredPdfs').textContent = kpis.totalStoredPdfs || 0;
+
+  renderBreakdownList('chartLocationsList', breakdowns.locations, 'fa-location-dot', 'text-[#DFBF7A]');
+  renderBreakdownList('chartStagesList', breakdowns.stages, 'fa-layer-group', 'text-blue-400');
+  renderBreakdownList('chartSpacesList', breakdowns.spaces, 'fa-vector-square', 'text-emerald-400');
+  renderBreakdownList('chartWorkCatList', breakdowns.workCategories, 'fa-trowel-bricks', 'text-amber-400');
+
+  var actContainer = document.getElementById('dashRecentActivityList');
+  actContainer.innerHTML = '';
+  if (!data.recentActivity || data.recentActivity.length === 0) {
+    actContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-3">No activity recorded yet.</div>';
+  } else {
+    data.recentActivity.forEach(function(act) {
+      var row = document.createElement('div');
+      row.className = 'flex items-center justify-between p-2.5 rounded-xl bg-[#081120] border border-slate-800 text-xs';
+      row.innerHTML =
+        '<div class="flex items-center gap-2.5">' +
+          '<span class="w-2 h-2 rounded-full bg-emerald-400"></span>' +
+          '<div>' +
+            '<span class="font-bold text-white">' + escapeHtml(act.message || act.action) + '</span>' +
+            '<div class="text-[10px] text-slate-400 mt-0.5">' + escapeHtml(act.user) + ' &bull; <span class="font-num">' + escapeHtml(act.timestamp) + '</span></div>' +
+          '</div>' +
+        '</div>' +
+        '<span class="text-[10px] font-mono-code px-2 py-0.5 rounded bg-slate-800 text-[#DFBF7A]">' + escapeHtml(act.action) + '</span>';
+      actContainer.appendChild(row);
+    });
+  }
 }
 
 /**
@@ -1381,6 +1394,8 @@ function setAddSource(source) {
     btnProj.className = inactiveClass;
     formMkt.classList.remove('hidden');
     formProj.classList.add('hidden');
+    var wCat = document.getElementById('pvWorkCategory');
+    if (wCat) wCat.value = '';
   }
 }
 
@@ -1406,7 +1421,8 @@ function filterUnitSearch(query) {
     return;
   }
   var q = query.toLowerCase().trim();
-  var matches = (AppState.allUnits || []).filter(function(u) {
+  var unitsPool = (AppState.unitLookups && AppState.unitLookups.length > 0) ? AppState.unitLookups : (AppState.allUnits || []);
+  var matches = unitsPool.filter(function(u) {
     return (u.clientName && u.clientName.toLowerCase().indexOf(q) !== -1) ||
            (u.unitId && u.unitId.toLowerCase().indexOf(q) !== -1) ||
            (u.location && u.location.toLowerCase().indexOf(q) !== -1);
@@ -1527,6 +1543,10 @@ function updateMarketingContentPreview() {
 
 function submitProjectVideo(e) {
   e.preventDefault();
+  if (!AppState.isBootstrapped) {
+    showToast('info', 'Please wait for the application to finish initialising.');
+    return;
+  }
   var btn = document.getElementById('btnSubmitProjectVideo');
   btn.disabled = true;
   btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Saving…';
@@ -1574,14 +1594,18 @@ function executeSaveProjectVideo(payload, btn) {
     showToast('success', 'Project video saved: ' + res.data.video.videoName);
     document.getElementById('formProjectVideo').reset();
     document.getElementById('pvSelectedUnitId').value = '';
+    updateProjectVideoPreview();
     loadDashboard();
-    loadUnitsCatalog();
     switchTab('library');
   });
 }
 
 function submitMarketingContent(e) {
   e.preventDefault();
+  if (!AppState.isBootstrapped) {
+    showToast('info', 'Please wait for the application to finish initialising.');
+    return;
+  }
   var btn = document.getElementById('btnSubmitMarketingContent');
   btn.disabled = true;
   btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Saving…';
@@ -2322,7 +2346,31 @@ function setupLocalPreviewMocks() {
 
   window._localMockDispatcher = function(fnName, args, callback) {
     setTimeout(function() {
-      if (fnName === 'apiGetInitialData') {
+      if (fnName === 'apiGetAppBootstrapData') {
+        callback({
+          ok: true,
+          data: {
+            user: { email: 'louyashra@gmail.com', role: 'System Owner', isAuthorized: true },
+            lists: mockLists,
+            isConfigured: true,
+            dashboard: {
+              kpis: { totalLogicalVideos: 2, totalStoredVersions: 3, totalProjectVideos: 1, projectVersionsCount: 2, totalMarketingContent: 1, marketingVersionsCount: 1, totalUnits: 2, totalStoredPdfs: 1 },
+              breakdowns: {
+                locations: [{ name: 'New Cairo', count: 2 }, { name: 'Sheikh Zayed', count: 1 }],
+                stages: [{ name: 'Final', count: 2 }, { name: 'Educational', count: 1 }],
+                spaces: [{ name: 'Kitchen', count: 2 }],
+                workCategories: [{ name: 'Ceramics', count: 2 }]
+              },
+              recentActivity: [{ message: 'Saved video 0001 (Final, Kitchen)', user: 'louyashra@gmail.com', timestamp: '2026-08-18 10:02', action: 'ADD_VERSION' }]
+            },
+            unitLookups: [
+              { unitId: 'U-0001', clientName: 'Ahmed Hassan', location: 'New Cairo', unitType: 'Apartment', area: 220 },
+              { unitId: 'U-0002', clientName: 'Mona Farid', location: 'Sheikh Zayed', unitType: 'Duplex', area: 340 }
+            ],
+            config: { spreadsheetId: '1KLsNGiIGSyd2vTz95Qmfw0np6jayX-JJZWX3wmmgzZ4', rootFolderId: '172YFf4GteBT5x_WxQxr-ldo79f0XuRrh' }
+          }
+        });
+      } else if (fnName === 'apiGetInitialData') {
         callback({ ok: true, data: { user: { email: 'louyashra@gmail.com', role: 'System Owner' }, lists: mockLists, isConfigured: true } });
       } else if (fnName === 'apiGetDashboard') {
         callback({ ok: true, data: {
@@ -2355,21 +2403,21 @@ function setupLocalPreviewMocks() {
     }, 350);
   };
 
-  // Drive the same startup sequence initApp() would run after a successful
-  // apiGetInitialData call — done directly here (not via initApp()) so we
-  // don't re-enter the "no google.script" branch and recurse forever.
+  // Drive unified bootstrap startup sequence in preview mode
   showGlobalLoading('Connecting and checking permissions… (local preview)');
-  callApi('apiGetInitialData', [], function(response) {
+  callApi('apiGetAppBootstrapData', [], function(response) {
     hideGlobalLoading();
     if (!response.ok) {
       showToast('error', response.message || 'Failed to load initial configuration.');
       return;
     }
 
+    AppState.isBootstrapped = true;
     var data = response.data;
     AppState.currentUser = data.user;
     AppState.lists = data.lists;
     AppState.isConfigured = data.isConfigured;
+    AppState.unitLookups = data.unitLookups || [];
 
     var emailBadge = document.getElementById('userEmailBadge');
     var roleBadge = document.getElementById('userRoleBadge');
@@ -2378,8 +2426,10 @@ function setupLocalPreviewMocks() {
     document.getElementById('bannerExecuteEmail').textContent = data.user.email;
 
     populateTaxonomyDropdowns();
-    loadDashboard();
-    loadUnitsCatalog();
+    if (data.dashboard) {
+      renderDashboardData(data.dashboard);
+      AppState.dashboardLoaded = true;
+    }
   });
 }
 </script>

@@ -170,9 +170,51 @@ var DashboardService = (function() {
         endDate: endDate
       }
     };
+  /**
+   * Consolidated bootstrap endpoint to eliminate initial page load waterfall.
+   * Returns user summary, controlled lists, dashboard summary, unit lookups, and safe config in ONE round trip.
+   */
+  function getBootstrapData() {
+    Auth.requireAuth();
+
+    var user = Auth.getCurrentUser();
+    var lists = Config.getTaxonomies();
+    var isConfigured = Config.isSystemConfigured();
+
+    var dashboard = getDashboardData();
+
+    var allUnits = SheetRepository.getAllUnits();
+    var unitLookups = [];
+    for (var u = 0; u < allUnits.length; u++) {
+      var un = allUnits[u];
+      unitLookups.push({
+        unitId: un['Unit ID'],
+        clientName: un['Client Name'],
+        location: un['Location'],
+        unitType: un['Unit Type'],
+        area: un['Area (SQM)']
+      });
+    }
+
+    return {
+      user: {
+        email: user.email,
+        role: user.role,
+        isAuthorized: user.isAuthorized
+      },
+      lists: lists,
+      isConfigured: isConfigured,
+      dashboard: dashboard,
+      unitLookups: unitLookups,
+      config: {
+        spreadsheetId: Config.getProperty(Config.KEYS.SPREADSHEET_ID) || '',
+        rootFolderId: Config.getProperty(Config.KEYS.ROOT_FOLDER_ID) || ''
+      }
+    };
   }
 
   return {
-    getDashboardData: getDashboardData
+    getDashboardData: getDashboardData,
+    getBootstrapData: getBootstrapData
   };
 })();

@@ -843,12 +843,16 @@ var AuditService = (function() {
  */
 
 var SheetRepository = (function() {
+  var _cachedSpreadsheet = null;
+
   function getSpreadsheet() {
+    if (_cachedSpreadsheet) return _cachedSpreadsheet;
     var ssId = Config.getProperty(Config.KEYS.SPREADSHEET_ID);
     if (!ssId) {
       throw new Error('لم يتم تكوين معرف جدول البيانات (SPREADSHEET_ID missing).');
     }
-    return SpreadsheetApp.openById(ssId);
+    _cachedSpreadsheet = SpreadsheetApp.openById(ssId);
+    return _cachedSpreadsheet;
   }
 
   function getSheet(tabName) {
@@ -2817,10 +2821,52 @@ var DashboardService = (function() {
         endDate: endDate
       }
     };
+  /**
+   * Consolidated bootstrap endpoint to eliminate initial page load waterfall.
+   * Returns user summary, controlled lists, dashboard summary, unit lookups, and safe config in ONE round trip.
+   */
+  function getBootstrapData() {
+    Auth.requireAuth();
+
+    var user = Auth.getCurrentUser();
+    var lists = Config.getTaxonomies();
+    var isConfigured = Config.isSystemConfigured();
+
+    var dashboard = getDashboardData();
+
+    var allUnits = SheetRepository.getAllUnits();
+    var unitLookups = [];
+    for (var u = 0; u < allUnits.length; u++) {
+      var un = allUnits[u];
+      unitLookups.push({
+        unitId: un['Unit ID'],
+        clientName: un['Client Name'],
+        location: un['Location'],
+        unitType: un['Unit Type'],
+        area: un['Area (SQM)']
+      });
+    }
+
+    return {
+      user: {
+        email: user.email,
+        role: user.role,
+        isAuthorized: user.isAuthorized
+      },
+      lists: lists,
+      isConfigured: isConfigured,
+      dashboard: dashboard,
+      unitLookups: unitLookups,
+      config: {
+        spreadsheetId: Config.getProperty(Config.KEYS.SPREADSHEET_ID) || '',
+        rootFolderId: Config.getProperty(Config.KEYS.ROOT_FOLDER_ID) || ''
+      }
+    };
   }
 
   return {
-    getDashboardData: getDashboardData
+    getDashboardData: getDashboardData,
+    getBootstrapData: getBootstrapData
   };
 })();
 
@@ -2966,6 +3012,25 @@ var Setup = (function() {
       if (lastCol === 0 || sheet.getLastRow() === 0) {
         sheet.getRange(1, 1, 1, def.headers.length).setValues([def.headers]);
         formatHeaderRow(sheet, def.headers.length);
+      } else if (!isNew && lastCol > 0) {
+        // Idempotent schema migration: append any missing columns safely without shifting existing data
+        var existingHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+        var existingHeaderSet = {};
+        for (var eh = 0; eh < existingHeaders.length; eh++) {
+          var ehStr = String(existingHeaders[eh]).trim().toLowerCase();
+          if (ehStr) existingHeaderSet[ehStr] = true;
+        }
+
+        for (var reqH = 0; reqH < def.headers.length; reqH++) {
+          var reqHeaderName = def.headers[reqH];
+          if (!existingHeaderSet[reqHeaderName.toLowerCase()]) {
+            var newColIdx = sheet.getLastColumn() + 1;
+            sheet.getRange(1, newColIdx).setValue(reqHeaderName);
+            formatHeaderRow(sheet, sheet.getLastColumn());
+            results.columnsAdded = results.columnsAdded || [];
+            results.columnsAdded.push(def.name + ': ' + reqHeaderName);
+          }
+        }
       }
 
       // Populate default data if tab is new
@@ -3110,6 +3175,12 @@ function handleApiCall(serviceFn, actionName, entityType) {
 // ==========================================
 // PUBLIC CLIENT GATEWAYS
 // ==========================================
+
+function apiGetAppBootstrapData() {
+  return handleApiCall(function() {
+    return DashboardService.getBootstrapData();
+  }, 'GET_APP_BOOTSTRAP_DATA', 'System');
+}
 
 function apiGetInitialData() {
   return handleApiCall(function() {

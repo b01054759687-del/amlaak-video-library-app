@@ -136,6 +136,25 @@ var Setup = (function() {
       if (lastCol === 0 || sheet.getLastRow() === 0) {
         sheet.getRange(1, 1, 1, def.headers.length).setValues([def.headers]);
         formatHeaderRow(sheet, def.headers.length);
+      } else if (!isNew && lastCol > 0) {
+        // Idempotent schema migration: append any missing columns safely without shifting existing data
+        var existingHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+        var existingHeaderSet = {};
+        for (var eh = 0; eh < existingHeaders.length; eh++) {
+          var ehStr = String(existingHeaders[eh]).trim().toLowerCase();
+          if (ehStr) existingHeaderSet[ehStr] = true;
+        }
+
+        for (var reqH = 0; reqH < def.headers.length; reqH++) {
+          var reqHeaderName = def.headers[reqH];
+          if (!existingHeaderSet[reqHeaderName.toLowerCase()]) {
+            var newColIdx = sheet.getLastColumn() + 1;
+            sheet.getRange(1, newColIdx).setValue(reqHeaderName);
+            formatHeaderRow(sheet, sheet.getLastColumn());
+            results.columnsAdded = results.columnsAdded || [];
+            results.columnsAdded.push(def.name + ': ' + reqHeaderName);
+          }
+        }
       }
 
       // Populate default data if tab is new

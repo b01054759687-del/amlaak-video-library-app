@@ -4,12 +4,16 @@
  */
 
 var SheetRepository = (function() {
+  var _cachedSpreadsheet = null;
+
   function getSpreadsheet() {
+    if (_cachedSpreadsheet) return _cachedSpreadsheet;
     var ssId = Config.getProperty(Config.KEYS.SPREADSHEET_ID);
     if (!ssId) {
       throw new Error('لم يتم تكوين معرف جدول البيانات (SPREADSHEET_ID missing).');
     }
-    return SpreadsheetApp.openById(ssId);
+    _cachedSpreadsheet = SpreadsheetApp.openById(ssId);
+    return _cachedSpreadsheet;
   }
 
   function getSheet(tabName) {

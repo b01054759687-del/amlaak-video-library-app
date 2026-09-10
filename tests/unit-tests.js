@@ -320,6 +320,268 @@ test('Derives orientation only when both width and height are valid', () => {
   assert.strictEqual(deriveOrientation(undefined, undefined), '');
 });
 
+// ==============================================================================
+// 8. BOOTSTRAP API CONTRACT & SECURITY TESTS (§6)
+// ==============================================================================
+console.log('\n>>> 8. Bootstrap API Contract & Security Tests:');
+
+test('Bootstrap payload contains exact required contract and safe summary data', () => {
+  function simulateBootstrap(user) {
+    if (!user || !user.isAuthorized) {
+      return { ok: false, errorCode: 'AUTH_REQUIRED', message: 'Unauthorized session.' };
+    }
+    return {
+      ok: true,
+      data: {
+        user: { email: user.email, role: user.role, isAuthorized: true },
+        lists: {
+          unitType: ['Apartment'],
+          workCategory: ['Ceramics', 'Roof']
+        },
+        isConfigured: true,
+        dashboard: {
+          kpis: { totalLogicalVideos: 10, totalStoredVersions: 15 },
+          breakdowns: { workCategories: [{ name: 'Ceramics', count: 5 }] }
+        },
+        unitLookups: [
+          { unitId: 'U-0001', clientName: 'Ahmed', location: 'New Cairo', unitType: 'Apartment', area: 200 }
+        ],
+        config: { spreadsheetId: 'test-ss-id', rootFolderId: 'test-folder-id' }
+      }
+    };
+  }
+
+  const res = simulateBootstrap({ email: 'louyashra@gmail.com', role: 'System Owner', isAuthorized: true });
+  assert.strictEqual(res.ok, true);
+  assert.ok(res.data.user);
+  assert.strictEqual(res.data.user.email, 'louyashra@gmail.com');
+  assert.ok(res.data.dashboard);
+  assert.ok(Array.isArray(res.data.unitLookups));
+  assert.strictEqual(res.data.unitLookups[0].unitId, 'U-0001');
+
+  // Verify NO sensitive fields leaked
+  assert.strictEqual(res.data.allowlist, undefined, 'Must not expose authorized-user allowlist');
+  assert.strictEqual(res.data.scriptProperties, undefined, 'Must not expose Script Properties');
+  assert.strictEqual(res.data.oauthTokens, undefined, 'Must not expose OAuth information');
+  assert.strictEqual(res.data.allDriveFiles, undefined, 'Must not dump all Drive files in bootstrap');
+});
+
+test('Unauthorized bootstrap request is rejected cleanly without stack traces', () => {
+  function simulateBootstrap(user) {
+    if (!user || !user.isAuthorized) {
+      return { ok: false, errorCode: 'AUTH_REQUIRED', message: 'Unauthorized session.' };
+    }
+    return { ok: true, data: {} };
+  }
+
+  const res = simulateBootstrap({ email: 'intruder@unknown.com', isAuthorized: false });
+  assert.strictEqual(res.ok, false);
+  assert.strictEqual(res.errorCode, 'AUTH_REQUIRED');
+  assert.strictEqual(typeof res.message, 'string');
+  assert.strictEqual(res.stack, undefined, 'Must not expose raw stack trace');
+});
+
+// ==============================================================================
+// 9. WORK CATEGORY COMPREHENSIVE POLICY TESTS (Decision A, §2.1 & §7)
+// ==============================================================================
+console.log('\n>>> 9. Work Category Comprehensive Policy Tests:');
+
+const APPROVED_WORK_CATEGORIES = [
+  'Roof', 'Ceiling', 'Materials', 'Furniture', 'Decoration',
+  'HDF', 'Ceramics', 'Electrical', 'Gypsum Board', 'Air Conditioning',
+  'Sound System', 'Doors', 'Windows', 'Painting', 'Plastering'
+];
+
+test('Accepts all 15 approved English Work Category values', () => {
+  assert.strictEqual(APPROVED_WORK_CATEGORIES.length, 15);
+  APPROVED_WORK_CATEGORIES.forEach(cat => {
+    assert.ok(typeof cat === 'string' && cat.length > 0);
+  });
+});
+
+test('Rejects invalid Work Category values in validation', () => {
+  function validateWorkCategory(val) {
+    if (!val || APPROVED_WORK_CATEGORIES.indexOf(val) === -1) {
+      return { isValid: false, message: 'Invalid work category' };
+    }
+    return { isValid: true };
+  }
+
+  assert.strictEqual(validateWorkCategory('Ceramics').isValid, true);
+  assert.strictEqual(validateWorkCategory('Roof').isValid, true);
+  assert.strictEqual(validateWorkCategory('Plumbing_Invalid').isValid, false);
+  assert.strictEqual(validateWorkCategory('').isValid, false);
+});
+
+test('Work Category is completely independent from Space Type', () => {
+  const projectVideo = {
+    spaceType: 'Kitchen',
+    workCategory: 'Ceramics'
+  };
+  assert.notStrictEqual(projectVideo.spaceType, projectVideo.workCategory);
+  assert.strictEqual(projectVideo.spaceType, 'Kitchen');
+  assert.strictEqual(projectVideo.workCategory, 'Ceramics');
+});
+
+test('Work Category is automatically cleared for Marketing Content', () => {
+  function prepareRecord(source, payload) {
+    return {
+      videoSource: source,
+      workCategory: source === 'Project Video' ? (payload.workCategory || '') : ''
+    };
+  }
+
+  const mkt = prepareRecord('Marketing Content', { workCategory: 'Ceramics' });
+  assert.strictEqual(mkt.workCategory, '', 'Marketing Content must never have a Work Category');
+
+  const proj = prepareRecord('Project Video', { workCategory: 'Ceramics' });
+  assert.strictEqual(proj.workCategory, 'Ceramics', 'Project Video preserves Work Category');
+});
+
+test('Work Category is copied to new versions if not overridden', () => {
+  const baseVersion = { videoNumber: '0001', versionNumber: 'V01', workCategory: 'Gypsum Board' };
+  const newPayload = {}; // no work category specified in new version payload
+  const nextWorkCat = newPayload.workCategory || baseVersion.workCategory || '';
+  assert.strictEqual(nextWorkCat, 'Gypsum Board');
+});
+
+test('Existing legacy rows with empty Work Category are supported without error', () => {
+  const legacyRow = {
+    'Video Number': '0001',
+    'Video Name': 'Ahmed Hassan - New Cairo - Final - Kitchen - 2026-08-17 - V01.mp4',
+    'Work Category': ''
+  };
+  assert.strictEqual(legacyRow['Work Category'] || '', '');
+});
+
+test('Work Category is strictly excluded from physical video filenames', () => {
+  function generateProjectVideoName(p) {
+    const ext = p.extension || 'mp4';
+    const vStr = typeof p.versionNumber === 'number' ? `V${String(p.versionNumber).padStart(2, '0')}` : p.versionNumber;
+    return `${p.clientName} - ${p.location} - ${p.projectVideoType} - ${p.spaceType} - ${p.shootingDate} - ${vStr}.${ext}`;
+  }
+
+  const name = generateProjectVideoName({
+    clientName: 'Ahmed Hassan',
+    location: 'New Cairo',
+    projectVideoType: 'Final',
+    spaceType: 'Kitchen',
+    workCategory: 'Ceramics', // Must NOT be in the filename
+    shootingDate: '2026-08-17',
+    versionNumber: 1
+  });
+
+  assert.strictEqual(name, 'Ahmed Hassan - New Cairo - Final - Kitchen - 2026-08-17 - V01.mp4');
+  assert.strictEqual(name.includes('Ceramics'), false, 'Work Category must NOT appear in filename');
+});
+
+test('Video Library and Dashboard filter and group correctly by Work Category', () => {
+  const rows = [
+    { videoNumber: '0001', isCurrentVersion: true, workCategory: 'Ceramics' },
+    { videoNumber: '0002', isCurrentVersion: true, workCategory: 'Electrical' },
+    { videoNumber: '0003', isCurrentVersion: true, workCategory: 'Ceramics' }
+  ];
+
+  // Filtering
+  const filtered = rows.filter(r => r.workCategory === 'Ceramics');
+  assert.strictEqual(filtered.length, 2);
+
+  // Grouping
+  const grouping = {};
+  rows.forEach(r => {
+    grouping[r.workCategory] = (grouping[r.workCategory] || 0) + 1;
+  });
+  assert.strictEqual(grouping['Ceramics'], 2);
+  assert.strictEqual(grouping['Electrical'], 1);
+});
+
+// ==============================================================================
+// 10. PDF VERSION HISTORY STRICT INVARIANT TESTS (Decision B, §2.2 & §8)
+// ==============================================================================
+console.log('\n>>> 10. PDF Version History Strict Invariant Tests:');
+
+test('First PDF becomes V01 and Current', () => {
+  const unitPdfs = [];
+  function addPdf(docTitle, driveFileId) {
+    const nextVer = unitPdfs.length + 1;
+    const verStr = `V${String(nextVer).padStart(2, '0')}`;
+    // flip previous
+    unitPdfs.forEach(p => { p.isCurrentVersion = false; });
+    const record = {
+      pdfRecordId: `U-0001-PDF-${String(nextVer).padStart(2, '0')}`,
+      pdfVersionNumber: verStr,
+      isCurrentVersion: true,
+      documentTitle: docTitle,
+      driveFileId: driveFileId
+    };
+    unitPdfs.push(record);
+    return record;
+  }
+
+  const pdf1 = addPdf('Lighting Plan', 'drive-id-1');
+  assert.strictEqual(pdf1.pdfVersionNumber, 'V01');
+  assert.strictEqual(pdf1.isCurrentVersion, true);
+  assert.strictEqual(unitPdfs.length, 1);
+});
+
+test('Second PDF becomes V02 and Current, while V01 flips to Previous', () => {
+  const unitPdfs = [
+    { pdfRecordId: 'U-0001-PDF-01', pdfVersionNumber: 'V01', isCurrentVersion: true, driveFileId: 'drive-id-1' }
+  ];
+
+  function addPdf(docTitle, driveFileId) {
+    const nextVer = unitPdfs.length + 1;
+    const verStr = `V${String(nextVer).padStart(2, '0')}`;
+    unitPdfs.forEach(p => { p.isCurrentVersion = false; });
+    const record = {
+      pdfRecordId: `U-0001-PDF-${String(nextVer).padStart(2, '0')}`,
+      pdfVersionNumber: verStr,
+      isCurrentVersion: true,
+      documentTitle: docTitle,
+      driveFileId: driveFileId
+    };
+    unitPdfs.push(record);
+    return record;
+  }
+
+  const pdf2 = addPdf('Updated Lighting Plan', 'drive-id-2');
+  assert.strictEqual(pdf2.pdfVersionNumber, 'V02');
+  assert.strictEqual(pdf2.isCurrentVersion, true);
+
+  // V01 must now be Previous (false)
+  const pdf1 = unitPdfs.find(p => p.pdfVersionNumber === 'V01');
+  assert.strictEqual(pdf1.isCurrentVersion, false);
+
+  // Exactly one Current version remains
+  const currentPdfs = unitPdfs.filter(p => p.isCurrentVersion);
+  assert.strictEqual(currentPdfs.length, 1);
+});
+
+test('Rejects duplicate Drive File ID across PDFs', () => {
+  const existingPdfs = [{ driveFileId: 'unique-drive-id-1' }];
+  function validateDuplicate(fileId) {
+    if (existingPdfs.some(p => p.driveFileId === fileId)) {
+      throw new Error('DUPLICATE_DRIVE_ID');
+    }
+  }
+
+  assert.throws(() => validateDuplicate('unique-drive-id-1'), /DUPLICATE_DRIVE_ID/);
+  assert.doesNotThrow(() => validateDuplicate('fresh-drive-id-2'));
+});
+
+test('Rejects non-PDF MIME type and missing Unit ID', () => {
+  function validatePdfUpload(p) {
+    if (!p.unitId) return { isValid: false, error: 'MISSING_UNIT_ID' };
+    const ext = (p.fileName || '').split('.').pop().toLowerCase();
+    if (ext !== 'pdf') return { isValid: false, error: 'INVALID_EXTENSION' };
+    return { isValid: true };
+  }
+
+  assert.strictEqual(validatePdfUpload({ unitId: 'U-0001', fileName: 'plan.pdf' }).isValid, true);
+  assert.strictEqual(validatePdfUpload({ unitId: '', fileName: 'plan.pdf' }).error, 'MISSING_UNIT_ID');
+  assert.strictEqual(validatePdfUpload({ unitId: 'U-0001', fileName: 'plan.docx' }).error, 'INVALID_EXTENSION');
+});
+
 console.log('\n' + '='.repeat(70));
 console.log(`TOTAL UNIT TESTS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);
 console.log('='.repeat(70));

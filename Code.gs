@@ -42,6 +42,12 @@ function handleApiCall(serviceFn, actionName, entityType) {
 // PUBLIC CLIENT GATEWAYS
 // ==========================================
 
+function apiGetAppBootstrapData() {
+  return handleApiCall(function() {
+    return DashboardService.getBootstrapData();
+  }, 'GET_APP_BOOTSTRAP_DATA', 'System');
+}
+
 function apiGetInitialData() {
   return handleApiCall(function() {
     var user = Auth.getCurrentUser();
