@@ -148,6 +148,8 @@ var Validators = (function() {
     };
   }
 
+  var MAX_PDF_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB documented maximum limit
+
   function validatePdfUpload(payload) {
     var errors = [];
 
@@ -160,7 +162,22 @@ var Validators = (function() {
     }
 
     if (payload.fileName && !payload.fileName.toLowerCase().endsWith('.pdf')) {
-      errors.push({ field: 'fileName', message: 'الملف المرفوع يجب أن يكون بامتداد PDF فقط.' });
+      errors.push({ field: 'fileName', message: 'الملف المرفوع يجب أن يكون بامتداد PDF فقط (.pdf).' });
+    }
+
+    if (payload.mimeType && payload.mimeType !== 'application/pdf') {
+      errors.push({ field: 'mimeType', message: 'نوع ملف غير صالح (يجب أن يكون application/pdf).' });
+    }
+
+    if (payload.fileSize && Number(payload.fileSize) > MAX_PDF_SIZE_BYTES) {
+      errors.push({ field: 'fileSize', message: 'حجم ملف الـ PDF يتجاوز الحد الأقصى المسموح به (25 ميجابايت).' });
+    }
+
+    if (payload.base64Content) {
+      var approxRawBytes = Math.round(payload.base64Content.length * 0.75);
+      if (approxRawBytes > MAX_PDF_SIZE_BYTES) {
+        errors.push({ field: 'fileSize', message: 'حجم ملف الـ PDF يتجاوز الحد الأقصى المسموح به (25 ميجابايت).' });
+      }
     }
 
     return {

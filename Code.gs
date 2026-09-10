@@ -8,7 +8,7 @@ function doGet(e) {
   return template.evaluate()
     .setTitle('Amlaak Video Library | منظومة إدارة مكتبة الفيديوهات والتصاميم')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
 }
 
 function include(filename) {
@@ -91,6 +91,12 @@ function apiAddNewVersion(payload) {
   }, 'ADD_NEW_VERSION', 'Video');
 }
 
+function apiGetVideoVersionHistory(videoNumber) {
+  return handleApiCall(function() {
+    return VideoService.getVideoVersionHistory(videoNumber);
+  }, 'GET_VIDEO_VERSION_HISTORY', 'Video');
+}
+
 function apiUpdateSingleVideoMetadata(driveFileId, fields, confirmRename) {
   return handleApiCall(function() {
     return VideoService.updateSingleVideoMetadata(driveFileId, fields, confirmRename);
@@ -129,13 +135,14 @@ function apiUploadPdf(payload) {
 
 function apiSetupSystem(optConfig) {
   return handleApiCall(function() {
+    Auth.requireOwner();
     return Setup.setupSystem(optConfig);
   }, 'SETUP_SYSTEM', 'Setup');
 }
 
 function apiGetSystemConfig() {
   return handleApiCall(function() {
-    Auth.requireAuth();
+    Auth.requireOwner();
     var props = Config.getAllProperties();
     return {
       spreadsheetId: props.SPREADSHEET_ID || '',

@@ -242,6 +242,18 @@ var SheetRepository = (function() {
     return getAllRowsAsObjects(Config.TABS.VIDEOS);
   }
 
+  function getVideoVersions(videoNumber) {
+    var all = getAllVideoVersions();
+    var filtered = [];
+    var vNumStr = String(videoNumber || '').trim();
+    for (var i = 0; i < all.length; i++) {
+      if (String(all[i]['Video Number'] || '').trim() === vNumStr) {
+        filtered.push(all[i]);
+      }
+    }
+    return filtered;
+  }
+
   function getVideosByUnitId(unitId) {
     var all = getAllVideoVersions();
     var filtered = [];
@@ -568,6 +580,7 @@ var SheetRepository = (function() {
     updateUnit: updateUnit,
     propagateUnitFields: propagateUnitFields,
     getAllVideoVersions: getAllVideoVersions,
+    getVideoVersions: getVideoVersions,
     getVideosByUnitId: getVideosByUnitId,
     getVideoByDriveFileId: getVideoByDriveFileId,
     getNextVideoNumber: getNextVideoNumber,

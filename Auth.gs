@@ -99,6 +99,14 @@ var Auth = (function() {
     return user;
   }
 
+  function requireOwner() {
+    var user = requireAuth();
+    if (user.role !== ROLES.OWNER) {
+      throw new Error('Access Denied: System Owner role required for this action.');
+    }
+    return user;
+  }
+
   function getAllowlistFromSheet() {
     try {
       var ssId = Config.getProperty(Config.KEYS.SPREADSHEET_ID);
@@ -143,6 +151,7 @@ var Auth = (function() {
     getCurrentUserEmail: getCurrentUserEmail,
     getCurrentUser: getCurrentUser,
     requireAuth: requireAuth,
+    requireOwner: requireOwner,
     getAllowlistFromSheet: getAllowlistFromSheet
   };
 })();

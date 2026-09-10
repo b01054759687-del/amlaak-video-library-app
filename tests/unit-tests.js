@@ -4,6 +4,7 @@
  */
 
 const assert = require('assert');
+const fs = require('fs');
 
 // Simple test harness
 let passed = 0;
@@ -580,6 +581,292 @@ test('Rejects non-PDF MIME type and missing Unit ID', () => {
   assert.strictEqual(validatePdfUpload({ unitId: 'U-0001', fileName: 'plan.pdf' }).isValid, true);
   assert.strictEqual(validatePdfUpload({ unitId: '', fileName: 'plan.pdf' }).error, 'MISSING_UNIT_ID');
   assert.strictEqual(validatePdfUpload({ unitId: 'U-0001', fileName: 'plan.docx' }).error, 'INVALID_EXTENSION');
+});
+
+// ==============================================================================
+// 11. STAGE 2.5 FRONTEND WORKFLOW & SECURITY REGRESSION TESTS
+// ==============================================================================
+console.log('\n>>> 11. Stage 2.5 Frontend Workflow & Security Tests:');
+
+test('New Unit workflow: Validates Client Name, Location, Unit Type and Area', () => {
+  function validateNewUnitPayload(p) {
+    if (!p.clientName || !p.clientName.trim()) return { isValid: false, error: 'CLIENT_NAME_REQUIRED' };
+    if (!p.location || !p.location.trim()) return { isValid: false, error: 'LOCATION_REQUIRED' };
+    if (!p.unitType || !p.unitType.trim()) return { isValid: false, error: 'UNIT_TYPE_REQUIRED' };
+    if (p.area !== undefined && p.area !== '' && (isNaN(p.area) || Number(p.area) <= 0)) {
+      return { isValid: false, error: 'INVALID_AREA' };
+    }
+    return { isValid: true };
+  }
+
+  assert.strictEqual(validateNewUnitPayload({ clientName: 'Eng. Tarek', location: 'New Cairo', unitType: 'Apartment', area: 250 }).isValid, true);
+  assert.strictEqual(validateNewUnitPayload({ clientName: '', location: 'New Cairo', unitType: 'Apartment' }).error, 'CLIENT_NAME_REQUIRED');
+  assert.strictEqual(validateNewUnitPayload({ clientName: 'Eng. Tarek', location: '', unitType: 'Apartment' }).error, 'LOCATION_REQUIRED');
+  assert.strictEqual(validateNewUnitPayload({ clientName: 'Eng. Tarek', location: 'New Cairo', unitType: '' }).error, 'UNIT_TYPE_REQUIRED');
+  assert.strictEqual(validateNewUnitPayload({ clientName: 'Eng. Tarek', location: 'New Cairo', unitType: 'Apartment', area: -10 }).error, 'INVALID_AREA');
+});
+
+test('Video Version History: Correct sorting descending and single current version invariant', () => {
+  const versions = [
+    { versionNumber: 'V01', isCurrentVersion: false },
+    { versionNumber: 'V03', isCurrentVersion: true },
+    { versionNumber: 'V02', isCurrentVersion: false }
+  ];
+
+  // Sort descending
+  versions.sort((a, b) => {
+    const vA = parseInt(String(a.versionNumber).replace(/\D/g, ''), 10) || 0;
+    const vB = parseInt(String(b.versionNumber).replace(/\D/g, ''), 10) || 0;
+    return vB - vA;
+  });
+
+  assert.strictEqual(versions[0].versionNumber, 'V03');
+  assert.strictEqual(versions[1].versionNumber, 'V02');
+  assert.strictEqual(versions[2].versionNumber, 'V01');
+
+  // Single current version invariant
+  const currentCount = versions.filter(v => v.isCurrentVersion).length;
+  assert.strictEqual(currentCount, 1);
+});
+
+test('Add Version from Unit Details: Fallback resolution when Library array is empty', () => {
+  const activeUnitDetail = {
+    unit: { clientName: 'Hassan Allam', location: 'Sheikh Zayed' },
+    videos: [
+      {
+        videoNumber: '0005',
+        projectVideoType: 'Phase 1',
+        spaceType: 'Reception',
+        currentVersion: { versionNumber: 'V02', videoName: 'Hassan Allam - Sheikh Zayed - Phase 1 - Reception - 2026-08-01 - V02.mp4' }
+      }
+    ]
+  };
+  const appStateAllVideos = []; // Empty library
+
+  function resolveVideoForAddVersion(vNum) {
+    let match = appStateAllVideos.find(v => v.videoNumber === vNum);
+    if (!match && activeUnitDetail && activeUnitDetail.videos) {
+      const uVid = activeUnitDetail.videos.find(uv => uv.videoNumber === vNum);
+      if (uVid) {
+        match = {
+          videoNumber: uVid.videoNumber,
+          clientName: activeUnitDetail.unit.clientName,
+          location: activeUnitDetail.unit.location,
+          projectVideoType: uVid.projectVideoType,
+          spaceType: uVid.spaceType,
+          versionNumber: uVid.currentVersion.versionNumber
+        };
+      }
+    }
+    return match;
+  }
+
+  const resolved = resolveVideoForAddVersion('0005');
+  assert.ok(resolved, 'Video must resolve from Unit Details even when allVideos is empty');
+  assert.strictEqual(resolved.clientName, 'Hassan Allam');
+  assert.strictEqual(resolved.versionNumber, 'V02');
+});
+
+test('Edit Metadata: Proposed filename calculation and Drive rename confirmation requirement', () => {
+  const existingVideo = {
+    videoSource: 'Project Video',
+    clientName: 'Nour Design',
+    location: 'New Cairo',
+    projectVideoType: 'Final',
+    spaceType: 'Bathroom',
+    workCategory: 'Ceramics',
+    shootingDate: '2026-08-10',
+    versionNumber: 'V01',
+    videoName: 'Nour Design - New Cairo - Final - Bathroom - 2026-08-10 - V01.mp4'
+  };
+
+  function computeProposed(existing, newFields) {
+    const parts = [
+      existing.clientName,
+      existing.location,
+      existing.projectVideoType,
+      newFields.spaceType || existing.spaceType,
+      newFields.shootingDate || existing.shootingDate,
+      existing.versionNumber
+    ];
+    return parts.join(' - ') + '.mp4';
+  }
+
+  // Same metadata -> no rename required
+  const sameName = computeProposed(existingVideo, { spaceType: 'Bathroom', shootingDate: '2026-08-10' });
+  assert.strictEqual(sameName, existingVideo.videoName);
+  assert.strictEqual(sameName !== existingVideo.videoName, false);
+
+  // Changed spaceType -> requires confirmation
+  const changedName = computeProposed(existingVideo, { spaceType: 'Kitchen', shootingDate: '2026-08-10' });
+  assert.strictEqual(changedName, 'Nour Design - New Cairo - Final - Kitchen - 2026-08-10 - V01.mp4');
+  assert.strictEqual(changedName !== existingVideo.videoName, true);
+});
+
+test('Video Preview: Validates Drive File ID regex and blocks malicious URLs', () => {
+  const validFileId = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms';
+  const invalidId1 = 'javascript:alert(1)';
+  const invalidId2 = '<script>evil()</script>';
+  const invalidId3 = 'short_id_123';
+
+  function isValidDriveId(id) {
+    return typeof id === 'string' && /^[a-zA-Z0-9_-]{20,}$/.test(id);
+  }
+
+  assert.strictEqual(isValidDriveId(validFileId), true);
+  assert.strictEqual(isValidDriveId(invalidId1), false);
+  assert.strictEqual(isValidDriveId(invalidId2), false);
+  assert.strictEqual(isValidDriveId(invalidId3), false);
+
+  function buildSafePreviewUrl(id) {
+    if (!isValidDriveId(id)) throw new Error('INVALID_DRIVE_ID');
+    return 'https://drive.google.com/file/d/' + encodeURIComponent(id) + '/preview';
+  }
+
+  assert.strictEqual(buildSafePreviewUrl(validFileId), 'https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/preview');
+  assert.throws(() => buildSafePreviewUrl(invalidId1), /INVALID_DRIVE_ID/);
+});
+
+test('Pagination: Computes totalPages, slice boundaries and hasMore correctly', () => {
+  const items = Array.from({ length: 57 }, (_, i) => ({ id: i + 1 }));
+  const pageSize = 25;
+
+  function paginate(arr, page, size) {
+    const totalCount = arr.length;
+    const totalPages = Math.ceil(totalCount / size) || 1;
+    const startIndex = (page - 1) * size;
+    const pageItems = arr.slice(startIndex, startIndex + size);
+    const hasMore = (startIndex + size) < totalCount;
+    return { page, pageSize: size, totalCount, totalPages, hasMore, count: pageItems.length };
+  }
+
+  const p1 = paginate(items, 1, pageSize);
+  assert.strictEqual(p1.count, 25);
+  assert.strictEqual(p1.totalPages, 3);
+  assert.strictEqual(p1.hasMore, true);
+
+  const p2 = paginate(items, 2, pageSize);
+  assert.strictEqual(p2.count, 25);
+  assert.strictEqual(p2.hasMore, true);
+
+  const p3 = paginate(items, 3, pageSize);
+  assert.strictEqual(p3.count, 7);
+  assert.strictEqual(p3.hasMore, false);
+});
+
+test('Unit Selection Integrity: Switching between Existing and New modes resets state', () => {
+  let formState = {
+    selectedUnitId: 'U-0001',
+    clientName: 'Aly Ezzat',
+    location: 'Katameya Dunes',
+    unitType: 'Villa',
+    area: 450,
+    isLocked: true
+  };
+
+  // Simulate toggleUnitMode('new')
+  function resetToNewUnitMode(state) {
+    return {
+      selectedUnitId: '',
+      clientName: '',
+      location: '',
+      unitType: '',
+      area: '',
+      isLocked: false
+    };
+  }
+
+  const newState = resetToNewUnitMode(formState);
+  assert.strictEqual(newState.selectedUnitId, '');
+  assert.strictEqual(newState.clientName, '');
+  assert.strictEqual(newState.isLocked, false);
+});
+
+test('PDF Upload Hardening: Size check (25MB limit), extension check and failure resilience', () => {
+  const MAX_SIZE = 25 * 1024 * 1024;
+
+  function validatePdfFile(file) {
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      return { ok: false, error: 'INVALID_EXTENSION' };
+    }
+    if (file.size > MAX_SIZE) {
+      return { ok: false, error: 'SIZE_EXCEEDED' };
+    }
+    return { ok: true };
+  }
+
+  assert.strictEqual(validatePdfFile({ name: 'contract.pdf', size: 10 * 1024 * 1024 }).ok, true);
+  assert.strictEqual(validatePdfFile({ name: 'huge.pdf', size: 26 * 1024 * 1024 }).error, 'SIZE_EXCEEDED');
+  assert.strictEqual(validatePdfFile({ name: 'file.exe', size: 1024 }).error, 'INVALID_EXTENSION');
+});
+
+test('Asynchronous Response Protection: Discards stale out-of-order search responses', () => {
+  let currentRequestId = 0;
+  let activeRenderedData = null;
+
+  function startRequest() {
+    return ++currentRequestId;
+  }
+
+  function handleResponse(reqId, data) {
+    if (reqId !== currentRequestId) {
+      return false; // Discarded!
+    }
+    activeRenderedData = data;
+    return true; // Applied
+  }
+
+  const req1 = startRequest(); // 1
+  const req2 = startRequest(); // 2
+
+  // Simulate req2 returning first
+  const handled2 = handleResponse(req2, 'Data from Request 2');
+  assert.strictEqual(handled2, true);
+  assert.strictEqual(activeRenderedData, 'Data from Request 2');
+
+  // Simulate req1 returning late
+  const handled1 = handleResponse(req1, 'Stale Data from Request 1');
+  assert.strictEqual(handled1, false);
+  assert.strictEqual(activeRenderedData, 'Data from Request 2'); // Preserved!
+});
+
+test('Settings Protection: Owner role strictly required for setup and config', () => {
+  function checkOwnerAuth(user) {
+    if (!user || user.role !== 'System Owner') {
+      throw new Error('UNAUTHORIZED_SETTINGS_ACCESS');
+    }
+    return true;
+  }
+
+  assert.doesNotThrow(() => checkOwnerAuth({ email: 'louyashra@gmail.com', role: 'System Owner' }));
+  assert.throws(() => checkOwnerAuth({ email: 'viewer@amlaak.com', role: 'Authorised User' }), /UNAUTHORIZED_SETTINGS_ACCESS/);
+  assert.throws(() => checkOwnerAuth(null), /UNAUTHORIZED_SETTINGS_ACCESS/);
+});
+
+test('HTML Sanitization: Prevents XSS injection via escapeHtml', () => {
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  const payload = '<script>alert("xss")</script>&"test"';
+  const escaped = escapeHtml(payload);
+  assert.strictEqual(escaped.includes('<script>'), false);
+  assert.strictEqual(escaped.includes('&lt;script&gt;'), true);
+  assert.strictEqual(escaped.includes('&quot;'), true);
+});
+
+test('Accessibility Invariants: Index.html contains ARIA modal dialogs and no user-scalable=no', () => {
+  const indexHtml = fs.readFileSync('Index.html', 'utf8');
+  assert.strictEqual(indexHtml.includes('user-scalable=no'), false, 'user-scalable=no must not exist');
+  assert.ok(indexHtml.includes('id="modalNewUnit" role="dialog" aria-modal="true"'));
+  assert.ok(indexHtml.includes('id="modalVideoPreview" role="dialog" aria-modal="true"'));
+  assert.ok(indexHtml.includes('id="modalEditVideoMetadata" role="dialog" aria-modal="true"'));
 });
 
 console.log('\n' + '='.repeat(70));

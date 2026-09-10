@@ -465,6 +465,8 @@ var Validators = (function() {
     };
   }
 
+  var MAX_PDF_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB documented maximum limit
+
   function validatePdfUpload(payload) {
     var errors = [];
 
@@ -477,7 +479,22 @@ var Validators = (function() {
     }
 
     if (payload.fileName && !payload.fileName.toLowerCase().endsWith('.pdf')) {
-      errors.push({ field: 'fileName', message: 'الملف المرفوع يجب أن يكون بامتداد PDF فقط.' });
+      errors.push({ field: 'fileName', message: 'الملف المرفوع يجب أن يكون بامتداد PDF فقط (.pdf).' });
+    }
+
+    if (payload.mimeType && payload.mimeType !== 'application/pdf') {
+      errors.push({ field: 'mimeType', message: 'نوع ملف غير صالح (يجب أن يكون application/pdf).' });
+    }
+
+    if (payload.fileSize && Number(payload.fileSize) > MAX_PDF_SIZE_BYTES) {
+      errors.push({ field: 'fileSize', message: 'حجم ملف الـ PDF يتجاوز الحد الأقصى المسموح به (25 ميجابايت).' });
+    }
+
+    if (payload.base64Content) {
+      var approxRawBytes = Math.round(payload.base64Content.length * 0.75);
+      if (approxRawBytes > MAX_PDF_SIZE_BYTES) {
+        errors.push({ field: 'fileSize', message: 'حجم ملف الـ PDF يتجاوز الحد الأقصى المسموح به (25 ميجابايت).' });
+      }
     }
 
     return {
@@ -727,6 +744,14 @@ var Auth = (function() {
     return user;
   }
 
+  function requireOwner() {
+    var user = requireAuth();
+    if (user.role !== ROLES.OWNER) {
+      throw new Error('Access Denied: System Owner role required for this action.');
+    }
+    return user;
+  }
+
   function getAllowlistFromSheet() {
     try {
       var ssId = Config.getProperty(Config.KEYS.SPREADSHEET_ID);
@@ -771,6 +796,7 @@ var Auth = (function() {
     getCurrentUserEmail: getCurrentUserEmail,
     getCurrentUser: getCurrentUser,
     requireAuth: requireAuth,
+    requireOwner: requireOwner,
     getAllowlistFromSheet: getAllowlistFromSheet
   };
 })();
@@ -1079,6 +1105,18 @@ var SheetRepository = (function() {
   // ==========================================
   function getAllVideoVersions() {
     return getAllRowsAsObjects(Config.TABS.VIDEOS);
+  }
+
+  function getVideoVersions(videoNumber) {
+    var all = getAllVideoVersions();
+    var filtered = [];
+    var vNumStr = String(videoNumber || '').trim();
+    for (var i = 0; i < all.length; i++) {
+      if (String(all[i]['Video Number'] || '').trim() === vNumStr) {
+        filtered.push(all[i]);
+      }
+    }
+    return filtered;
   }
 
   function getVideosByUnitId(unitId) {
@@ -1407,6 +1445,7 @@ var SheetRepository = (function() {
     updateUnit: updateUnit,
     propagateUnitFields: propagateUnitFields,
     getAllVideoVersions: getAllVideoVersions,
+    getVideoVersions: getVideoVersions,
     getVideosByUnitId: getVideosByUnitId,
     getVideoByDriveFileId: getVideoByDriveFileId,
     getNextVideoNumber: getNextVideoNumber,
@@ -2363,6 +2402,12 @@ var VideoService = (function() {
         continue;
       }
 
+      // Filter: Client Name explicit
+      if (filters && filters.clientName && String(filters.clientName).trim()) {
+        var rowCName = (row['Client Name'] || '').toLowerCase();
+        if (rowCName.indexOf(filters.clientName.toLowerCase().trim()) === -1) continue;
+      }
+
       // Filter: Location
       if (filters && filters.location) {
         var rowLoc = (row['Location'] || '').toLowerCase();
@@ -2375,7 +2420,17 @@ var VideoService = (function() {
         continue;
       }
 
-      // Filter: Client Name or Topic search query
+      // Filter: Area Range
+      if (filters && (filters.areaMin !== undefined && filters.areaMin !== '')) {
+        var aMin = Number(filters.areaMin);
+        if (!isNaN(aMin) && Number(row['Area (SQM)']) < aMin) continue;
+      }
+      if (filters && (filters.areaMax !== undefined && filters.areaMax !== '')) {
+        var aMax = Number(filters.areaMax);
+        if (!isNaN(aMax) && Number(row['Area (SQM)']) > aMax) continue;
+      }
+
+      // Filter: Client Name, Topic, Video Name, Video Number or Unit ID search query
       if (filters && filters.searchQuery) {
         var query = filters.searchQuery.toLowerCase().trim();
         var clientName = (row['Client Name'] || '').toLowerCase();
@@ -2433,7 +2488,26 @@ var VideoService = (function() {
       });
     }
 
-    return filtered;
+    // Controlled server-side pagination
+    var totalCount = filtered.length;
+    var page = (filters && filters.page) ? parseInt(filters.page, 10) : 1;
+    if (isNaN(page) || page < 1) page = 1;
+    var pageSize = (filters && filters.pageSize) ? parseInt(filters.pageSize, 10) : 25;
+    if (isNaN(pageSize) || pageSize < 1) pageSize = 25;
+
+    var totalPages = Math.ceil(totalCount / pageSize) || 1;
+    var startIndex = (page - 1) * pageSize;
+    var pageItems = filtered.slice(startIndex, startIndex + pageSize);
+    var hasMore = (startIndex + pageSize) < totalCount;
+
+    return {
+      items: pageItems,
+      page: page,
+      pageSize: pageSize,
+      totalCount: totalCount,
+      totalPages: totalPages,
+      hasMore: hasMore
+    };
   }
 
   /**
@@ -2506,11 +2580,99 @@ var VideoService = (function() {
     });
   }
 
+  /**
+   * Retrieves the full version history for a logical video.
+   */
+  function getVideoVersionHistory(videoNumber) {
+    Auth.requireAuth();
+
+    if (!videoNumber || !String(videoNumber).trim()) {
+      throw new Error('رقم الفيديو (Video Number) مطلوب.');
+    }
+
+    var cleanNum = Utils.formatVideoNumber(videoNumber);
+    var allRows = SheetRepository.getAllVideoVersions();
+    var matching = [];
+
+    for (var i = 0; i < allRows.length; i++) {
+      var row = allRows[i];
+      var rowVNum = String(row['Video Number'] || '').trim();
+      if (rowVNum === cleanNum || rowVNum === String(videoNumber).trim()) {
+        var isCur = String(row['Is Current Version']).toLowerCase() === 'yes' || row['Is Current Version'] === true;
+        matching.push({
+          videoNumber: row['Video Number'],
+          versionNumber: row['Version Number'],
+          isCurrentVersion: isCur,
+          versionNotes: row['Version Notes'] || '',
+          videoName: row['Video Name'],
+          videoSource: row['Video Source'],
+          unitId: row['Unit ID'] || '',
+          contentType: row['Content Type'] || '',
+          topic: row['Topic'] || '',
+          clientName: row['Client Name'] || '',
+          location: row['Location'] || '',
+          unitType: row['Unit Type'] || '',
+          area: row['Area (SQM)'] || '',
+          projectVideoType: row['Project Video Type'] || '',
+          spaceType: row['Space Type'] || '',
+          workCategory: row['Work Category'] || '',
+          shootingDate: row['Shooting Date'] || '',
+          videoLink: row['Video Link'] || '',
+          driveFileId: row['Drive File ID'],
+          originalFileName: row['Original File Name'] || '',
+          duration: row['Duration'] || '',
+          orientation: row['Orientation'] || '',
+          fileSize: row['File Size'] || '',
+          addedDate: row['Added Date'] || '',
+          addedBy: row['Added By'] || ''
+        });
+      }
+    }
+
+    if (matching.length === 0) {
+      throw new Error('لم يتم العثور على أي نسخ للفيديو رقم: ' + videoNumber);
+    }
+
+    // Sort versions descending by version number
+    matching.sort(function(a, b) {
+      var vA = parseInt(String(a.versionNumber).replace(/\D/g, ''), 10) || 0;
+      var vB = parseInt(String(b.versionNumber).replace(/\D/g, ''), 10) || 0;
+      return vB - vA;
+    });
+
+    // Ensure exactly one current version is identified
+    var currentFound = false;
+    for (var m = 0; m < matching.length; m++) {
+      if (matching[m].isCurrentVersion) {
+        if (!currentFound) {
+          currentFound = true;
+        } else {
+          matching[m].isCurrentVersion = false;
+        }
+      }
+    }
+    if (!currentFound && matching.length > 0) {
+      matching[0].isCurrentVersion = true;
+    }
+
+    var currentVer = matching.find(function(v) { return v.isCurrentVersion; }) || matching[0];
+
+    return {
+      videoNumber: cleanNum,
+      title: currentVer.clientName || currentVer.topic || ('Video ' + cleanNum),
+      videoSource: currentVer.videoSource,
+      currentVersion: currentVer,
+      totalVersions: matching.length,
+      versions: matching
+    };
+  }
+
   return {
     addProjectVideo: addProjectVideo,
     addMarketingContent: addMarketingContent,
     addNewVersion: addNewVersion,
     getLibraryVideos: getLibraryVideos,
+    getVideoVersionHistory: getVideoVersionHistory,
     updateSingleVideoMetadata: updateSingleVideoMetadata
   };
 })();
@@ -3142,7 +3304,7 @@ function doGet(e) {
   return template.evaluate()
     .setTitle('Amlaak Video Library | منظومة إدارة مكتبة الفيديوهات والتصاميم')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
 }
 
 function include(filename) {
@@ -3225,6 +3387,12 @@ function apiAddNewVersion(payload) {
   }, 'ADD_NEW_VERSION', 'Video');
 }
 
+function apiGetVideoVersionHistory(videoNumber) {
+  return handleApiCall(function() {
+    return VideoService.getVideoVersionHistory(videoNumber);
+  }, 'GET_VIDEO_VERSION_HISTORY', 'Video');
+}
+
 function apiUpdateSingleVideoMetadata(driveFileId, fields, confirmRename) {
   return handleApiCall(function() {
     return VideoService.updateSingleVideoMetadata(driveFileId, fields, confirmRename);
@@ -3263,13 +3431,14 @@ function apiUploadPdf(payload) {
 
 function apiSetupSystem(optConfig) {
   return handleApiCall(function() {
+    Auth.requireOwner();
     return Setup.setupSystem(optConfig);
   }, 'SETUP_SYSTEM', 'Setup');
 }
 
 function apiGetSystemConfig() {
   return handleApiCall(function() {
-    Auth.requireAuth();
+    Auth.requireOwner();
     var props = Config.getAllProperties();
     return {
       spreadsheetId: props.SPREADSHEET_ID || '',

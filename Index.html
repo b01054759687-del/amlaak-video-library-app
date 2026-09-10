@@ -2,29 +2,17 @@
 <html lang="en" dir="ltr">
 <head>
 <!--
-  Amlaak Video Library — Frontend Shell (Index.html)
-  ---------------------------------------------------
-  Target location once pushed to GitHub: amlaak-video-library/src/Index.html
-  (dedicated repo — see Amlaak-Video-Library-Execution-Prompt-v2.md §1 and §24
-  for the full recommended Apps Script project layout.)
-
-  This file is a static, English-language UI shell for the Amlaak Video
-  Library Apps Script Web App. It runs against a local mock dispatcher when
-  opened outside the Apps Script container (see setupLocalPreviewMocks below)
-  so it can be reviewed as a plain HTML file before Antigravity wires it to
-  the real google.script.run backend (Code.gs / *.gs services) and deploys it.
-
-  Still to be done by Antigravity, per the execution prompt:
-  - Wire every callApi(...) call below to real server-side .gs functions.
-  - Split into Index.html / Styles.html / Client.html if the team prefers
-    Apps Script's multi-file HtmlService pattern (this single file works
-    as-is with HtmlService too — splitting is optional, not required).
-  - Push this repo to GitHub (private) — this file, plus the generated
-    Code.gs/*.gs backend, docs, and .gitignore. Never commit real Sheet/Drive
-    IDs, OAuth tokens, or customer data — see execution prompt §20 and §24.
+  Amlaak Video Library — Production Frontend (Index.html)
+  -------------------------------------------------------
+  Integrated with Google Apps Script backend services (Code.gs, VideoService,
+  UnitService, DashboardService, DriveService, SheetRepository, Auth).
+  Configured with verified production Google Sheet and Google Drive IDs.
+  Supports full 22-step video registration, Decision A Work Category,
+  Decision B PDF versioning, Decision C Unit metadata propagation,
+  and dedicated version history and metadata editing workflows.
 -->
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Amlaak Video Library | Engineering Media &amp; Design Archive</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -518,59 +506,67 @@
           <input type="hidden" id="pvSelectedUnitId">
           <div id="pvUnitSearchResults" class="autocomplete-items hidden"></div>
         </div>
+
+        <div id="pvUnitLockedBadge" class="hidden p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs flex items-center justify-between">
+          <span class="flex items-center gap-2">
+            <i class="fa-solid fa-lock text-blue-400"></i>
+            <span>Central metadata locked from Unit record. Central edits must be done via "Units &amp; PDFs".</span>
+          </span>
+          <button type="button" onclick="switchTab('units')" class="text-xs text-[#DFBF7A] underline hover:text-white font-bold">View Unit</button>
+        </div>
       </div>
 
       <div>
-        <label class="field-label">Google Drive video link <span class="field-required">*</span></label>
+        <label for="pvVideoLink" class="field-label">Google Drive video link <span class="field-required">*</span></label>
         <input type="url" id="pvVideoLink" required placeholder="https://drive.google.com/file/d/…/view" class="w-full input-dark px-4 py-3 text-xs sm:text-sm font-mono-code" oninput="updateProjectVideoPreview()">
         <p class="text-[11px] text-slate-500 mt-1">Accepts a Drive share link or a bare File ID.</p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div>
-          <label class="field-label">Client name <span class="field-required">*</span></label>
+          <label for="pvClientName" class="field-label">Client name <span class="field-required">*</span></label>
           <input type="text" id="pvClientName" required placeholder="e.g. Ahmed Hassan" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="updateProjectVideoPreview()">
         </div>
         <div class="relative">
-          <label class="field-label">Location <span class="field-required">*</span></label>
+          <label for="pvLocation" class="field-label">Location <span class="field-required">*</span></label>
           <input type="text" id="pvLocation" required placeholder="e.g. New Cairo" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="filterLocationSearch(this.value, 'pvLocationResults', 'pvLocation')" autocomplete="off">
           <div id="pvLocationResults" class="autocomplete-items hidden"></div>
         </div>
         <div>
-          <label class="field-label">Unit type <span class="field-required">*</span></label>
+          <label for="pvUnitType" class="field-label">Unit type <span class="field-required">*</span></label>
           <select id="pvUnitType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
         </div>
         <div>
-          <label class="field-label">Area (sqm)</label>
+          <label for="pvArea" class="field-label">Area (sqm)</label>
           <input type="number" id="pvArea" placeholder="e.g. 220" min="1" step="any" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm font-num" oninput="updateProjectVideoPreview()">
         </div>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div>
-          <label class="field-label">Project video type <span class="field-required">*</span></label>
+          <label for="pvProjectVideoType" class="field-label">Project video type <span class="field-required">*</span></label>
           <select id="pvProjectVideoType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
         </div>
         <div>
-          <label class="field-label">Space type <span class="field-required">*</span></label>
+          <label for="pvSpaceType" class="field-label">Space type <span class="field-required">*</span></label>
           <select id="pvSpaceType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
         </div>
         <div>
-          <label class="field-label text-[#DFBF7A]">Work category <span class="field-required">*</span></label>
+          <label for="pvWorkCategory" class="field-label text-[#DFBF7A]">Work category <span class="field-required">*</span></label>
           <select id="pvWorkCategory" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm border-amber-500/35" onchange="updateProjectVideoPreview()"></select>
         </div>
         <div>
-          <label class="field-label">Shooting date <span class="field-required">*</span></label>
+          <label for="pvShootingDate" class="field-label">Shooting date <span class="field-required">*</span></label>
           <input type="date" id="pvShootingDate" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="updateProjectVideoPreview()">
         </div>
       </div>
 
       <div class="p-4 rounded-xl bg-[#081120] border border-slate-800 space-y-3">
         <div class="flex items-center justify-between">
-          <label class="text-xs font-bold text-slate-300 flex items-center gap-2">
+          <label for="pvPdfFileInput" class="text-xs font-bold text-slate-300 flex items-center gap-2">
             <i class="fa-solid fa-file-pdf text-rose-400"></i> Attach unit design PDF — optional
           </label>
-          <span class="text-[10px] text-slate-500">Saved to the unit as version V01</span>
+          <span id="pvPdfVersionNotice" class="text-[10px] text-slate-500">Saved to the unit as version V01</span>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input type="file" id="pvPdfFileInput" accept="application/pdf,.pdf" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700">
@@ -579,7 +575,7 @@
       </div>
 
       <div>
-        <label class="field-label">Version notes</label>
+        <label for="pvVersionNotes" class="field-label">Version notes</label>
         <input type="text" id="pvVersionNotes" placeholder="e.g. Approved cut for final handover, lighting corrected" class="w-full input-dark px-4 py-2.5 text-xs sm:text-sm">
       </div>
 
@@ -667,67 +663,100 @@
 
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <div>
-          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Search</label>
+          <label for="filterSearch" class="text-[11px] font-bold text-slate-400 mb-1 block">Search (Client, Unit, Topic, Video #)</label>
           <div class="relative">
-            <input type="text" id="filterSearch" placeholder="Client, unit, topic…" class="w-full input-dark pl-9 pr-3 py-2 text-xs" oninput="debounceLibrarySearch()">
+            <input type="text" id="filterSearch" placeholder="Search library…" class="w-full input-dark pl-9 pr-3 py-2 text-xs" oninput="debounceLibrarySearch()">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
           </div>
         </div>
         <div>
-          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Video source</label>
-          <select id="filterSource" class="w-full input-dark px-3 py-2 text-xs" onchange="loadLibrary()">
+          <label for="filterSource" class="text-[11px] font-bold text-slate-400 mb-1 block">Video Source</label>
+          <select id="filterSource" class="w-full input-dark px-3 py-2 text-xs" onchange="resetLibraryPageAndLoad()">
             <option value="">All sources</option>
             <option value="Project Video">Project Video</option>
             <option value="Marketing Content">Marketing Content</option>
           </select>
         </div>
         <div>
-          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Stage</label>
-          <select id="filterStage" class="w-full input-dark px-3 py-2 text-xs" onchange="loadLibrary()">
-            <option value="">All stages</option>
+          <label for="filterContentType" class="text-[11px] font-bold text-slate-400 mb-1 block">Marketing Content Type</label>
+          <select id="filterContentType" class="w-full input-dark px-3 py-2 text-xs" onchange="resetLibraryPageAndLoad()">
+            <option value="">All marketing types</option>
+            <option value="Ad / Hook">Ad / Hook</option>
+            <option value="Reel / Short">Reel / Short</option>
+            <option value="Before / After">Before / After</option>
+            <option value="Construction Walkthrough">Construction Walkthrough</option>
+            <option value="Client Interview">Client Interview</option>
+            <option value="Team Showcase">Team Showcase</option>
+            <option value="Material Selection">Material Selection</option>
+            <option value="Educational">Educational</option>
+            <option value="Service Overview">Service Overview</option>
+            <option value="Milestone / Teaser">Milestone / Teaser</option>
           </select>
         </div>
         <div>
-          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Space type</label>
-          <select id="filterSpace" class="w-full input-dark px-3 py-2 text-xs" onchange="loadLibrary()">
-            <option value="">All spaces</option>
+          <label for="filterStage" class="text-[11px] font-bold text-slate-400 mb-1 block">Project Video Type / Stage</label>
+          <select id="filterStage" class="w-full input-dark px-3 py-2 text-xs" onchange="resetLibraryPageAndLoad()">
+            <option value="">All stages</option>
           </select>
         </div>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-3 border-t border-slate-800">
         <div>
-          <label class="text-[11px] font-bold text-[#DFBF7A] mb-1 block">Work category</label>
-          <select id="filterWorkCat" class="w-full input-dark px-3 py-2 text-xs border-amber-500/25" onchange="loadLibrary()">
+          <label for="filterSpace" class="text-[11px] font-bold text-slate-400 mb-1 block">Space Type</label>
+          <select id="filterSpace" class="w-full input-dark px-3 py-2 text-xs" onchange="resetLibraryPageAndLoad()">
+            <option value="">All spaces</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterWorkCat" class="text-[11px] font-bold text-[#DFBF7A] mb-1 block">Work Category</label>
+          <select id="filterWorkCat" class="w-full input-dark px-3 py-2 text-xs border-amber-500/25" onchange="resetLibraryPageAndLoad()">
             <option value="">All categories</option>
           </select>
         </div>
         <div>
-          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Location</label>
-          <select id="filterLocation" class="w-full input-dark px-3 py-2 text-xs" onchange="loadLibrary()">
+          <label for="filterLocation" class="text-[11px] font-bold text-slate-400 mb-1 block">Location</label>
+          <select id="filterLocation" class="w-full input-dark px-3 py-2 text-xs" onchange="resetLibraryPageAndLoad()">
             <option value="">All locations</option>
           </select>
         </div>
         <div>
-          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Filter date by</label>
-          <select id="filterDateType" class="w-full input-dark px-3 py-2 text-xs" onchange="loadLibrary()">
+          <label for="filterUnitType" class="text-[11px] font-bold text-slate-400 mb-1 block">Unit Type</label>
+          <select id="filterUnitType" class="w-full input-dark px-3 py-2 text-xs" onchange="resetLibraryPageAndLoad()">
+            <option value="">All unit types</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Area Range (sqm)</label>
+          <div class="flex items-center gap-1.5">
+            <input type="number" id="filterAreaMin" placeholder="Min" min="1" class="w-1/2 input-dark px-2 py-2 text-[11px] font-num" oninput="debounceLibrarySearch()">
+            <input type="number" id="filterAreaMax" placeholder="Max" min="1" class="w-1/2 input-dark px-2 py-2 text-[11px] font-num" oninput="debounceLibrarySearch()">
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-slate-800 items-end">
+        <div>
+          <label for="filterDateType" class="text-[11px] font-bold text-slate-400 mb-1 block">Filter Date By</label>
+          <select id="filterDateType" class="w-full input-dark px-3 py-2 text-xs" onchange="resetLibraryPageAndLoad()">
             <option value="Added Date">Added Date</option>
             <option value="Shooting Date">Shooting Date</option>
           </select>
         </div>
-        <div>
-          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Date range</label>
-          <div class="flex items-center gap-1.5">
-            <input type="date" id="filterStartDate" class="w-1/2 input-dark px-2 py-2 text-[11px]" onchange="loadLibrary()">
-            <input type="date" id="filterEndDate" class="w-1/2 input-dark px-2 py-2 text-[11px]" onchange="loadLibrary()">
+        <div class="md:col-span-2">
+          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Date Range</label>
+          <div class="flex items-center gap-2">
+            <input type="date" id="filterStartDate" class="w-1/2 input-dark px-2 py-2 text-[11px]" onchange="resetLibraryPageAndLoad()">
+            <span class="text-slate-500 text-xs">to</span>
+            <input type="date" id="filterEndDate" class="w-1/2 input-dark px-2 py-2 text-[11px]" onchange="resetLibraryPageAndLoad()">
           </div>
         </div>
-        <div class="flex items-center justify-between sm:justify-start gap-3 pt-4">
+        <div class="flex items-center justify-between gap-3 pb-1">
           <label class="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-amber-300">
-            <input type="checkbox" id="filterIncludePrevious" class="w-4 h-4 rounded accent-[#C5A059]" onchange="loadLibrary()">
+            <input type="checkbox" id="filterIncludePrevious" class="w-4 h-4 rounded accent-[#C5A059]" onchange="resetLibraryPageAndLoad()">
             <span>Include previous versions</span>
           </label>
-          <button onclick="resetLibraryFilters()" class="text-[11px] text-slate-400 hover:text-rose-400 underline">Clear filters</button>
+          <button onclick="resetLibraryFilters()" class="text-[11px] text-slate-400 hover:text-rose-400 underline">Clear</button>
         </div>
       </div>
 
@@ -763,6 +792,31 @@
             <tr><td colspan="10" class="p-8 text-center text-slate-500">Loading video library…</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Pagination Toolbar -->
+      <div id="libraryPaginationBar" class="p-3.5 bg-[#081120] border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2 text-slate-400">
+          <span>Show</span>
+          <select id="libraryPageSize" class="input-dark px-2 py-1 text-xs" onchange="changeLibraryPageSize(this.value)">
+            <option value="10">10</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+          <span>per page</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="libraryPageIndicator" class="text-slate-300 font-mono-code">Page 1 of 1</span>
+          <div class="flex items-center gap-1.5">
+            <button id="btnLibPrevPage" onclick="prevLibraryPage()" class="ghost-btn px-2.5 py-1 text-xs" disabled aria-label="Previous page">
+              <i class="fa-solid fa-chevron-left"></i> Prev
+            </button>
+            <button id="btnLibNextPage" onclick="nextLibraryPage()" class="ghost-btn px-2.5 py-1 text-xs" disabled aria-label="Next page">
+              Next <i class="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -857,16 +911,211 @@
   </section>
 
   <!-- ============================================================= -->
+  <!-- MODAL: NEW UNIT CREATION                                       -->
+  <!-- ============================================================= -->
+  <div id="modalNewUnit" role="dialog" aria-modal="true" aria-labelledby="modalNewUnitTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+    <div class="gold-card max-w-lg w-full p-6 space-y-5 border-amber-500/40 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-building"></i>
+          </div>
+          <div>
+            <h3 id="modalNewUnitTitle" class="text-base font-bold text-white">Create New Unit</h3>
+            <p class="text-xs text-slate-400">Add a client unit record to central database</p>
+          </div>
+        </div>
+        <button onclick="closeNewUnitModal()" class="text-slate-400 hover:text-white" aria-label="Close new unit modal">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="formNewUnit" onsubmit="submitNewUnit(event)" class="space-y-4">
+        <div>
+          <label for="nuClientName" class="field-label">Client Name <span class="field-required">*</span></label>
+          <input type="text" id="nuClientName" required placeholder="e.g. Eng. Tarek Nour" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm">
+        </div>
+
+        <div class="relative">
+          <label for="nuLocation" class="field-label">Location / Compound <span class="field-required">*</span></label>
+          <input type="text" id="nuLocation" required placeholder="e.g. New Cairo" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="filterLocationSearch(this.value, 'nuLocationResults', 'nuLocation')" autocomplete="off">
+          <div id="nuLocationResults" class="autocomplete-items hidden"></div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="nuUnitType" class="field-label">Unit Type <span class="field-required">*</span></label>
+            <select id="nuUnitType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm"></select>
+          </div>
+          <div>
+            <label for="nuArea" class="field-label">Area (sqm)</label>
+            <input type="number" id="nuArea" min="1" step="any" placeholder="e.g. 280" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm font-num">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+          <button type="button" onclick="closeNewUnitModal()" class="ghost-btn px-4 py-2 text-xs">Cancel</button>
+          <button type="submit" id="btnSubmitNewUnit" class="gold-btn px-6 py-2.5 text-xs font-black flex items-center gap-2">
+            <i class="fa-solid fa-check"></i> <span>Create Unit</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- MODAL: EDIT VIDEO METADATA                                     -->
+  <!-- ============================================================= -->
+  <div id="modalEditVideoMetadata" role="dialog" aria-modal="true" aria-labelledby="modalEditMetaTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+    <div class="gold-card max-w-xl w-full p-6 space-y-5 border-amber-500/40 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-[#DFBF7A]/15 text-[#DFBF7A] flex items-center justify-center text-lg">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </div>
+          <div>
+            <h3 id="modalEditMetaTitle" class="text-base font-bold text-white">Edit Video Metadata</h3>
+            <p id="emHeaderSubtitle" class="text-xs text-slate-400 font-mono-code">Video 0001 (V01)</p>
+          </div>
+        </div>
+        <button onclick="closeEditVideoMetadataModal()" class="text-slate-400 hover:text-white" aria-label="Close edit metadata modal">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <form id="formEditVideoMetadata" onsubmit="submitEditVideoMetadata(event)" class="space-y-4">
+        <input type="hidden" id="emDriveFileId">
+        <input type="hidden" id="emVideoNumber">
+        <input type="hidden" id="emVersionNumber">
+        <input type="hidden" id="emVideoSource">
+
+        <!-- Project Video fields -->
+        <div id="emProjectFieldsContainer" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="emSpaceType" class="field-label">Space Type <span class="field-required">*</span></label>
+              <select id="emSpaceType" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateEditMetaPreview()"></select>
+            </div>
+            <div>
+              <label for="emWorkCategory" class="field-label text-[#DFBF7A]">Work Category <span class="field-required">*</span></label>
+              <select id="emWorkCategory" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm border-amber-500/35" onchange="updateEditMetaPreview()"></select>
+            </div>
+          </div>
+          <div>
+            <label for="emShootingDate" class="field-label">Shooting Date <span class="field-required">*</span></label>
+            <input type="date" id="emShootingDate" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateEditMetaPreview()">
+          </div>
+        </div>
+
+        <!-- Marketing Content fields -->
+        <div id="emMarketingFieldsContainer" class="space-y-4 hidden">
+          <div>
+            <label for="emContentType" class="field-label">Marketing Content Type <span class="field-required">*</span></label>
+            <select id="emContentType" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateEditMetaPreview()"></select>
+          </div>
+          <div>
+            <label for="emTopic" class="field-label">Topic <span class="field-required">*</span></label>
+            <input type="text" id="emTopic" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="updateEditMetaPreview()">
+          </div>
+          <div id="emMarketingSpaceContainer">
+            <label for="emMarketingSpaceType" class="field-label">Space Type (Optional)</label>
+            <select id="emMarketingSpaceType" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateEditMetaPreview()"></select>
+          </div>
+          <div>
+            <label for="emMarketingShootingDate" class="field-label">Shooting Date <span class="field-required">*</span></label>
+            <input type="date" id="emMarketingShootingDate" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateEditMetaPreview()">
+          </div>
+        </div>
+
+        <!-- Filename comparison preview -->
+        <div class="p-3.5 rounded-xl bg-[#081120] border border-slate-800 space-y-2 text-xs">
+          <div>
+            <span class="text-slate-400 font-bold block mb-0.5">Current Drive Filename:</span>
+            <div id="emCurrentFilename" class="text-slate-300 font-mono-code break-all">Loading…</div>
+          </div>
+          <div>
+            <span class="text-slate-400 font-bold block mb-0.5">Proposed Drive Filename:</span>
+            <div id="emProposedFilename" class="text-[#DFBF7A] font-mono-code font-bold break-all">Loading…</div>
+          </div>
+        </div>
+
+        <!-- Drive rename confirmation warning -->
+        <div id="emRenameNotice" class="hidden p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/35 text-amber-200 text-xs space-y-2">
+          <div class="flex items-start gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5"></i>
+            <div>
+              <strong>Filename Modification Notice:</strong>
+              This edit modifies standard naming attributes. The physical file on Google Drive will be renamed to maintain absolute consistency.
+            </div>
+          </div>
+          <label class="flex items-center gap-2 cursor-pointer font-bold text-white pt-1">
+            <input type="checkbox" id="emConfirmRename" class="w-4 h-4 rounded accent-[#C5A059]">
+            <span>I authorize renaming this file on Google Drive</span>
+          </label>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+          <button type="button" onclick="closeEditVideoMetadataModal()" class="ghost-btn px-4 py-2 text-xs">Cancel</button>
+          <button type="submit" id="btnSubmitEditMetadata" class="gold-btn px-6 py-2.5 text-xs font-black flex items-center gap-2">
+            <i class="fa-solid fa-floppy-disk"></i> <span>Save Changes</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
+  <!-- MODAL: EMBEDDED VIDEO PREVIEW                                  -->
+  <!-- ============================================================= -->
+  <div id="modalVideoPreview" role="dialog" aria-modal="true" aria-labelledby="modalVideoPreviewTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/95 backdrop-blur-md p-3 sm:p-5 hidden">
+    <div class="gold-card max-w-4xl w-full p-4 sm:p-6 space-y-4 border-slate-700 shadow-2xl flex flex-col max-h-[90vh]">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 flex-shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-9 h-9 rounded-lg bg-red-500/15 text-red-400 flex items-center justify-center text-base flex-shrink-0">
+            <i class="fa-solid fa-play"></i>
+          </div>
+          <div class="min-w-0">
+            <h3 id="modalVideoPreviewTitle" class="text-sm sm:text-base font-bold text-white truncate">Video Preview</h3>
+            <p id="vpFileIdSubtitle" class="text-[11px] text-slate-400 font-mono-code truncate">Drive ID</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <a id="vpDirectDriveLink" href="#" target="_blank" rel="noopener noreferrer" class="ghost-btn px-3 py-1.5 text-xs flex items-center gap-1.5 text-[#DFBF7A]">
+            <span>Open in Drive</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+          </a>
+          <button onclick="closeVideoPreviewModal()" class="text-slate-400 hover:text-white p-1" aria-label="Close preview modal">
+            <i class="fa-solid fa-xmark text-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Video iframe container -->
+      <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden flex items-center justify-center border border-slate-800">
+        <div id="vpLoadingSpinner" class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400 bg-black/60 z-10">
+          <div class="loader-spinner"></div>
+          <span class="text-xs">Loading secure video stream…</span>
+        </div>
+        <iframe id="vpIframe" class="w-full h-full border-0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+      </div>
+
+      <div class="flex items-center justify-between text-[11px] text-slate-400 flex-shrink-0 pt-1">
+        <span>Google Drive Video Stream Preview</span>
+        <span class="text-slate-500">If stream cannot play inside iframe, use "Open in Drive"</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================= -->
   <!-- MODAL: BATCH RENAME CONFIRMATION (Decision C, execution prompt §2.3) -->
   <!-- ============================================================= -->
-  <div id="modalBatchRename" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+  <div id="modalBatchRename" role="dialog" aria-modal="true" aria-labelledby="modalBatchRenameTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
     <div class="gold-card max-w-2xl w-full p-6 sm:p-7 space-y-5 border-amber-500/55 shadow-2xl">
       <div class="flex items-center gap-3 text-amber-300">
         <div class="w-11 h-11 rounded-lg bg-amber-500/15 flex items-center justify-center text-lg text-amber-400">
           <i class="fa-solid fa-triangle-exclamation"></i>
         </div>
         <div>
-          <h3 class="text-base font-black text-white">Confirm batch rename on Google Drive</h3>
+          <h3 id="modalBatchRenameTitle" class="text-base font-black text-white">Confirm batch rename on Google Drive</h3>
           <p class="text-xs text-amber-200/80">This unit correction changes the generated filename for the files below.</p>
         </div>
       </div>
@@ -893,7 +1142,7 @@
   <!-- ============================================================= -->
   <!-- MODAL: ADD NEW VERSION -->
   <!-- ============================================================= -->
-  <div id="modalAddVersion" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+  <div id="modalAddVersion" role="dialog" aria-modal="true" aria-labelledby="modalAddVersionTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
     <div class="gold-card max-w-xl w-full p-6 space-y-5 border-blue-500/45 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-3">
@@ -901,23 +1150,23 @@
             <i class="fa-solid fa-code-branch"></i>
           </div>
           <div>
-            <h3 class="text-sm sm:text-base font-bold text-white">Add New Version</h3>
+            <h3 id="modalAddVersionTitle" class="text-sm sm:text-base font-bold text-white">Add New Version</h3>
             <p id="mvVideoHeader" class="text-xs text-slate-400 font-mono-code">Video 0001</p>
           </div>
         </div>
-        <button onclick="closeAddVersionModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeAddVersionModal()" class="text-slate-400 hover:text-white" aria-label="Close add version modal"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
       <form id="formAddVersion" onsubmit="submitAddVersion(event)" class="space-y-4">
         <input type="hidden" id="mvVideoNumber">
 
         <div>
-          <label class="field-label">New Google Drive video link <span class="field-required">*</span></label>
+          <label for="mvVideoLink" class="field-label">New Google Drive video link <span class="field-required">*</span></label>
           <input type="url" id="mvVideoLink" required placeholder="https://drive.google.com/file/d/…/view" class="w-full input-dark px-3.5 py-2.5 text-xs font-mono-code" oninput="updateVersionModalPreview()">
         </div>
 
         <div>
-          <label class="field-label">Version notes (reason for the edit)</label>
+          <label for="mvVersionNotes" class="field-label">Version notes (reason for the edit)</label>
           <input type="text" id="mvVersionNotes" placeholder="e.g. Colour grading pass, re-cut to 16:9" class="w-full input-dark px-3.5 py-2.5 text-xs">
         </div>
 
@@ -945,7 +1194,7 @@
   <!-- ============================================================= -->
   <!-- MODAL: VERSION HISTORY -->
   <!-- ============================================================= -->
-  <div id="modalVersionHistory" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+  <div id="modalVersionHistory" role="dialog" aria-modal="true" aria-labelledby="modalVersionHistoryTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
     <div class="gold-card max-w-2xl w-full p-6 space-y-4 border-slate-700 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-3">
@@ -953,11 +1202,11 @@
             <i class="fa-solid fa-clock-rotate-left"></i>
           </div>
           <div>
-            <h3 class="text-base font-bold text-white">Version History</h3>
+            <h3 id="modalVersionHistoryTitle" class="text-base font-bold text-white">Version History</h3>
             <p id="vhVideoTitle" class="text-xs text-slate-400 font-mono-code">Video 0001</p>
           </div>
         </div>
-        <button onclick="closeVersionHistoryModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeVersionHistoryModal()" class="text-slate-400 hover:text-white" aria-label="Close version history modal"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
       <div id="vhVersionsList" class="space-y-3 max-h-80 overflow-y-auto pr-1"></div>
@@ -971,7 +1220,7 @@
   <!-- ============================================================= -->
   <!-- MODAL: UNIT DETAIL -->
   <!-- ============================================================= -->
-  <div id="modalUnitDetail" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+  <div id="modalUnitDetail" role="dialog" aria-modal="true" aria-labelledby="modalUnitDetailTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
     <div class="gold-card max-w-3xl w-full p-6 sm:p-7 space-y-5 border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
 
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -987,7 +1236,7 @@
             <p id="udLocationType" class="text-xs text-slate-400">New Cairo • Apartment (220 sqm)</p>
           </div>
         </div>
-        <button onclick="closeUnitDetailModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeUnitDetailModal()" class="text-slate-400 hover:text-white" aria-label="Close unit detail modal"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
       <div class="p-4 rounded-xl bg-[#081120] border border-slate-800 space-y-3">
@@ -1043,7 +1292,7 @@
   <!-- ============================================================= -->
   <!-- MODAL: UPLOAD DESIGN PDF -->
   <!-- ============================================================= -->
-  <div id="modalUploadPdf" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
+  <div id="modalUploadPdf" role="dialog" aria-modal="true" aria-labelledby="modalUploadPdfTitle" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
     <div class="gold-card max-w-lg w-full p-6 space-y-5 border-rose-500/35 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-3">
@@ -1051,11 +1300,11 @@
             <i class="fa-solid fa-file-pdf"></i>
           </div>
           <div>
-            <h3 class="text-sm sm:text-base font-bold text-white">Upload Design PDF</h3>
+            <h3 id="modalUploadPdfTitle" class="text-sm sm:text-base font-bold text-white">Upload Design PDF</h3>
             <p id="upModalUnitHeader" class="text-xs text-slate-400">Unit ID: U-0001</p>
           </div>
         </div>
-        <button onclick="closeUploadPdfModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button onclick="closeUploadPdfModal()" class="text-slate-400 hover:text-white" aria-label="Close upload PDF modal"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
       <form id="formUploadPdf" onsubmit="submitUploadPdf(event)" class="space-y-4">
@@ -1119,8 +1368,79 @@ var AppState = {
   activeUnitDetail: null,
   activeVideoForVersion: null,
   pendingBatchRename: null,
-  debounceTimer: null
+  editingVideoRecord: null,
+  debounceTimer: null,
+  // Sequence counters for asynchronous race condition protection (§9)
+  searchRequestId: 0,
+  dashboardRequestId: 0,
+  unitsRequestId: 0,
+  // Controlled pagination state (§6)
+  libraryPage: 1,
+  libraryPageSize: 25,
+  libraryTotalPages: 1
 };
+
+// =============================================================
+// ACCESSIBLE MODAL MANAGEMENT (ESC, FOCUS TRAP, ARIA)
+// =============================================================
+var activeModalElement = null;
+var previousFocusedElement = null;
+
+function openModal(modalId) {
+  var modal = document.getElementById(modalId);
+  if (!modal) return;
+  previousFocusedElement = document.activeElement;
+  activeModalElement = modal;
+  modal.classList.remove('hidden');
+
+  var focusable = modal.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+  if (focusable && focusable.length > 0) {
+    setTimeout(function() { focusable[0].focus(); }, 40);
+  }
+}
+
+function closeModal(modalId) {
+  var modal = document.getElementById(modalId);
+  if (!modal) return;
+  modal.classList.add('hidden');
+  if (activeModalElement === modal) {
+    activeModalElement = null;
+  }
+  if (previousFocusedElement && typeof previousFocusedElement.focus === 'function') {
+    previousFocusedElement.focus();
+    previousFocusedElement = null;
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && activeModalElement) {
+    var id = activeModalElement.id;
+    if (id === 'modalNewUnit') closeNewUnitModal();
+    else if (id === 'modalEditVideoMetadata') closeEditVideoMetadataModal();
+    else if (id === 'modalVideoPreview') closeVideoPreviewModal();
+    else if (id === 'modalAddVersion') closeAddVersionModal();
+    else if (id === 'modalVersionHistory') closeVersionHistoryModal();
+    else if (id === 'modalUnitDetail') closeUnitDetailModal();
+    else if (id === 'modalBatchRename') cancelBatchRename();
+    else if (id === 'modalUploadPdf') closeUploadPdfModal();
+    return;
+  }
+
+  if (e.key === 'Tab' && activeModalElement) {
+    var focusables = activeModalElement.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
+    if (focusables && focusables.length > 0) {
+      var first = focusables[0];
+      var last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        last.focus();
+        e.preventDefault();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        first.focus();
+        e.preventDefault();
+      }
+    }
+  }
+});
 
 // =============================================================
 // INITIALISATION & LIFECYCLE
@@ -1166,9 +1486,31 @@ function initApp() {
       emailBadge.textContent = data.user.email;
       roleBadge.textContent = data.user.role || 'Authorised';
       document.getElementById('bannerExecuteEmail').textContent = data.user.email;
+
+      // Settings protection (§11): strictly hide Settings nav for non-owner
+      var btnSettings = document.getElementById('btnTabSettings');
+      if (btnSettings) {
+        if (data.user.role !== 'System Owner') {
+          btnSettings.classList.add('hidden');
+        } else {
+          btnSettings.classList.remove('hidden');
+        }
+      }
     } else {
       emailBadge.textContent = 'Not signed in';
       roleBadge.textContent = 'Not authorised';
+    }
+
+    // Connection badge derived strictly from verified server response
+    var statusBadge = document.getElementById('configStatusBadge');
+    if (statusBadge) {
+      if (data.isConfigured) {
+        statusBadge.textContent = 'Connected';
+        statusBadge.className = 'font-bold text-emerald-400';
+      } else {
+        statusBadge.textContent = 'Configuration Needed';
+        statusBadge.className = 'font-bold text-amber-400';
+      }
     }
 
     populateTaxonomyDropdowns();
@@ -1202,6 +1544,13 @@ function reloadCurrentView() {
 // NAVIGATION
 // =============================================================
 function switchTab(tabId) {
+  // Enforce Owner role check before navigating to settings (§11)
+  if (tabId === 'settings' && AppState.currentUser && AppState.currentUser.role !== 'System Owner') {
+    showToast('error', 'Access Denied: System Settings are restricted to the System Owner.');
+    switchTab('dashboard');
+    return;
+  }
+
   AppState.currentTab = tabId;
 
   var tabs = ['dashboard', 'addVideo', 'library', 'units', 'settings'];
@@ -1261,18 +1610,44 @@ function populateTaxonomyDropdowns() {
   fillSelect('mcContentType', lists.marketingContentType, '— Select content type —');
   fillSelect('mcSpaceType', lists.spaceType, '— General / not specified —');
 
+  // Video Library filters
   fillSelect('filterStage', lists.projectVideoType, 'All stages');
   fillSelect('filterSpace', lists.spaceType, 'All spaces');
   fillSelect('filterWorkCat', lists.workCategory, 'All categories');
   fillSelect('filterLocation', lists.locations, 'All locations');
+  fillSelect('filterContentType', lists.marketingContentType, 'All marketing types');
+  fillSelect('filterUnitType', lists.unitType, 'All unit types');
 
+  // Modals selects
+  fillSelect('nuUnitType', lists.unitType, '— Select unit type —');
   fillSelect('ueUnitType', lists.unitType);
+
+  // Edit Video Metadata modal selects
+  fillSelect('emSpaceType', lists.spaceType, '— Select space type —');
+  fillSelect('emWorkCategory', lists.workCategory, '— Select work category —');
+  fillSelect('emContentType', lists.marketingContentType, '— Select content type —');
+  fillSelect('emMarketingSpaceType', lists.spaceType, '— General / not specified —');
+}
+
+function populateSelect(selectId, items, selectedVal) {
+  var el = document.getElementById(selectId);
+  if (!el) return;
+  el.innerHTML = '';
+  (items || []).forEach(function(item) {
+    var opt = document.createElement('option');
+    opt.value = item;
+    opt.textContent = item;
+    if (selectedVal && item === selectedVal) opt.selected = true;
+    el.appendChild(opt);
+  });
 }
 
 // =============================================================
 // DASHBOARD
 // =============================================================
 function loadDashboard(callback) {
+  var thisRequestId = ++AppState.dashboardRequestId;
+
   var filters = {
     dateFilterType: document.getElementById('dashDateType').value,
     startDate: document.getElementById('dashStartDate').value,
@@ -1280,6 +1655,7 @@ function loadDashboard(callback) {
   };
 
   callApi('apiGetDashboard', [filters], function(res) {
+    if (thisRequestId !== AppState.dashboardRequestId) return; // Stale discard (§9)
     if (callback) callback();
     if (!res.ok) {
       showToast('error', res.message);
@@ -1399,16 +1775,114 @@ function setAddSource(source) {
   }
 }
 
+// =============================================================
+// NEW UNIT MODAL WORKFLOW (§1)
+// =============================================================
+function openNewUnitModal() {
+  var form = document.getElementById('formNewUnit');
+  if (form) form.reset();
+  var resBox = document.getElementById('nuLocationResults');
+  if (resBox) resBox.classList.add('hidden');
+  openModal('modalNewUnit');
+  var firstInput = document.getElementById('nuClientName');
+  if (firstInput) firstInput.focus();
+}
+
+function closeNewUnitModal() {
+  closeModal('modalNewUnit');
+}
+
+function submitNewUnit(e) {
+  e.preventDefault();
+  var clientName = document.getElementById('nuClientName').value.trim();
+  var location = document.getElementById('nuLocation').value.trim();
+  var unitType = document.getElementById('nuUnitType').value;
+  var areaVal = document.getElementById('nuArea').value;
+
+  if (!clientName) {
+    showToast('error', 'Client name is required.');
+    return;
+  }
+  if (!location) {
+    showToast('error', 'Location is required.');
+    return;
+  }
+  if (!unitType) {
+    showToast('error', 'Unit type is required.');
+    return;
+  }
+
+  var btn = document.getElementById('btnSubmitNewUnit');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Creating…';
+
+  var payload = {
+    clientName: clientName,
+    location: location,
+    unitType: unitType,
+    area: areaVal ? parseFloat(areaVal) : ''
+  };
+
+  callApi('apiCreateUnit', [payload], function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> <span>Create Unit</span>';
+
+    if (!res.ok) {
+      showToast('error', res.message || 'Failed to create unit.');
+      // Keep form values preserved on failure (§1)
+      return;
+    }
+
+    var newUnit = res.data;
+    showToast('success', 'Unit created: ' + newUnit.clientName + ' (' + newUnit.unitId + ')');
+    closeNewUnitModal();
+
+    // Reload catalogue & unit lookups
+    loadUnitsCatalog();
+    callApi('apiGetAppBootstrapData', [], function(bRes) {
+      if (bRes.ok && bRes.data) {
+        AppState.unitLookups = bRes.data.unitLookups || bRes.data.units || [];
+      }
+    });
+
+    // Auto-select in Add Project Video if currently in existing unit mode
+    var isExistingMode = document.getElementById('unitModeExisting') && document.getElementById('unitModeExisting').checked;
+    if (isExistingMode) {
+      selectUnitForProjectVideo(newUnit);
+    }
+  });
+}
+
+// =============================================================
+// UNIT SELECTION INTEGRITY & ADD VIDEO (§7)
+// =============================================================
 function toggleUnitMode() {
   var isExisting = document.getElementById('unitModeExisting').checked;
   var searchContainer = document.getElementById('unitSelectContainer');
+  var badge = document.getElementById('pvUnitLockedBadge');
+
   if (isExisting) {
     searchContainer.classList.remove('hidden');
   } else {
     searchContainer.classList.add('hidden');
+    if (badge) badge.classList.add('hidden');
+
+    // Unlock inputs for new unit entry
+    ['pvClientName', 'pvLocation', 'pvUnitType', 'pvArea'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.readOnly = false;
+        el.disabled = false;
+        el.classList.remove('bg-slate-800/80', 'cursor-not-allowed', 'opacity-70');
+      }
+    });
+
     document.getElementById('pvSelectedUnitId').value = '';
+    document.getElementById('pvUnitSearch').value = '';
     document.getElementById('pvClientName').value = '';
     document.getElementById('pvLocation').value = '';
+    var ut = document.getElementById('pvUnitType');
+    if (ut) ut.selectedIndex = 0;
     document.getElementById('pvArea').value = '';
     updateProjectVideoPreview();
   }
@@ -1430,7 +1904,7 @@ function filterUnitSearch(query) {
 
   resultsBox.innerHTML = '';
   if (matches.length === 0) {
-    resultsBox.innerHTML = '<div class="autocomplete-item text-slate-500 text-center text-xs">No matching units. Switch to "New unit" to create one.</div>';
+    resultsBox.innerHTML = '<div class="autocomplete-item text-slate-500 text-center text-xs">No matching units. Click \'New Unit\' to create one.</div>';
     resultsBox.classList.remove('hidden');
     return;
   }
@@ -1443,7 +1917,7 @@ function filterUnitSearch(query) {
         '<strong class="text-white">' + escapeHtml(u.clientName) + '</strong>' +
         '<div class="text-[10px] text-slate-400">' + escapeHtml(u.location) + ' &bull; ' + escapeHtml(u.unitType) + '</div>' +
       '</div>' +
-      '<span class="font-mono-code text-[#DFBF7A] text-[10px]">' + u.unitId + '</span>';
+      '<span class="font-mono-code text-[#DFBF7A] text-[10px]">' + escapeHtml(u.unitId) + '</span>';
     div.onclick = function() {
       selectUnitForProjectVideo(u);
     };
@@ -1458,8 +1932,21 @@ function selectUnitForProjectVideo(unit) {
   document.getElementById('pvClientName').value = unit.clientName;
   document.getElementById('pvLocation').value = unit.location;
   document.getElementById('pvUnitType').value = unit.unitType;
-  if (unit.area) document.getElementById('pvArea').value = unit.area;
+  document.getElementById('pvArea').value = unit.area || '';
   document.getElementById('pvUnitSearchResults').classList.add('hidden');
+
+  // Prevent accidental editing of central metadata from Add Video (§7)
+  ['pvClientName', 'pvLocation', 'pvUnitType', 'pvArea'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.readOnly = true;
+      el.classList.add('bg-slate-800/80', 'cursor-not-allowed', 'opacity-70');
+    }
+  });
+
+  var badge = document.getElementById('pvUnitLockedBadge');
+  if (badge) badge.classList.remove('hidden');
+
   updateProjectVideoPreview();
 }
 
@@ -1482,7 +1969,9 @@ function filterLocationSearch(query, resultsId, targetInputId) {
     div.onclick = function() {
       document.getElementById(targetInputId).value = loc;
       box.classList.add('hidden');
-      updateProjectVideoPreview();
+      if (targetInputId === 'pvLocation') {
+        updateProjectVideoPreview();
+      }
     };
     box.appendChild(div);
   });
@@ -1508,31 +1997,25 @@ function updateProjectVideoPreview() {
   document.getElementById('pvGeneratedFilenamePreview').textContent = parts.join(' - ') + '.mp4';
 }
 
-function handleMarketingContentTypeChange() {
-  var type = document.getElementById('mcContentType').value;
-  var spaceContainer = document.getElementById('mcSpaceTypeContainer');
-  var spaceSelect = document.getElementById('mcSpaceType');
-
-  // Educational hides and clears Space Type (execution prompt §11 / §12)
-  if (type === 'Educational') {
-    spaceContainer.classList.add('hidden');
-    spaceSelect.value = '';
+function handleMarketingContentTypeChange(type) {
+  var spaceBox = document.getElementById('mcSpaceTypeContainer');
+  if (type === 'Construction Walkthrough' || type === 'Before / After') {
+    spaceBox.classList.remove('hidden');
   } else {
-    spaceContainer.classList.remove('hidden');
+    spaceBox.classList.add('hidden');
+    document.getElementById('mcSpaceType').value = '';
   }
   updateMarketingContentPreview();
 }
 
 function updateMarketingContentPreview() {
-  var type = document.getElementById('mcContentType').value.trim();
+  var cType = document.getElementById('mcContentType').value.trim();
   var topic = document.getElementById('mcTopic').value.trim();
   var space = document.getElementById('mcSpaceType').value.trim();
   var date = document.getElementById('mcShootingDate').value.trim();
 
-  if (type === 'Educational') space = '';
-
   var parts = [];
-  if (type) parts.push(type);
+  if (cType) parts.push(cType);
   if (topic) parts.push(topic);
   if (space) parts.push(space);
   if (date) parts.push(date);
@@ -1541,6 +2024,9 @@ function updateMarketingContentPreview() {
   document.getElementById('mcGeneratedFilenamePreview').textContent = parts.join(' - ') + '.mp4';
 }
 
+// =============================================================
+// SUBMIT FORMS & PDF HARDENING (§8)
+// =============================================================
 function submitProjectVideo(e) {
   e.preventDefault();
   if (!AppState.isBootstrapped) {
@@ -1560,7 +2046,7 @@ function submitProjectVideo(e) {
     area: document.getElementById('pvArea').value,
     projectVideoType: document.getElementById('pvProjectVideoType').value,
     spaceType: document.getElementById('pvSpaceType').value,
-    workCategory: document.getElementById('pvWorkCategory').value, // Decision A
+    workCategory: document.getElementById('pvWorkCategory').value,
     shootingDate: document.getElementById('pvShootingDate').value,
     versionNotes: document.getElementById('pvVersionNotes').value.trim()
   };
@@ -1568,11 +2054,38 @@ function submitProjectVideo(e) {
   var pdfFileInput = document.getElementById('pvPdfFileInput');
   if (pdfFileInput.files && pdfFileInput.files.length > 0) {
     var file = pdfFileInput.files[0];
+
+    // PDF extension validation (§8)
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      showToast('error', 'Only PDF files (.pdf) are allowed.');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>Save Video</span>';
+      return;
+    }
+
+    // PDF maximum 25MB check before Base64 conversion (§8)
+    if (file.size > 25 * 1024 * 1024) {
+      showToast('error', 'PDF file exceeds maximum allowed size of 25MB (' + (file.size / (1024 * 1024)).toFixed(1) + 'MB).');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>Save Video</span>';
+      return;
+    }
+
     var reader = new FileReader();
+    reader.onerror = function() {
+      showToast('error', 'Failed to read PDF file. Please try again.');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>Save Video</span>';
+    };
+    reader.onabort = function() {
+      showToast('error', 'PDF file reading was aborted.');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>Save Video</span>';
+    };
     reader.onload = function(evt) {
       payload.pdfFileBase64 = evt.target.result.split(',')[1];
       payload.pdfFileName = file.name;
-      payload.pdfDocumentTitle = document.getElementById('pvPdfTitle').value.trim();
+      payload.pdfDocumentTitle = document.getElementById('pvPdfTitle').value.trim() || file.name;
       executeSaveProjectVideo(payload, btn);
     };
     reader.readAsDataURL(file);
@@ -1588,6 +2101,7 @@ function executeSaveProjectVideo(payload, btn) {
 
     if (!res.ok) {
       showToast('error', res.message);
+      // Preserve form values on failure (§8)
       return;
     }
 
@@ -1636,42 +2150,112 @@ function submitMarketingContent(e) {
 }
 
 // =============================================================
-// VIDEO LIBRARY
+// VIDEO LIBRARY — SEARCH, FILTERS & PAGINATION (§6, §9, §10)
 // =============================================================
+var librarySearchTimeout = null;
 function debounceLibrarySearch() {
-  clearTimeout(AppState.debounceTimer);
-  AppState.debounceTimer = setTimeout(function() {
-    loadLibrary();
-  }, 300);
+  clearTimeout(librarySearchTimeout);
+  librarySearchTimeout = setTimeout(function() {
+    AppState.libraryPage = 1;
+    loadLibrary(1);
+  }, 350);
 }
 
-function loadLibrary(callback) {
+function resetLibraryPageAndLoad() {
+  AppState.libraryPage = 1;
+  loadLibrary(1);
+}
+
+function prevLibraryPage() {
+  if (AppState.libraryPage > 1) {
+    loadLibrary(AppState.libraryPage - 1);
+  }
+}
+
+function nextLibraryPage() {
+  if (AppState.libraryPage < AppState.libraryTotalPages) {
+    loadLibrary(AppState.libraryPage + 1);
+  }
+}
+
+function changeLibraryPageSize(newSize) {
+  var sz = parseInt(newSize, 10);
+  if (!isNaN(sz) && sz > 0) {
+    AppState.libraryPageSize = sz;
+    AppState.libraryPage = 1;
+    loadLibrary(1);
+  }
+}
+
+function loadLibrary(page, callback) {
+  if (typeof page === 'function') {
+    callback = page;
+    page = AppState.libraryPage || 1;
+  }
+  if (page) {
+    AppState.libraryPage = page;
+  }
+
+  // Request sequence token for stale response protection (§9)
+  var thisRequestId = ++AppState.searchRequestId;
+
+  var minArea = document.getElementById('filterAreaMin') ? document.getElementById('filterAreaMin').value : '';
+  var maxArea = document.getElementById('filterAreaMax') ? document.getElementById('filterAreaMax').value : '';
+
   var filters = {
     searchQuery: document.getElementById('filterSearch').value.trim(),
     videoSource: document.getElementById('filterSource').value,
+    contentType: document.getElementById('filterContentType').value,
     projectVideoType: document.getElementById('filterStage').value,
     spaceType: document.getElementById('filterSpace').value,
-    workCategory: document.getElementById('filterWorkCat').value, // Decision A
+    workCategory: document.getElementById('filterWorkCat').value,
     location: document.getElementById('filterLocation').value,
+    unitType: document.getElementById('filterUnitType').value,
+    areaMin: minArea !== '' ? parseFloat(minArea) : undefined,
+    areaMax: maxArea !== '' ? parseFloat(maxArea) : undefined,
     dateFilterType: document.getElementById('filterDateType').value,
     startDate: document.getElementById('filterStartDate').value,
     endDate: document.getElementById('filterEndDate').value,
-    includePreviousVersions: document.getElementById('filterIncludePrevious').checked
+    includePreviousVersions: document.getElementById('filterIncludePrevious').checked,
+    page: AppState.libraryPage || 1,
+    pageSize: AppState.libraryPageSize || 25
   };
 
   var tbody = document.getElementById('libraryTableBody');
-  tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-500">Loading videos and applying filters…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-500"><div class="loader-spinner !w-5 !h-5 inline-block mr-2 align-middle"></div> Loading videos and applying filters…</td></tr>';
 
   callApi('apiGetVideos', [filters], function(res) {
+    // Discard stale responses out of order (§9)
+    if (thisRequestId !== AppState.searchRequestId) {
+      return;
+    }
+
     if (callback) callback();
     if (!res.ok) {
       tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-rose-400">' + escapeHtml(res.message) + '</td></tr>';
       return;
     }
 
-    var videos = res.data || [];
+    var data = res.data || {};
+    var videos = Array.isArray(data) ? data : (data.items || []);
+    var totalCount = (typeof data.totalCount === 'number') ? data.totalCount : videos.length;
+    var totalPages = (typeof data.totalPages === 'number') ? data.totalPages : (Math.ceil(totalCount / (AppState.libraryPageSize || 25)) || 1);
+    var curPage = (typeof data.page === 'number') ? data.page : (AppState.libraryPage || 1);
+
     AppState.allVideos = videos;
-    document.getElementById('libraryResultsCount').textContent = videos.length;
+    AppState.libraryPage = curPage;
+    AppState.libraryTotalPages = totalPages;
+
+    var countEl = document.getElementById('libraryResultsCount');
+    if (countEl) countEl.textContent = totalCount;
+
+    var indEl = document.getElementById('libraryPageIndicator');
+    if (indEl) indEl.textContent = 'Page ' + curPage + ' of ' + totalPages + ' (' + totalCount + ' total)';
+
+    var prevBtn = document.getElementById('btnLibPrevPage');
+    if (prevBtn) prevBtn.disabled = (curPage <= 1);
+    var nextBtn = document.getElementById('btnLibNextPage');
+    if (nextBtn) nextBtn.disabled = (curPage >= totalPages);
 
     if (videos.length === 0) {
       tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-500">No videos match the current filters.</td></tr>';
@@ -1683,16 +2267,17 @@ function loadLibrary(callback) {
       var tr = document.createElement('tr');
       tr.className = 'hover:bg-slate-800/40 transition';
 
-      var isCur = v.isCurrentVersion;
+      var isCur = !!v.isCurrentVersion;
       var verChip = isCur
         ? '<span class="chip chip-current font-mono-code">' + escapeHtml(v.versionNumber) + ' &middot; Current</span>'
         : '<span class="chip chip-previous font-mono-code">' + escapeHtml(v.versionNumber) + ' &middot; Previous</span>';
 
-      var srcChip = v.videoSource === 'Project Video'
+      var srcChip = (v.videoSource === 'Project Video')
         ? '<span class="chip chip-project">Project</span>'
         : '<span class="chip chip-marketing">Marketing</span>';
 
-      var driveLink = v.videoLink || ('https://drive.google.com/file/d/' + v.driveFileId + '/view');
+      var fileId = (v.driveFileId && /^[a-zA-Z0-9_-]{20,}$/.test(v.driveFileId)) ? v.driveFileId : '';
+      var driveLink = fileId ? ('https://drive.google.com/file/d/' + encodeURIComponent(fileId) + '/view?usp=drivesdk') : '#';
 
       tr.innerHTML =
         '<td class="p-3.5 font-mono-code text-[#DFBF7A] font-bold">' + escapeHtml(v.videoNumber) + '</td>' +
@@ -1707,14 +2292,20 @@ function loadLibrary(callback) {
         '<td class="p-3.5 text-amber-300/90 font-semibold whitespace-nowrap">' + escapeHtml(v.workCategory || '—') + '</td>' +
         '<td class="p-3.5 font-num text-slate-400 whitespace-nowrap">' + escapeHtml(v.shootingDate || '—') + '</td>' +
         '<td class="p-3.5 text-center whitespace-nowrap">' +
-          '<div class="flex items-center justify-center gap-2">' +
-            '<a href="' + driveLink + '" target="_blank" rel="noopener" title="Open in Google Drive" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition">' +
+          '<div class="flex items-center justify-center gap-1.5">' +
+            (fileId ? ('<button type="button" class="btn-lib-preview p-1.5 rounded-lg bg-sky-500/15 text-sky-400 hover:bg-sky-500/30 transition" title="Preview video" data-file-id="' + escapeHtml(fileId) + '" data-title="' + escapeHtml(v.videoName || '') + '" aria-label="Preview video">' +
+              '<i class="fa-solid fa-play"></i>' +
+            '</button>') : '') +
+            (fileId ? ('<a href="' + driveLink + '" target="_blank" rel="noopener noreferrer" title="Open in Google Drive" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition" aria-label="Open in Google Drive">' +
               '<i class="fa-solid fa-arrow-up-right-from-square"></i>' +
-            '</a>' +
-            '<button onclick="openAddVersionModal(\'' + v.videoNumber + '\')" title="Add new version" class="p-1.5 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/30 transition">' +
+            '</a>') : '') +
+            '<button type="button" class="btn-lib-edit-meta p-1.5 rounded-lg bg-amber-500/15 text-[#DFBF7A] hover:bg-amber-500/30 transition" title="Edit metadata" data-video-number="' + escapeHtml(v.videoNumber) + '" data-file-id="' + escapeHtml(fileId) + '" aria-label="Edit metadata">' +
+              '<i class="fa-solid fa-pen-to-square"></i>' +
+            '</button>' +
+            '<button type="button" class="btn-lib-add-ver p-1.5 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/30 transition" title="Add new version" data-video-number="' + escapeHtml(v.videoNumber) + '" aria-label="Add new version">' +
               '<i class="fa-solid fa-code-branch"></i>' +
             '</button>' +
-            '<button onclick="openVersionHistoryModal(\'' + v.videoNumber + '\')" title="Version history" class="p-1.5 rounded-lg bg-amber-500/15 text-[#DFBF7A] hover:bg-amber-500/30 transition">' +
+            '<button type="button" class="btn-lib-ver-hist p-1.5 rounded-lg bg-purple-500/15 text-purple-300 hover:bg-purple-500/30 transition" title="Version history" data-video-number="' + escapeHtml(v.videoNumber) + '" aria-label="Version history">' +
               '<i class="fa-solid fa-clock-rotate-left"></i>' +
             '</button>' +
           '</div>' +
@@ -1728,50 +2319,335 @@ function loadLibrary(callback) {
 function resetLibraryFilters() {
   document.getElementById('filterSearch').value = '';
   document.getElementById('filterSource').value = '';
+  document.getElementById('filterContentType').value = '';
   document.getElementById('filterStage').value = '';
   document.getElementById('filterSpace').value = '';
   document.getElementById('filterWorkCat').value = '';
   document.getElementById('filterLocation').value = '';
+  document.getElementById('filterUnitType').value = '';
+  var aMin = document.getElementById('filterAreaMin');
+  if (aMin) aMin.value = '';
+  var aMax = document.getElementById('filterAreaMax');
+  if (aMax) aMax.value = '';
   document.getElementById('filterStartDate').value = '';
   document.getElementById('filterEndDate').value = '';
   document.getElementById('filterIncludePrevious').checked = false;
-  loadLibrary();
+  AppState.libraryPage = 1;
+  loadLibrary(1);
 }
 
 // =============================================================
-// ADD NEW VERSION MODAL
+// VIDEO PREVIEW MODAL (§5)
+// =============================================================
+function openVideoPreviewModal(driveFileId, videoTitle) {
+  if (!driveFileId || !/^[a-zA-Z0-9_-]{20,}$/.test(driveFileId)) {
+    showToast('error', 'Invalid Google Drive file ID for video preview.');
+    return;
+  }
+
+  var titleEl = document.getElementById('modalVideoPreviewTitle');
+  if (titleEl) titleEl.textContent = videoTitle || 'Video Preview';
+
+  var subEl = document.getElementById('vpFileIdSubtitle');
+  if (subEl) subEl.textContent = 'Drive File ID: ' + driveFileId;
+
+  var streamUrl = 'https://drive.google.com/file/d/' + encodeURIComponent(driveFileId) + '/preview';
+  var directUrl = 'https://drive.google.com/file/d/' + encodeURIComponent(driveFileId) + '/view?usp=drivesdk';
+
+  var directLink = document.getElementById('vpDirectDriveLink');
+  if (directLink) directLink.href = directUrl;
+
+  var spinner = document.getElementById('vpLoadingSpinner');
+  if (spinner) spinner.classList.remove('hidden');
+
+  var iframe = document.getElementById('vpIframe');
+  if (iframe) {
+    iframe.onload = function() {
+      if (spinner) spinner.classList.add('hidden');
+    };
+    iframe.src = streamUrl;
+  }
+
+  openModal('modalVideoPreview');
+}
+
+function closeVideoPreviewModal() {
+  var iframe = document.getElementById('vpIframe');
+  if (iframe) iframe.src = ''; // Halt media playback immediately
+  closeModal('modalVideoPreview');
+}
+
+// =============================================================
+// EDIT VIDEO METADATA MODAL (§4)
+// =============================================================
+function openEditVideoMetadataModal(videoNumber, optDriveFileId) {
+  if (!videoNumber) return;
+
+  function populateAndOpen(video) {
+    AppState.activeEditingVideo = video;
+    document.getElementById('emDriveFileId').value = video.driveFileId;
+    document.getElementById('emVideoNumber').value = video.videoNumber;
+    document.getElementById('emVersionNumber').value = video.versionNumber;
+    document.getElementById('emVideoSource').value = video.videoSource;
+
+    document.getElementById('modalEditMetaTitle').textContent = 'Edit Video Metadata — ' + video.videoNumber;
+    document.getElementById('emHeaderSubtitle').textContent = (video.videoSource || '') + ' (' + (video.versionNumber || 'V01') + ')';
+    document.getElementById('emCurrentFilename').textContent = video.videoName || '—';
+
+    var isProject = (video.videoSource === 'Project Video');
+    var projContainer = document.getElementById('emProjectFieldsContainer');
+    var mktContainer = document.getElementById('emMarketingFieldsContainer');
+
+    if (isProject) {
+      if (projContainer) projContainer.classList.remove('hidden');
+      if (mktContainer) mktContainer.classList.add('hidden');
+      var st = document.getElementById('emSpaceType');
+      if (st) st.value = video.spaceType || '';
+      var wc = document.getElementById('emWorkCategory');
+      if (wc) wc.value = video.workCategory || '';
+      var sd = document.getElementById('emShootingDate');
+      if (sd) sd.value = video.shootingDate || '';
+    } else {
+      if (projContainer) projContainer.classList.add('hidden');
+      if (mktContainer) mktContainer.classList.remove('hidden');
+      var ct = document.getElementById('emContentType');
+      if (ct) ct.value = video.contentType || '';
+      var tp = document.getElementById('emTopic');
+      if (tp) tp.value = video.topic || '';
+      var mst = document.getElementById('emMarketingSpaceType');
+      if (mst) mst.value = video.spaceType || '';
+      var msd = document.getElementById('emMarketingShootingDate');
+      if (msd) msd.value = video.shootingDate || '';
+    }
+
+    var chk = document.getElementById('emConfirmRename');
+    if (chk) chk.checked = false;
+
+    updateEditMetaPreview();
+    openModal('modalEditVideoMetadata');
+  }
+
+  // Check local AppState.allVideos first
+  var v = (AppState.allVideos || []).find(function(item) {
+    return optDriveFileId ? (item.driveFileId === optDriveFileId) : (item.videoNumber === videoNumber && item.isCurrentVersion);
+  });
+  if (v) {
+    populateAndOpen(v);
+    return;
+  }
+
+  // Fallback: Fetch complete version history from server
+  showGlobalLoading('Loading video metadata…');
+  callApi('apiGetVideoVersionHistory', [videoNumber], function(res) {
+    hideGlobalLoading();
+    if (!res.ok || !res.data) {
+      showToast('error', res.message || 'Could not load video metadata.');
+      return;
+    }
+    var list = Array.isArray(res.data) ? res.data : (res.data.versions || []);
+    if (list.length === 0) {
+      showToast('error', 'Video not found.');
+      return;
+    }
+    var target = (optDriveFileId ? list.find(function(item) { return item.driveFileId === optDriveFileId; }) : null) ||
+                 list.find(function(item) { return item.isCurrentVersion; }) ||
+                 list[0];
+    populateAndOpen(target);
+  });
+}
+
+function updateEditMetaPreview() {
+  var v = AppState.activeEditingVideo;
+  if (!v) return;
+
+  var isProject = (v.videoSource === 'Project Video');
+  var currentName = v.videoName || '';
+  var proposedName = '';
+
+  if (isProject) {
+    var client = v.clientName || '';
+    var loc = v.location || '';
+    var stage = v.projectVideoType || '';
+    var space = document.getElementById('emSpaceType').value;
+    var date = document.getElementById('emShootingDate').value;
+    var ver = v.versionNumber || 'V01';
+
+    var parts = [];
+    if (client) parts.push(client);
+    if (loc) parts.push(loc);
+    if (stage) parts.push(stage);
+    if (space) parts.push(space);
+    if (date) parts.push(date);
+    parts.push(ver);
+    proposedName = parts.join(' - ') + '.mp4';
+  } else {
+    var cType = document.getElementById('emContentType').value;
+    var topic = document.getElementById('emTopic').value.trim();
+    var mSpace = document.getElementById('emMarketingSpaceType').value;
+    var mDate = document.getElementById('emMarketingShootingDate').value;
+    var mVer = v.versionNumber || 'V01';
+
+    var mParts = [];
+    if (cType) mParts.push(cType);
+    if (topic) mParts.push(topic);
+    if (mSpace) mParts.push(mSpace);
+    if (mDate) mParts.push(mDate);
+    mParts.push(mVer);
+    proposedName = mParts.join(' - ') + '.mp4';
+  }
+
+  var propEl = document.getElementById('emProposedFilename');
+  if (propEl) propEl.textContent = proposedName;
+
+  var notice = document.getElementById('emRenameNotice');
+  var nameChanged = (currentName !== proposedName);
+  if (notice) {
+    if (nameChanged) {
+      notice.classList.remove('hidden');
+    } else {
+      notice.classList.add('hidden');
+    }
+  }
+}
+
+function closeEditVideoMetadataModal() {
+  closeModal('modalEditVideoMetadata');
+}
+
+function submitEditVideoMetadata(e) {
+  e.preventDefault();
+  var v = AppState.activeEditingVideo;
+  if (!v) return;
+
+  var driveFileId = document.getElementById('emDriveFileId').value;
+  var isProject = (v.videoSource === 'Project Video');
+  var currentName = v.videoName || '';
+  var proposedName = document.getElementById('emProposedFilename').textContent;
+  var nameChanged = (currentName !== proposedName);
+  var confirmRename = document.getElementById('emConfirmRename').checked;
+
+  if (nameChanged && !confirmRename) {
+    showToast('warning', 'Please authorize renaming the Google Drive file to proceed with metadata changes.');
+    return;
+  }
+
+  var updatedFields = {};
+  if (isProject) {
+    updatedFields.spaceType = document.getElementById('emSpaceType').value;
+    updatedFields.workCategory = document.getElementById('emWorkCategory').value;
+    updatedFields.shootingDate = document.getElementById('emShootingDate').value;
+  } else {
+    updatedFields.contentType = document.getElementById('emContentType').value;
+    updatedFields.topic = document.getElementById('emTopic').value.trim();
+    updatedFields.spaceType = document.getElementById('emMarketingSpaceType').value;
+    updatedFields.shootingDate = document.getElementById('emMarketingShootingDate').value;
+  }
+
+  var btn = document.getElementById('btnSubmitEditMetadata');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Saving…';
+
+  callApi('apiUpdateSingleVideoMetadata', [driveFileId, updatedFields, confirmRename], function(res) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span>Save Changes</span>';
+
+    if (!res.ok) {
+      showToast('error', res.message || 'Failed to update video metadata.');
+      return;
+    }
+
+    if (res.data && res.data.requiresRenameConfirmation) {
+      document.getElementById('emRenameNotice').classList.remove('hidden');
+      showToast('warning', res.data.message || 'Drive rename confirmation required.');
+      return;
+    }
+
+    showToast('success', 'Video metadata updated successfully.');
+    closeEditVideoMetadataModal();
+    loadLibrary(AppState.libraryPage || 1);
+    loadDashboard();
+  });
+}
+
+// =============================================================
+// ADD NEW VERSION MODAL (§3)
 // =============================================================
 function openAddVersionModal(videoNumber) {
+  if (!videoNumber) return;
+
+  function populateAndOpen(matching) {
+    var currentVer = matching.find(function(v) { return v.isCurrentVersion; }) || matching[0];
+    AppState.activeVideoForVersion = currentVer;
+
+    document.getElementById('mvVideoNumber').value = videoNumber;
+    document.getElementById('mvVideoHeader').textContent = 'Video ' + videoNumber + ' — ' + (currentVer.clientName || currentVer.topic || 'Video');
+    document.getElementById('mvVideoLink').value = '';
+    document.getElementById('mvVersionNotes').value = '';
+
+    var maxVer = 0;
+    matching.forEach(function(v) {
+      var match = String(v.versionNumber).match(/V?(\d+)/i);
+      if (match && match[1]) {
+        var n = parseInt(match[1], 10);
+        if (n > maxVer) maxVer = n;
+      }
+    });
+    var nextVerStr = 'V' + (maxVer + 1 < 10 ? '0' + (maxVer + 1) : String(maxVer + 1));
+    document.getElementById('mvTargetVersionBadge').textContent = nextVerStr;
+
+    updateVersionModalPreview();
+    openModal('modalAddVersion');
+  }
+
+  // 1. Try local AppState.allVideos
   var matching = (AppState.allVideos || []).filter(function(v) {
     return v.videoNumber === videoNumber;
   });
-  if (matching.length === 0) return;
 
-  var currentVer = matching.find(function(v) { return v.isCurrentVersion; }) || matching[0];
-  AppState.activeVideoForVersion = currentVer;
-
-  document.getElementById('mvVideoNumber').value = videoNumber;
-  document.getElementById('mvVideoHeader').textContent = 'Video ' + videoNumber + ' — ' + (currentVer.clientName || currentVer.topic);
-  document.getElementById('mvVideoLink').value = '';
-  document.getElementById('mvVersionNotes').value = '';
-
-  var maxVer = 0;
-  matching.forEach(function(v) {
-    var match = String(v.versionNumber).match(/V?(\d+)/i);
-    if (match && match[1]) {
-      var n = parseInt(match[1], 10);
-      if (n > maxVer) maxVer = n;
+  // 2. Try AppState.activeUnitDetail (when clicked from Unit Details without opening library)
+  if (matching.length === 0 && AppState.activeUnitDetail && AppState.activeUnitDetail.videos) {
+    var unitVid = AppState.activeUnitDetail.videos.find(function(uv) { return uv.videoNumber === videoNumber; });
+    if (unitVid) {
+      var cur = unitVid.currentVersion || (unitVid.versions && unitVid.versions[0]) || {};
+      matching = [{
+        videoNumber: unitVid.videoNumber,
+        versionNumber: cur.versionNumber || 'V01',
+        isCurrentVersion: true,
+        clientName: AppState.activeUnitDetail.unit.clientName,
+        location: AppState.activeUnitDetail.unit.location,
+        projectVideoType: unitVid.projectVideoType,
+        spaceType: unitVid.spaceType,
+        workCategory: unitVid.workCategory || '',
+        videoSource: 'Project Video',
+        shootingDate: cur.shootingDate || ''
+      }];
     }
-  });
-  var nextVerStr = 'V' + (maxVer + 1 < 10 ? '0' + (maxVer + 1) : String(maxVer + 1));
-  document.getElementById('mvTargetVersionBadge').textContent = nextVerStr;
+  }
 
-  updateVersionModalPreview();
-  document.getElementById('modalAddVersion').classList.remove('hidden');
+  // 3. Fallback: Fetch complete history from server (§3)
+  if (matching.length === 0) {
+    showGlobalLoading('Loading video details…');
+    callApi('apiGetVideoVersionHistory', [videoNumber], function(res) {
+      hideGlobalLoading();
+      if (!res.ok || !res.data) {
+        showToast('error', res.message || 'Could not load video details.');
+        return;
+      }
+      var list = Array.isArray(res.data) ? res.data : (res.data.versions || []);
+      if (list.length === 0) {
+        showToast('error', 'Video not found on server.');
+        return;
+      }
+      populateAndOpen(list);
+    });
+    return;
+  }
+
+  populateAndOpen(matching);
 }
 
 function closeAddVersionModal() {
-  document.getElementById('modalAddVersion').classList.add('hidden');
+  closeModal('modalAddVersion');
 }
 
 function updateVersionModalPreview() {
@@ -1779,7 +2655,7 @@ function updateVersionModalPreview() {
   if (!v) return;
 
   var nextVer = document.getElementById('mvTargetVersionBadge').textContent;
-  var isProject = v.videoSource === 'Project Video';
+  var isProject = (v.videoSource === 'Project Video');
 
   var parts = [];
   if (isProject) {
@@ -1824,68 +2700,83 @@ function submitAddVersion(e) {
     showToast('success', 'New version saved: ' + res.data.videoName);
     closeAddVersionModal();
     loadDashboard();
-    loadLibrary();
+    loadLibrary(AppState.libraryPage || 1);
   });
 }
 
 // =============================================================
-// VERSION HISTORY MODAL
+// COMPLETE VERSION HISTORY MODAL (§2, §3)
 // =============================================================
 function openVersionHistoryModal(videoNumber) {
-  var matching = (AppState.allVideos || []).filter(function(v) {
-    return v.videoNumber === videoNumber;
-  });
-  if (matching.length === 0) return;
+  if (!videoNumber) return;
 
-  document.getElementById('vhVideoTitle').textContent = 'Video ' + videoNumber + ' — ' + (matching[0].clientName || matching[0].topic);
+  showGlobalLoading('Loading version history…');
+  callApi('apiGetVideoVersionHistory', [videoNumber], function(res) {
+    hideGlobalLoading();
+    if (!res.ok) {
+      showToast('error', res.message || 'Failed to load version history.');
+      return;
+    }
 
-  matching.sort(function(a, b) {
-    var vA = parseInt(String(a.versionNumber).replace(/\D/g, ''), 10) || 0;
-    var vB = parseInt(String(b.versionNumber).replace(/\D/g, ''), 10) || 0;
-    return vB - vA;
-  });
+    var versions = Array.isArray(res.data) ? res.data : ((res.data && res.data.versions) || []);
+    if (versions.length === 0) {
+      showToast('info', 'No versions found for Video ' + videoNumber);
+      return;
+    }
 
-  var container = document.getElementById('vhVersionsList');
-  container.innerHTML = '';
+    var title = 'Video ' + videoNumber + ' — ' + (versions[0].clientName || versions[0].topic || 'History');
+    document.getElementById('vhVideoTitle').textContent = title;
 
-  matching.forEach(function(ver) {
-    var isCur = ver.isCurrentVersion;
-    var div = document.createElement('div');
-    div.className = 'p-3.5 rounded-xl ' + (isCur ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-[#081120] border border-slate-800') + ' space-y-2';
+    var container = document.getElementById('vhVersionsList');
+    container.innerHTML = '';
 
-    var driveLink = ver.videoLink || ('https://drive.google.com/file/d/' + ver.driveFileId + '/view');
+    versions.forEach(function(ver) {
+      var isCur = !!ver.isCurrentVersion;
+      var div = document.createElement('div');
+      div.className = 'p-3.5 rounded-xl ' + (isCur ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-[#081120] border border-slate-800') + ' space-y-2';
 
-    div.innerHTML =
-      '<div class="flex items-center justify-between">' +
-        '<div class="flex items-center gap-2">' +
-          '<span class="font-mono-code font-bold text-sm ' + (isCur ? 'text-emerald-400' : 'text-slate-300') + '">' + escapeHtml(ver.versionNumber) + '</span>' +
-          (isCur ? '<span class="chip chip-current">Current</span>' : '<span class="chip chip-previous">Previous</span>') +
+      var fileId = (ver.driveFileId && /^[a-zA-Z0-9_-]{20,}$/.test(ver.driveFileId)) ? ver.driveFileId : '';
+      var driveLink = fileId ? ('https://drive.google.com/file/d/' + encodeURIComponent(fileId) + '/view?usp=drivesdk') : '#';
+
+      div.innerHTML =
+        '<div class="flex items-center justify-between">' +
+          '<div class="flex items-center gap-2">' +
+            '<span class="font-mono-code font-bold text-sm ' + (isCur ? 'text-emerald-400' : 'text-slate-300') + '">' + escapeHtml(ver.versionNumber) + '</span>' +
+            (isCur ? '<span class="chip chip-current">Current</span>' : '<span class="chip chip-previous">Previous</span>') +
+          '</div>' +
+          '<div class="flex items-center gap-2">' +
+            (fileId ? ('<button type="button" class="btn-action-preview text-xs text-sky-400 hover:text-sky-300 font-bold flex items-center gap-1" data-file-id="' + escapeHtml(fileId) + '" data-title="' + escapeHtml(ver.videoName || '') + '">' +
+              '<i class="fa-solid fa-play text-[10px]"></i> <span>Preview</span>' +
+            '</button>') : '') +
+            (fileId ? ('<a href="' + driveLink + '" target="_blank" rel="noopener noreferrer" class="text-xs text-[#DFBF7A] hover:underline font-bold flex items-center gap-1">' +
+              '<span>Drive</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>' +
+            '</a>') : '') +
+          '</div>' +
         '</div>' +
-        '<a href="' + driveLink + '" target="_blank" rel="noopener" class="text-xs text-[#DFBF7A] hover:underline font-bold flex items-center gap-1">' +
-          '<span>Open in Drive</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>' +
-        '</a>' +
-      '</div>' +
-      '<div class="text-xs font-mono-code text-white break-all">' + escapeHtml(ver.videoName) + '</div>' +
-      '<div class="text-[11px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800/60">' +
-        '<span>' + escapeHtml(ver.versionNotes || 'No notes') + '</span>' +
-        '<span class="font-num">' + escapeHtml(ver.addedDate || '') + '</span>' +
-      '</div>';
+        '<div class="text-xs font-mono-code text-white break-all">' + escapeHtml(ver.videoName || '') + '</div>' +
+        '<div class="text-[11px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800/60">' +
+          '<span>' + escapeHtml(ver.versionNotes || 'No notes') + '</span>' +
+          '<span class="font-num">' + escapeHtml(ver.addedDate || '') + '</span>' +
+        '</div>';
 
-    container.appendChild(div);
+      container.appendChild(div);
+    });
+
+    openModal('modalVersionHistory');
   });
-
-  document.getElementById('modalVersionHistory').classList.remove('hidden');
 }
 
 function closeVersionHistoryModal() {
-  document.getElementById('modalVersionHistory').classList.add('hidden');
+  closeModal('modalVersionHistory');
 }
 
 // =============================================================
-// UNITS & DESIGN PDFS (Decision C — propagation & batch rename)
+// UNITS & DESIGN PDFS CATALOG (§9, §10)
 // =============================================================
 function loadUnitsCatalog(callback) {
+  var thisRequestId = ++AppState.unitsRequestId;
   callApi('apiGetUnits', [], function(res) {
+    if (thisRequestId !== AppState.unitsRequestId) return;
     if (callback) callback();
     if (!res.ok) {
       showToast('error', res.message);
@@ -1903,39 +2794,46 @@ function renderUnitsCatalog(units) {
   grid.innerHTML = '';
 
   if (units.length === 0) {
-    grid.innerHTML = '<div class="col-span-full p-8 text-center text-slate-500">No units on file yet.</div>';
+    grid.innerHTML = '<div class="col-span-full p-8 text-center text-slate-500">No units on file yet. Click \'Create New Unit\' to add one.</div>';
     return;
   }
 
   units.forEach(function(u) {
     var card = document.createElement('div');
-    card.className = 'gold-card interactive p-5 space-y-4 flex flex-col justify-between';
+    card.className = 'gold-card p-4 space-y-3 flex flex-col justify-between hover:border-amber-500/40 transition cursor-pointer';
+    card.onclick = function(e) {
+      // Prevent opening detail if an inner action button was clicked
+      if (e.target.closest('button') || e.target.closest('a')) return;
+      openUnitDetail(u.unitId);
+    };
+
     card.innerHTML =
-      '<div>' +
-        '<div class="flex items-center justify-between mb-2">' +
-          '<span class="text-xs font-mono-code font-bold text-[#DFBF7A] px-2 py-0.5 rounded bg-[#081120] border border-amber-500/20">' + u.unitId + '</span>' +
-          '<span class="text-xs text-slate-400">' + escapeHtml(u.unitType) + '</span>' +
+      '<div class="space-y-1.5">' +
+        '<div class="flex items-center justify-between">' +
+          '<span class="font-mono-code text-[#DFBF7A] text-xs font-bold">' + escapeHtml(u.unitId) + '</span>' +
+          '<span class="chip chip-project">' + escapeHtml(u.unitType) + '</span>' +
         '</div>' +
-        '<h3 class="text-base font-bold text-white mb-1">' + escapeHtml(u.clientName) + '</h3>' +
-        '<div class="text-xs text-slate-400 flex items-center gap-2">' +
-          '<span><i class="fa-solid fa-location-dot text-[#DFBF7A] text-[10px]"></i> ' + escapeHtml(u.location) + '</span>' +
-          (u.area ? '<span>&bull; ' + u.area + ' sqm</span>' : '') +
+        '<h4 class="text-sm font-bold text-white">' + escapeHtml(u.clientName) + '</h4>' +
+        '<div class="text-xs text-slate-400 flex items-center gap-1">' +
+          '<i class="fa-solid fa-location-dot text-slate-500"></i>' +
+          '<span>' + escapeHtml(u.location) + '</span>' +
+          (u.area ? (' &bull; <span class="font-num">' + escapeHtml(String(u.area)) + ' sqm</span>') : '') +
         '</div>' +
       '</div>' +
-      '<div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">' +
-        '<div class="flex items-center gap-3 text-slate-300">' +
-          '<span title="Linked videos"><i class="fa-solid fa-film text-[#DFBF7A] mr-1"></i> ' + u.videoCount + '</span>' +
-          '<span title="Design PDFs"><i class="fa-solid fa-file-pdf text-rose-400 mr-1"></i> ' + u.pdfCount + '</span>' +
-        '</div>' +
-        '<button onclick="openUnitDetail(\'' + u.unitId + '\')" class="text-xs font-bold text-[#DFBF7A] hover:underline flex items-center gap-1">' +
-          '<span>Details</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>' +
+      '<div class="flex items-center justify-between pt-2 border-t border-slate-800 text-[11px] text-slate-400">' +
+        '<span><strong class="text-white font-num">' + (u.videoCount || 0) + '</strong> videos</span>' +
+        '<span><strong class="text-white font-num">' + (u.pdfCount || 0) + '</strong> PDFs</span>' +
+        '<button type="button" class="text-xs text-[#DFBF7A] font-bold hover:underline" aria-label="Open unit detail">' +
+          '<span>View</span> <i class="fa-solid fa-chevron-right text-[10px]"></i>' +
         '</button>' +
       '</div>';
+
     grid.appendChild(card);
   });
 }
 
 function filterUnitsCatalog(query) {
+  if (!AppState.allUnits) return;
   if (!query || query.trim().length === 0) {
     renderUnitsCatalog(AppState.allUnits);
     return;
@@ -1944,7 +2842,8 @@ function filterUnitsCatalog(query) {
   var filtered = AppState.allUnits.filter(function(u) {
     return (u.clientName && u.clientName.toLowerCase().indexOf(q) !== -1) ||
            (u.unitId && u.unitId.toLowerCase().indexOf(q) !== -1) ||
-           (u.location && u.location.toLowerCase().indexOf(q) !== -1);
+           (u.location && u.location.toLowerCase().indexOf(q) !== -1) ||
+           (u.unitType && u.unitType.toLowerCase().indexOf(q) !== -1);
   });
   renderUnitsCatalog(filtered);
 }
@@ -1979,19 +2878,22 @@ function openUnitDetail(unitId) {
       detail.videos.forEach(function(v) {
         var vDiv = document.createElement('div');
         vDiv.className = 'p-2.5 rounded-xl bg-[#081120] border border-slate-800 text-xs flex items-center justify-between';
-        var curVer = v.currentVersion || (v.versions[0] || {});
+        var curVer = v.currentVersion || (v.versions && v.versions[0]) || {};
+        var fileId = (curVer.driveFileId && /^[a-zA-Z0-9_-]{20,}$/.test(curVer.driveFileId)) ? curVer.driveFileId : '';
+
         vDiv.innerHTML =
           '<div>' +
             '<div class="flex items-center gap-2">' +
-              '<span class="font-mono-code text-[#DFBF7A] font-bold">Video ' + v.videoNumber + '</span>' +
-              '<span class="chip chip-current">' + curVer.versionNumber + '</span>' +
-              '<span class="text-slate-300 font-semibold">' + escapeHtml(v.projectVideoType) + ' (' + escapeHtml(v.spaceType) + ')</span>' +
+              '<span class="font-mono-code text-[#DFBF7A] font-bold">Video ' + escapeHtml(v.videoNumber) + '</span>' +
+              '<span class="chip chip-current">' + escapeHtml(curVer.versionNumber || 'V01') + '</span>' +
+              '<span class="text-slate-300 font-semibold">' + escapeHtml(v.projectVideoType || '') + ' (' + escapeHtml(v.spaceType || '') + ')</span>' +
             '</div>' +
-            '<div class="text-[10px] font-mono-code text-slate-400 mt-0.5 truncate max-w-sm">' + escapeHtml(curVer.videoName) + '</div>' +
+            '<div class="text-[10px] font-mono-code text-slate-400 mt-0.5 truncate max-w-sm">' + escapeHtml(curVer.videoName || '') + '</div>' +
           '</div>' +
           '<div class="flex items-center gap-2">' +
-            '<button onclick="openAddVersionModal(\'' + v.videoNumber + '\')" class="p-1 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-xs" title="Add version"><i class="fa-solid fa-code-branch"></i></button>' +
-            '<button onclick="openVersionHistoryModal(\'' + v.videoNumber + '\')" class="p-1 rounded bg-amber-500/20 text-[#DFBF7A] hover:bg-amber-500/30 text-xs" title="Version history"><i class="fa-solid fa-clock-rotate-left"></i></button>' +
+            (fileId ? ('<button type="button" class="btn-ud-preview p-1 rounded bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 text-xs" data-file-id="' + escapeHtml(fileId) + '" data-title="' + escapeHtml(curVer.videoName || '') + '" title="Preview video" aria-label="Preview video"><i class="fa-solid fa-play"></i></button>') : '') +
+            '<button type="button" class="btn-ud-add-ver p-1 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-xs" data-video-number="' + escapeHtml(v.videoNumber) + '" title="Add version" aria-label="Add version"><i class="fa-solid fa-code-branch"></i></button>' +
+            '<button type="button" class="btn-ud-ver-hist p-1 rounded bg-amber-500/20 text-[#DFBF7A] hover:bg-amber-500/30 text-xs" data-video-number="' + escapeHtml(v.videoNumber) + '" title="Version history" aria-label="Version history"><i class="fa-solid fa-clock-rotate-left"></i></button>' +
           '</div>';
         vContainer.appendChild(vDiv);
       });
@@ -2003,142 +2905,130 @@ function openUnitDetail(unitId) {
       pContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-2">No design PDFs for this unit yet.</div>';
     } else {
       detail.pdfs.forEach(function(pdf) {
-        var isCur = pdf.isCurrentVersion;
+        var isCur = !!pdf.isCurrentVersion;
         var pDiv = document.createElement('div');
         pDiv.className = 'p-2.5 rounded-xl ' + (isCur ? 'bg-rose-500/10 border border-rose-500/30' : 'bg-[#081120] border border-slate-800') + ' text-xs flex items-center justify-between';
-        var pdfLink = pdf.pdfLink || ('https://drive.google.com/file/d/' + pdf.driveFileId + '/view');
+        var pdfFileId = (pdf.driveFileId && /^[a-zA-Z0-9_-]{20,}$/.test(pdf.driveFileId)) ? pdf.driveFileId : '';
+        var pdfLink = pdfFileId ? ('https://drive.google.com/file/d/' + encodeURIComponent(pdfFileId) + '/view?usp=drivesdk') : '#';
+
         pDiv.innerHTML =
           '<div>' +
             '<div class="flex items-center gap-2">' +
               '<i class="fa-solid fa-file-pdf text-rose-400"></i>' +
               '<span class="font-bold text-white">' + escapeHtml(pdf.documentTitle) + '</span>' +
-              '<span class="font-mono-code text-[10px] px-1.5 py-0.5 rounded ' + (isCur ? 'chip-current' : 'chip-previous') + ' chip">' + pdf.pdfVersionNumber + '</span>' +
+              '<span class="font-mono-code text-[10px] px-1.5 py-0.5 rounded ' + (isCur ? 'chip-current' : 'chip-previous') + ' chip">' + escapeHtml(pdf.pdfVersionNumber || 'V01') + '</span>' +
             '</div>' +
             '<div class="text-[10px] text-slate-400 mt-0.5">' + escapeHtml(pdf.versionNotes || '') + ' &bull; ' + escapeHtml(pdf.addedDate || '') + '</div>' +
           '</div>' +
-          '<a href="' + pdfLink + '" target="_blank" rel="noopener" class="text-xs text-rose-400 hover:underline font-bold flex items-center gap-1">' +
+          (pdfFileId ? ('<a href="' + pdfLink + '" target="_blank" rel="noopener noreferrer" class="text-xs text-rose-400 hover:underline font-bold flex items-center gap-1">' +
             '<span>View PDF</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>' +
-          '</a>';
+          '</a>') : '');
         pContainer.appendChild(pDiv);
       });
     }
 
-    document.getElementById('modalUnitDetail').classList.remove('hidden');
+    openModal('modalUnitDetail');
   });
 }
 
 function closeUnitDetailModal() {
-  document.getElementById('modalUnitDetail').classList.add('hidden');
+  closeModal('modalUnitDetail');
 }
 
 function toggleUnitEditMode() {
   document.getElementById('unitEditFormContainer').classList.toggle('hidden');
 }
 
-/**
- * Saves a Unit master-record edit. Per Decision C (execution prompt §2.3):
- * the server propagates the corrected fields to every linked Video Versions
- * / Unit Design PDFs row, and if that changes any generated filename it
- * returns requiresBatchRename + proposedRenames instead of renaming
- * anything on Drive — the batch confirmation screen decides from there.
- */
-function saveUnitMasterEdit() {
+function saveUnitMasterEdit(e) {
+  e.preventDefault();
   var detail = AppState.activeUnitDetail;
   if (!detail) return;
 
-  var unitId = detail.unit.unitId;
-  var updatedFields = {
-    clientName: document.getElementById('ueClientName').value.trim(),
-    location: document.getElementById('ueLocation').value.trim(),
-    unitType: document.getElementById('ueUnitType').value,
-    area: document.getElementById('ueArea').value
+  var currentUnit = detail.unit;
+  var newClient = document.getElementById('ueClientName').value.trim();
+  var newLoc = document.getElementById('ueLocation').value.trim();
+  var newType = document.getElementById('ueUnitType').value;
+  var newArea = document.getElementById('ueArea').value;
+
+  var clientChanged = (newClient !== currentUnit.clientName);
+  var locChanged = (newLoc !== currentUnit.location);
+
+  var fields = {
+    clientName: newClient,
+    location: newLoc,
+    unitType: newType,
+    area: newArea ? parseFloat(newArea) : ''
   };
 
-  showGlobalLoading('Updating unit and propagating changes…');
-  callApi('apiUpdateUnit', [unitId, updatedFields, false], function(res) {
-    hideGlobalLoading();
-    if (!res.ok) {
-      showToast('error', res.message);
-      return;
-    }
-
-    var data = res.data;
-    if (data.requiresBatchRename && data.proposedRenames && data.proposedRenames.length > 0) {
-      AppState.pendingBatchRename = { unitId: unitId, fields: updatedFields, renames: data.proposedRenames };
-      showBatchRenameModal(data.proposedRenames);
-    } else {
-      showToast('success', data.message || 'Unit updated successfully.');
-      toggleUnitEditMode();
-      openUnitDetail(unitId);
-      loadUnitsCatalog();
-      loadDashboard();
-    }
-  });
-}
-
-// =============================================================
-// BATCH RENAME MODAL (Decision C — execution prompt §2.3)
-// =============================================================
-function showBatchRenameModal(proposedList) {
-  var container = document.getElementById('batchRenameItemsList');
-  container.innerHTML = '';
-
-  proposedList.forEach(function(item) {
-    var div = document.createElement('div');
-    div.className = 'p-3 rounded-lg bg-[#070D18] border border-slate-800 space-y-1.5';
-    div.innerHTML =
-      '<div class="flex items-center justify-between text-[11px]">' +
-        '<span class="font-bold text-[#DFBF7A]">' + escapeHtml(item.entityType) + ' (' + escapeHtml(item.entityId) + ')</span>' +
-        '<span class="font-mono-code text-slate-500 text-[10px]">Drive file: ' + escapeHtml(item.fileId) + '</span>' +
-      '</div>' +
-      '<div class="text-[11px] text-rose-400/90 font-mono-code truncate line-through">Current: ' + escapeHtml(item.currentName) + '</div>' +
-      '<div class="text-[11px] text-emerald-400 font-mono-code font-bold">Proposed: ' + escapeHtml(item.proposedName) + '</div>';
-    container.appendChild(div);
-  });
-
-  document.getElementById('modalBatchRename').classList.remove('hidden');
-}
-
-function cancelBatchRename() {
-  document.getElementById('modalBatchRename').classList.add('hidden');
-  AppState.pendingBatchRename = null;
-  showToast('info', 'Kept the current Drive filenames — sheet metadata is already updated.');
-  if (AppState.activeUnitDetail) {
-    openUnitDetail(AppState.activeUnitDetail.unit.unitId);
+  if ((clientChanged || locChanged) && detail.videos && detail.videos.length > 0) {
+    showBatchRenameModal(currentUnit, fields, detail.videos);
+  } else {
+    executeSaveUnitEdit(currentUnit.unitId, fields, false);
   }
 }
 
-function confirmBatchRename() {
-  var pending = AppState.pendingBatchRename;
-  if (!pending) return;
-
-  var btn = document.getElementById('btnConfirmBatchRename');
+function executeSaveUnitEdit(unitId, fields, executeBatchRename) {
+  var btn = document.getElementById('btnSaveUnitEdit');
   btn.disabled = true;
-  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Renaming files on Drive…';
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Saving…';
 
-  callApi('apiUpdateUnit', [pending.unitId, pending.fields, true], function(res) {
+  callApi('apiUpdateUnit', [unitId, fields, executeBatchRename], function(res) {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-check"></i> <span>Confirm &amp; Rename All</span>';
-    document.getElementById('modalBatchRename').classList.add('hidden');
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span>Save Changes</span>';
 
     if (!res.ok) {
       showToast('error', res.message);
       return;
     }
 
-    showToast('success', res.data.message || 'Files renamed and logged to the Audit Log.');
-    AppState.pendingBatchRename = null;
-    if (AppState.activeUnitDetail) {
-      openUnitDetail(AppState.activeUnitDetail.unit.unitId);
-    }
-    loadLibrary();
+    showToast('success', 'Unit updated successfully.');
+    document.getElementById('unitEditFormContainer').classList.add('hidden');
+    openUnitDetail(unitId);
+    loadUnitsCatalog();
     loadDashboard();
   });
 }
 
-// =============================================================
-// UPLOAD DESIGN PDF MODAL
-// =============================================================
+function showBatchRenameModal(currentUnit, updatedFields, videos) {
+  AppState.pendingUnitEdit = {
+    unitId: currentUnit.unitId,
+    fields: updatedFields
+  };
+
+  var tableBody = document.getElementById('brVideosTableBody');
+  tableBody.innerHTML = '';
+
+  videos.forEach(function(v) {
+    var curVer = v.currentVersion || (v.versions && v.versions[0]) || {};
+    var oldName = curVer.videoName || 'Old Name';
+    var newName = oldName
+      .replace(currentUnit.clientName, updatedFields.clientName)
+      .replace(currentUnit.location, updatedFields.location);
+
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="p-2 font-mono-code text-[#DFBF7A]">' + escapeHtml(v.videoNumber) + '</td>' +
+      '<td class="p-2 font-mono-code text-slate-400 line-through">' + escapeHtml(oldName) + '</td>' +
+      '<td class="p-2 font-mono-code text-emerald-400 font-bold">' + escapeHtml(newName) + '</td>';
+    tableBody.appendChild(tr);
+  });
+
+  openModal('modalBatchRename');
+}
+
+function cancelBatchRename() {
+  closeModal('modalBatchRename');
+  AppState.pendingUnitEdit = null;
+}
+
+function confirmBatchRename() {
+  if (!AppState.pendingUnitEdit) return;
+  var pe = AppState.pendingUnitEdit;
+  closeModal('modalBatchRename');
+  executeSaveUnitEdit(pe.unitId, pe.fields, true);
+  AppState.pendingUnitEdit = null;
+}
+
 function openUploadPdfModalForCurrentUnit() {
   var detail = AppState.activeUnitDetail;
   if (!detail) return;
@@ -2149,11 +3039,11 @@ function openUploadPdfModalForCurrentUnit() {
   document.getElementById('upVersionNotes').value = '';
   document.getElementById('upPdfFile').value = '';
 
-  document.getElementById('modalUploadPdf').classList.remove('hidden');
+  openModal('modalUploadPdf');
 }
 
 function closeUploadPdfModal() {
-  document.getElementById('modalUploadPdf').classList.add('hidden');
+  closeModal('modalUploadPdf');
 }
 
 function submitUploadPdf(e) {
@@ -2165,11 +3055,34 @@ function submitUploadPdf(e) {
   }
 
   var file = fileInput.files[0];
+
+  // Extension check (§8)
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
+    showToast('error', 'Only PDF files (.pdf) are allowed.');
+    return;
+  }
+
+  // 25MB check (§8)
+  if (file.size > 25 * 1024 * 1024) {
+    showToast('error', 'PDF file exceeds maximum allowed size of 25MB (' + (file.size / (1024 * 1024)).toFixed(1) + 'MB).');
+    return;
+  }
+
   var btn = document.getElementById('btnSubmitUploadPdf');
   btn.disabled = true;
   btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Uploading…';
 
   var reader = new FileReader();
+  reader.onerror = function() {
+    showToast('error', 'Failed to read PDF file. Please try again.');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-upload"></i> <span>Upload &amp; Archive</span>';
+  };
+  reader.onabort = function() {
+    showToast('error', 'PDF file reading was aborted.');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-upload"></i> <span>Upload &amp; Archive</span>';
+  };
   reader.onload = function(evt) {
     var payload = {
       unitId: document.getElementById('upUnitId').value,
@@ -2185,10 +3098,15 @@ function submitUploadPdf(e) {
 
       if (!res.ok) {
         showToast('error', res.message);
+        // Form preserved on failure (§8)
         return;
       }
 
-      showToast('success', 'Design PDF uploaded successfully.');
+      var successMsg = (res.data && res.data.versionNumber)
+        ? ('Design PDF uploaded as ' + res.data.versionNumber + '.')
+        : 'Design PDF uploaded as next version.';
+      showToast('success', successMsg);
+
       closeUploadPdfModal();
       if (AppState.activeUnitDetail) {
         openUnitDetail(AppState.activeUnitDetail.unit.unitId);
@@ -2201,9 +3119,15 @@ function submitUploadPdf(e) {
 }
 
 // =============================================================
-// SETTINGS
+// SETTINGS & SYSTEM AUDIT (§11)
 // =============================================================
 function loadSettings(callback) {
+  if (!AppState.currentUser || AppState.currentUser.role !== 'System Owner') {
+    showToast('error', 'Access restricted: Settings and system configuration are restricted to System Owners.');
+    switchTab('dashboard');
+    return;
+  }
+
   callApi('apiGetSystemConfig', [], function(res) {
     if (callback) callback();
     if (!res.ok) {
@@ -2233,7 +3157,12 @@ function loadSettings(callback) {
 }
 
 function triggerSystemSetup() {
-  if (!confirm('Run setup / re-check now? This is safe — it never deletes or duplicates existing data.')) {
+  var confirmMsg = 'Run system setup / re-check now?\n\n' +
+    'This operation will verify and if missing, create standard spreadsheet sheets (Videos, Units, Design_PDFs, Lists, Audit_Log), ' +
+    'set up required folder structures on Google Drive, and initialize baseline configuration properties.\n\n' +
+    'Do you authorize executing system setup?';
+
+  if (!confirm(confirmMsg)) {
     return;
   }
 
@@ -2260,58 +3189,63 @@ function triggerSystemSetup() {
 // UNIVERSAL API CALL & FEEDBACK HELPERS
 // =============================================================
 function callApi(fnName, args, callback) {
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    var runner = google.script.run
-      .withSuccessHandler(function(response) { callback(response); })
-      .withFailureHandler(function(err) { callback({ ok: false, message: err.message || err.toString() }); });
-
-    runner[fnName].apply(runner, args);
-  } else if (window._localMockDispatcher) {
+  if (window._localMockDispatcher) {
     window._localMockDispatcher(fnName, args, callback);
-  } else {
-    callback({ ok: false, message: 'Google Apps Script API runner unavailable.' });
+    return;
   }
+
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    callback({ ok: false, message: 'Google Apps Script environment not available.' });
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(function(response) {
+      callback(response);
+    })
+    .withFailureHandler(function(error) {
+      callback({ ok: false, message: error.message || error.toString() });
+    })[fnName].apply(google.script.run, args || []);
 }
 
 function showToast(type, message) {
   var container = document.getElementById('toastContainer');
-  if (!container) return;
-
   var toast = document.createElement('div');
-  var bgClass = type === 'error' ? 'bg-rose-950/95 border-rose-500 text-rose-200' :
-                type === 'info' ? 'bg-sky-950/95 border-sky-500 text-sky-200' :
-                'bg-[#0B1528]/95 border-amber-500 text-amber-200';
-  var iconClass = type === 'error' ? 'fa-circle-xmark text-rose-400' :
-                  type === 'info' ? 'fa-circle-info text-sky-400' :
-                  'fa-circle-check text-emerald-400';
+  toast.className = 'toast toast-' + type;
 
-  toast.className = 'p-3.5 rounded-xl border shadow-xl backdrop-blur-md text-xs font-bold flex items-start gap-3 transition duration-300 pointer-events-auto ' + bgClass;
+  var iconClass = 'fa-circle-info';
+  if (type === 'success') iconClass = 'fa-circle-check';
+  else if (type === 'error') iconClass = 'fa-circle-exclamation';
+  else if (type === 'warning') iconClass = 'fa-triangle-exclamation';
+
   toast.innerHTML =
     '<i class="fa-solid ' + iconClass + ' text-base mt-0.5"></i>' +
-    '<div class="flex-1 leading-relaxed">' + escapeHtml(message) + '</div>' +
-    '<button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>';
+    '<div class="flex-1 leading-snug">' + escapeHtml(message) + '</div>';
 
   container.appendChild(toast);
+
   setTimeout(function() {
     toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-10px)';
+    toast.style.transition = 'all 0.3s ease';
     setTimeout(function() { toast.remove(); }, 300);
-  }, 5000);
+  }, 4500);
 }
 
-function showGlobalLoading(text) {
-  var el = document.getElementById('globalLoadingOverlay');
-  var txt = document.getElementById('globalLoadingText');
-  if (txt && text) txt.textContent = text;
-  if (el) el.classList.remove('hidden');
+function showGlobalLoading(message) {
+  var overlay = document.getElementById('globalLoadingOverlay');
+  var text = document.getElementById('globalLoadingText');
+  if (text) text.textContent = message || 'Processing request…';
+  if (overlay) overlay.classList.remove('hidden');
 }
 
 function hideGlobalLoading() {
-  var el = document.getElementById('globalLoadingOverlay');
-  if (el) el.classList.add('hidden');
+  var overlay = document.getElementById('globalLoadingOverlay');
+  if (overlay) overlay.classList.add('hidden');
 }
 
 function escapeHtml(str) {
-  if (!str) return '';
+  if (str === null || str === undefined) return '';
   return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -2319,6 +3253,69 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+// =============================================================
+// DOM EVENT DELEGATION FOR ACTIONS (§10)
+// =============================================================
+document.addEventListener('DOMContentLoaded', function() {
+  // Video Library table body delegated actions
+  var libBody = document.getElementById('libraryTableBody');
+  if (libBody) {
+    libBody.addEventListener('click', function(e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      if (btn.classList.contains('btn-lib-preview')) {
+        var fId = btn.getAttribute('data-file-id');
+        var title = btn.getAttribute('data-title');
+        openVideoPreviewModal(fId, title);
+      } else if (btn.classList.contains('btn-lib-edit-meta')) {
+        var vNum = btn.getAttribute('data-video-number');
+        var fId = btn.getAttribute('data-file-id');
+        openEditVideoMetadataModal(vNum, fId);
+      } else if (btn.classList.contains('btn-lib-add-ver')) {
+        var vNum = btn.getAttribute('data-video-number');
+        openAddVersionModal(vNum);
+      } else if (btn.classList.contains('btn-lib-ver-hist')) {
+        var vNum = btn.getAttribute('data-video-number');
+        openVersionHistoryModal(vNum);
+      }
+    });
+  }
+
+  // Version History modal list delegated actions
+  var vhList = document.getElementById('vhVersionsList');
+  if (vhList) {
+    vhList.addEventListener('click', function(e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      if (btn.classList.contains('btn-action-preview')) {
+        var fId = btn.getAttribute('data-file-id');
+        var title = btn.getAttribute('data-title');
+        openVideoPreviewModal(fId, title);
+      }
+    });
+  }
+
+  // Unit Detail modal videos list delegated actions
+  var udVids = document.getElementById('udVideosList');
+  if (udVids) {
+    udVids.addEventListener('click', function(e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      if (btn.classList.contains('btn-ud-preview')) {
+        var fId = btn.getAttribute('data-file-id');
+        var title = btn.getAttribute('data-title');
+        openVideoPreviewModal(fId, title);
+      } else if (btn.classList.contains('btn-ud-add-ver')) {
+        var vNum = btn.getAttribute('data-video-number');
+        openAddVersionModal(vNum);
+      } else if (btn.classList.contains('btn-ud-ver-hist')) {
+        var vNum = btn.getAttribute('data-video-number');
+        openVersionHistoryModal(vNum);
+      }
+    });
+  }
+});
 
 // =============================================================
 // LOCAL PREVIEW MOCKS — only used when opened outside Apps Script
@@ -2339,9 +3336,9 @@ function setupLocalPreviewMocks() {
   ];
 
   var mockVideos = [
-    { videoNumber: '0001', versionNumber: 'V02', isCurrentVersion: true, videoSource: 'Project Video', clientName: 'Ahmed Hassan', location: 'New Cairo', projectVideoType: 'Final', spaceType: 'Kitchen', workCategory: 'Ceramics', shootingDate: '2026-08-17', videoName: 'Ahmed Hassan - New Cairo - Final - Kitchen - 2026-08-17 - V02.mp4', driveFileId: 'mock1', versionNotes: 'Approved cut', addedDate: '2026-08-18' },
-    { videoNumber: '0001', versionNumber: 'V01', isCurrentVersion: false, videoSource: 'Project Video', clientName: 'Ahmed Hassan', location: 'New Cairo', projectVideoType: 'Final', spaceType: 'Kitchen', workCategory: 'Ceramics', shootingDate: '2026-08-17', videoName: 'Ahmed Hassan - New Cairo - Final - Kitchen - 2026-08-17 - V01.mp4', driveFileId: 'mock1a', versionNotes: 'Initial cut', addedDate: '2026-08-14' },
-    { videoNumber: '0002', versionNumber: 'V01', isCurrentVersion: true, videoSource: 'Marketing Content', topic: 'Plumbing rough-in mistakes', contentType: 'Educational', spaceType: '', shootingDate: '2026-08-10', videoName: 'Educational - Plumbing rough-in mistakes - 2026-08-10 - V01.mp4', driveFileId: 'mock2', versionNotes: '', addedDate: '2026-08-11' }
+    { videoNumber: '0001', versionNumber: 'V02', isCurrentVersion: true, videoSource: 'Project Video', clientName: 'Ahmed Hassan', location: 'New Cairo', projectVideoType: 'Final', spaceType: 'Kitchen', workCategory: 'Ceramics', shootingDate: '2026-08-17', videoName: 'Ahmed Hassan - New Cairo - Final - Kitchen - 2026-08-17 - V02.mp4', driveFileId: 'mock1abcdefghijklmnopqrstuv', versionNotes: 'Approved cut', addedDate: '2026-08-18' },
+    { videoNumber: '0001', versionNumber: 'V01', isCurrentVersion: false, videoSource: 'Project Video', clientName: 'Ahmed Hassan', location: 'New Cairo', projectVideoType: 'Final', spaceType: 'Kitchen', workCategory: 'Ceramics', shootingDate: '2026-08-17', videoName: 'Ahmed Hassan - New Cairo - Final - Kitchen - 2026-08-17 - V01.mp4', driveFileId: 'mock1a_bcdefghijklmnopqrstuv', versionNotes: 'Initial cut', addedDate: '2026-08-14' },
+    { videoNumber: '0002', versionNumber: 'V01', isCurrentVersion: true, videoSource: 'Marketing Content', topic: 'Plumbing rough-in mistakes', contentType: 'Educational', spaceType: '', shootingDate: '2026-08-10', videoName: 'Educational - Plumbing rough-in mistakes - 2026-08-10 - V01.mp4', driveFileId: 'mock2_abcdefghijklmnopqrstuv', versionNotes: '', addedDate: '2026-08-11' }
   ];
 
   window._localMockDispatcher = function(fnName, args, callback) {
@@ -2386,14 +3383,41 @@ function setupLocalPreviewMocks() {
       } else if (fnName === 'apiGetUnits') {
         callback({ ok: true, data: mockUnits });
       } else if (fnName === 'apiGetVideos') {
-        callback({ ok: true, data: mockVideos.filter(function(v){ return v.isCurrentVersion; }) });
+        var f = args && args[0] ? args[0] : {};
+        var curOnly = !f.includePreviousVersions;
+        var vids = curOnly ? mockVideos.filter(function(v){ return v.isCurrentVersion; }) : mockVideos;
+        callback({ ok: true, data: { items: vids, page: 1, pageSize: 25, totalCount: vids.length, totalPages: 1, hasMore: false } });
+      } else if (fnName === 'apiGetVideoVersionHistory') {
+        var vNum = args[0];
+        var matched = mockVideos.filter(function(v) { return v.videoNumber === vNum; });
+        if (matched.length === 0) matched = mockVideos;
+        callback({ ok: true, data: { videoNumber: vNum, title: matched[0].clientName || matched[0].topic, videoSource: matched[0].videoSource, currentVersion: matched[0], totalVersions: matched.length, versions: matched } });
+      } else if (fnName === 'apiCreateUnit') {
+        var payload = args[0];
+        var newU = {
+          unitId: 'U-' + (mockUnits.length + 1 < 10 ? '000' : '00') + (mockUnits.length + 1),
+          clientName: payload.clientName,
+          location: payload.location,
+          unitType: payload.unitType,
+          area: payload.area,
+          videoCount: 0,
+          pdfCount: 0
+        };
+        mockUnits.push(newU);
+        callback({ ok: true, data: newU });
+      } else if (fnName === 'apiUpdateSingleVideoMetadata') {
+        var driveFileId = args[0];
+        var fields = args[1];
+        var confirmRename = args[2];
+        var target = mockVideos.find(function(v){ return v.driveFileId === driveFileId; }) || mockVideos[0];
+        callback({ ok: true, data: { success: true, renamed: true, newName: 'Renamed-' + target.videoName } });
       } else if (fnName === 'apiGetUnitDetail') {
         var unitId = args[0];
         var unit = mockUnits.find(function(u){ return u.unitId === unitId; }) || mockUnits[0];
         callback({ ok: true, data: {
           unit: unit,
           videos: [{ videoNumber: '0001', projectVideoType: 'Final', spaceType: 'Kitchen', currentVersion: mockVideos[0], versions: [mockVideos[0], mockVideos[1]] }],
-          pdfs: [{ documentTitle: 'Approved lighting layout', pdfVersionNumber: 'V01', isCurrentVersion: true, versionNotes: '', addedDate: '2026-08-12', driveFileId: 'mockpdf1' }]
+          pdfs: [{ documentTitle: 'Approved lighting layout', pdfVersionNumber: 'V01', isCurrentVersion: true, versionNotes: '', addedDate: '2026-08-12', driveFileId: 'mockpdf1_abcdefghijklmnopqrstuv' }]
         }});
       } else if (fnName === 'apiGetSystemConfig') {
         callback({ ok: true, data: { spreadsheetId: '1KLsNGiIGSyd2vTz95Qmfw0np6jayX-JJZWX3wmmgzZ4', rootFolderId: '172YFf4GteBT5x_WxQxr-ldo79f0XuRrh', users: [{ email: 'louyashra@gmail.com', role: 'System Owner' }] } });

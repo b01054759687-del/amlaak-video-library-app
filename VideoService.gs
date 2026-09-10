@@ -374,6 +374,12 @@ var VideoService = (function() {
         continue;
       }
 
+      // Filter: Client Name explicit
+      if (filters && filters.clientName && String(filters.clientName).trim()) {
+        var rowCName = (row['Client Name'] || '').toLowerCase();
+        if (rowCName.indexOf(filters.clientName.toLowerCase().trim()) === -1) continue;
+      }
+
       // Filter: Location
       if (filters && filters.location) {
         var rowLoc = (row['Location'] || '').toLowerCase();
@@ -386,7 +392,17 @@ var VideoService = (function() {
         continue;
       }
 
-      // Filter: Client Name or Topic search query
+      // Filter: Area Range
+      if (filters && (filters.areaMin !== undefined && filters.areaMin !== '')) {
+        var aMin = Number(filters.areaMin);
+        if (!isNaN(aMin) && Number(row['Area (SQM)']) < aMin) continue;
+      }
+      if (filters && (filters.areaMax !== undefined && filters.areaMax !== '')) {
+        var aMax = Number(filters.areaMax);
+        if (!isNaN(aMax) && Number(row['Area (SQM)']) > aMax) continue;
+      }
+
+      // Filter: Client Name, Topic, Video Name, Video Number or Unit ID search query
       if (filters && filters.searchQuery) {
         var query = filters.searchQuery.toLowerCase().trim();
         var clientName = (row['Client Name'] || '').toLowerCase();
@@ -444,7 +460,26 @@ var VideoService = (function() {
       });
     }
 
-    return filtered;
+    // Controlled server-side pagination
+    var totalCount = filtered.length;
+    var page = (filters && filters.page) ? parseInt(filters.page, 10) : 1;
+    if (isNaN(page) || page < 1) page = 1;
+    var pageSize = (filters && filters.pageSize) ? parseInt(filters.pageSize, 10) : 25;
+    if (isNaN(pageSize) || pageSize < 1) pageSize = 25;
+
+    var totalPages = Math.ceil(totalCount / pageSize) || 1;
+    var startIndex = (page - 1) * pageSize;
+    var pageItems = filtered.slice(startIndex, startIndex + pageSize);
+    var hasMore = (startIndex + pageSize) < totalCount;
+
+    return {
+      items: pageItems,
+      page: page,
+      pageSize: pageSize,
+      totalCount: totalCount,
+      totalPages: totalPages,
+      hasMore: hasMore
+    };
   }
 
   /**
@@ -517,11 +552,99 @@ var VideoService = (function() {
     });
   }
 
+  /**
+   * Retrieves the full version history for a logical video.
+   */
+  function getVideoVersionHistory(videoNumber) {
+    Auth.requireAuth();
+
+    if (!videoNumber || !String(videoNumber).trim()) {
+      throw new Error('رقم الفيديو (Video Number) مطلوب.');
+    }
+
+    var cleanNum = Utils.formatVideoNumber(videoNumber);
+    var allRows = SheetRepository.getAllVideoVersions();
+    var matching = [];
+
+    for (var i = 0; i < allRows.length; i++) {
+      var row = allRows[i];
+      var rowVNum = String(row['Video Number'] || '').trim();
+      if (rowVNum === cleanNum || rowVNum === String(videoNumber).trim()) {
+        var isCur = String(row['Is Current Version']).toLowerCase() === 'yes' || row['Is Current Version'] === true;
+        matching.push({
+          videoNumber: row['Video Number'],
+          versionNumber: row['Version Number'],
+          isCurrentVersion: isCur,
+          versionNotes: row['Version Notes'] || '',
+          videoName: row['Video Name'],
+          videoSource: row['Video Source'],
+          unitId: row['Unit ID'] || '',
+          contentType: row['Content Type'] || '',
+          topic: row['Topic'] || '',
+          clientName: row['Client Name'] || '',
+          location: row['Location'] || '',
+          unitType: row['Unit Type'] || '',
+          area: row['Area (SQM)'] || '',
+          projectVideoType: row['Project Video Type'] || '',
+          spaceType: row['Space Type'] || '',
+          workCategory: row['Work Category'] || '',
+          shootingDate: row['Shooting Date'] || '',
+          videoLink: row['Video Link'] || '',
+          driveFileId: row['Drive File ID'],
+          originalFileName: row['Original File Name'] || '',
+          duration: row['Duration'] || '',
+          orientation: row['Orientation'] || '',
+          fileSize: row['File Size'] || '',
+          addedDate: row['Added Date'] || '',
+          addedBy: row['Added By'] || ''
+        });
+      }
+    }
+
+    if (matching.length === 0) {
+      throw new Error('لم يتم العثور على أي نسخ للفيديو رقم: ' + videoNumber);
+    }
+
+    // Sort versions descending by version number
+    matching.sort(function(a, b) {
+      var vA = parseInt(String(a.versionNumber).replace(/\D/g, ''), 10) || 0;
+      var vB = parseInt(String(b.versionNumber).replace(/\D/g, ''), 10) || 0;
+      return vB - vA;
+    });
+
+    // Ensure exactly one current version is identified
+    var currentFound = false;
+    for (var m = 0; m < matching.length; m++) {
+      if (matching[m].isCurrentVersion) {
+        if (!currentFound) {
+          currentFound = true;
+        } else {
+          matching[m].isCurrentVersion = false;
+        }
+      }
+    }
+    if (!currentFound && matching.length > 0) {
+      matching[0].isCurrentVersion = true;
+    }
+
+    var currentVer = matching.find(function(v) { return v.isCurrentVersion; }) || matching[0];
+
+    return {
+      videoNumber: cleanNum,
+      title: currentVer.clientName || currentVer.topic || ('Video ' + cleanNum),
+      videoSource: currentVer.videoSource,
+      currentVersion: currentVer,
+      totalVersions: matching.length,
+      versions: matching
+    };
+  }
+
   return {
     addProjectVideo: addProjectVideo,
     addMarketingContent: addMarketingContent,
     addNewVersion: addNewVersion,
     getLibraryVideos: getLibraryVideos,
+    getVideoVersionHistory: getVideoVersionHistory,
     updateSingleVideoMetadata: updateSingleVideoMetadata
   };
 })();
