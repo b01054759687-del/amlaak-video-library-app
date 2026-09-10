@@ -1,14 +1,36 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
+<!--
+  Amlaak Video Library — Frontend Shell (Index.html)
+  ---------------------------------------------------
+  Target location once pushed to GitHub: amlaak-video-library/src/Index.html
+  (dedicated repo — see Amlaak-Video-Library-Execution-Prompt-v2.md §1 and §24
+  for the full recommended Apps Script project layout.)
+
+  This file is a static, English-language UI shell for the Amlaak Video
+  Library Apps Script Web App. It runs against a local mock dispatcher when
+  opened outside the Apps Script container (see setupLocalPreviewMocks below)
+  so it can be reviewed as a plain HTML file before Antigravity wires it to
+  the real google.script.run backend (Code.gs / *.gs services) and deploys it.
+
+  Still to be done by Antigravity, per the execution prompt:
+  - Wire every callApi(...) call below to real server-side .gs functions.
+  - Split into Index.html / Styles.html / Client.html if the team prefers
+    Apps Script's multi-file HtmlService pattern (this single file works
+    as-is with HtmlService too — splitting is optional, not required).
+  - Push this repo to GitHub (private) — this file, plus the generated
+    Code.gs/*.gs backend, docs, and .gitignore. Never commit real Sheet/Drive
+    IDs, OAuth tokens, or customer data — see execution prompt §20 and §24.
+-->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Amlaak Video Library | المنظومة الهندسية لإدارة مكتبة الفيديوهات والتصاميم</title>
+  <title>Amlaak Video Library | Engineering Media &amp; Design Archive</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600;700;800;900&family=Almarai:wght@400;700&family=Cairo:wght@400;600;700;800;900&family=Outfit:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
   :root {
@@ -21,11 +43,14 @@
     --amlaak-gold-light: #DFBF7A;
     --amlaak-gold-subtle: rgba(197, 160, 89, 0.12);
     --amlaak-gold-border: rgba(197, 160, 89, 0.3);
-    
-    --font-heading: 'Alexandria', 'Cairo', sans-serif;
-    --font-body: 'Almarai', 'Cairo', sans-serif;
+
+    --font-heading: 'Outfit', 'Inter', sans-serif;
+    --font-body: 'Inter', sans-serif;
     --font-num: 'Outfit', sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+
+    --radius-card: 1rem;
+    --radius-control: 0.75rem;
   }
 
   * {
@@ -36,35 +61,42 @@
   body {
     font-family: var(--font-body);
     background-color: var(--amlaak-navy-dark);
-    background-image: 
-      radial-gradient(circle at 10% 10%, rgba(197, 160, 89, 0.08) 0%, transparent 40%),
-      radial-gradient(circle at 90% 90%, rgba(15, 29, 56, 0.45) 0%, transparent 50%),
+    background-image:
+      radial-gradient(circle at 8% 8%, rgba(197, 160, 89, 0.07) 0%, transparent 40%),
+      radial-gradient(circle at 92% 92%, rgba(15, 29, 56, 0.5) 0%, transparent 50%),
       linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
     background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
     color: #F1F5F9;
     min-height: 100vh;
-    direction: rtl;
-    text-align: right;
+    direction: ltr;
+    text-align: left;
+    letter-spacing: -0.01em;
   }
 
   h1, h2, h3, h4, h5, h6, .brand-title {
     font-family: var(--font-heading);
+    letter-spacing: -0.02em;
   }
 
   .font-num {
     font-family: var(--font-num);
-    direction: ltr;
-    display: inline-block;
+    font-variant-numeric: tabular-nums;
   }
 
   .font-mono-code {
     font-family: var(--font-mono);
-    direction: ltr;
-    text-align: left;
   }
 
-  /* Gold Gradient & Accents */
+  /* Focus visibility — keyboard accessibility */
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid #DFBF7A;
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* Gold gradient text */
   .gold-gradient-text {
     background: linear-gradient(135deg, #FFF0C2 0%, #C5A059 50%, #9A7329 100%);
     -webkit-background-clip: text;
@@ -72,95 +104,111 @@
   }
 
   .gold-card {
-    background: rgba(15, 29, 56, 0.75);
+    background: rgba(15, 29, 56, 0.72);
     backdrop-filter: blur(14px);
-    border: 1px solid var(--amlaak-gold-border);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-    transition: all 0.25s ease;
+    border: 1px solid rgba(197, 160, 89, 0.22);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    border-radius: var(--radius-card);
+    transition: border-color 0.2s ease, transform 0.2s ease;
   }
 
-  .gold-card:hover {
-    border-color: rgba(197, 160, 89, 0.55);
+  .gold-card.interactive:hover {
+    border-color: rgba(197, 160, 89, 0.5);
   }
 
   .gold-btn {
     background: linear-gradient(135deg, #D4AF65 0%, #C5A059 100%);
     color: #070D18;
     font-weight: 700;
-    transition: all 0.2s ease;
+    border-radius: var(--radius-control);
+    transition: filter 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease;
   }
 
   .gold-btn:hover {
-    background: linear-gradient(135deg, #E6C47E 0%, #D4AF65 100%);
+    filter: brightness(1.08);
     box-shadow: 0 6px 20px rgba(197, 160, 89, 0.3);
     transform: translateY(-1px);
   }
 
-  .gold-btn:active {
-    transform: translateY(1px);
-  }
+  .gold-btn:active { transform: translateY(0); }
+  .gold-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
-  /* Form Elements */
+  .ghost-btn {
+    border-radius: var(--radius-control);
+    color: #94A3B8;
+    font-weight: 700;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+  .ghost-btn:hover { color: #F1F5F9; background: rgba(148,163,184,0.08); }
+
+  /* Form elements */
   .input-dark {
     background-color: #081120;
-    border: 1px solid rgba(197, 160, 89, 0.25);
+    border: 1px solid rgba(197, 160, 89, 0.22);
     color: #FFFFFF;
-    transition: all 0.2s ease;
+    border-radius: var(--radius-control);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
+
+  .input-dark::placeholder { color: #64748B; }
 
   .input-dark:focus {
     outline: none;
     border-color: #C5A059;
-    box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.18);
+    box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.16);
   }
 
-  select.input-dark option {
-    background-color: #0B1528;
-    color: #FFFFFF;
+  select.input-dark option { background-color: #0B1528; color: #FFFFFF; }
+
+  label.field-label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #CBD5E1;
+    margin-bottom: 0.35rem;
+    letter-spacing: 0.01em;
   }
+
+  .field-required { color: #FB7185; }
 
   /* Scrollbars */
-  ::-webkit-scrollbar {
-    width: 6px;
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #070D18; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #C5A059; }
+
+  /* Status badges — consistent chip pattern (dataviz: status colors reserved, icon + label, never color alone) */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .chip-current   { background: rgba(16, 185, 129, 0.14); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.35); }
+  .chip-previous  { background: rgba(148, 163, 184, 0.12); color: #94A3B8; border: 1px solid rgba(148, 163, 184, 0.28); }
+  .chip-project   { background: rgba(197, 160, 89, 0.16); color: #E8CE96; border: 1px solid rgba(197, 160, 89, 0.35); }
+  .chip-marketing { background: rgba(59, 130, 246, 0.16); color: #7FB3FA; border: 1px solid rgba(59, 130, 246, 0.35); }
+
+  /* Ranked bar list rows (single-series magnitude — dataviz form: sequential, one hue) */
+  .rank-row { padding: 0.15rem 0; }
+  .rank-track {
+    width: 100%;
     height: 6px;
+    background: rgba(148, 163, 184, 0.14);
+    border-radius: 999px;
+    overflow: hidden;
   }
-  ::-webkit-scrollbar-track {
-    background: #070D18;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #334155;
-    border-radius: 4px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #C5A059;
+  .rank-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #9A7329, #C5A059 60%, #E8CE96);
   }
 
-  /* Badges */
-  .badge-current {
-    background-color: rgba(16, 185, 129, 0.15);
-    color: #34D399;
-    border: 1px solid rgba(16, 185, 129, 0.35);
-  }
-
-  .badge-previous {
-    background-color: rgba(148, 163, 184, 0.12);
-    color: #94A3B8;
-    border: 1px solid rgba(148, 163, 184, 0.25);
-  }
-
-  .badge-project {
-    background-color: rgba(197, 160, 89, 0.15);
-    color: #DFBF7A;
-    border: 1px solid rgba(197, 160, 89, 0.35);
-  }
-
-  .badge-marketing {
-    background-color: rgba(59, 130, 246, 0.15);
-    color: #60A5FA;
-    border: 1px solid rgba(59, 130, 246, 0.35);
-  }
-
-  /* Custom Loading Overlay */
   .loader-spinner {
     border: 3px solid rgba(197, 160, 89, 0.2);
     border-top: 3px solid #C5A059;
@@ -169,89 +217,97 @@
     height: 32px;
     animation: spin 0.8s linear infinite;
   }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-
-  /* Autocomplete Dropdown */
   .autocomplete-items {
     position: absolute;
     border: 1px solid rgba(197, 160, 89, 0.3);
     z-index: 99;
-    top: 100%;
+    top: calc(100% + 4px);
     left: 0;
     right: 0;
     background: #0B1528;
-    border-radius: 0.5rem;
-    max-height: 180px;
+    border-radius: var(--radius-control);
+    max-height: 200px;
     overflow-y: auto;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
   }
-
   .autocomplete-item {
-    padding: 8px 12px;
+    padding: 9px 12px;
     cursor: pointer;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    transition: background 0.15s;
+    transition: background 0.12s ease;
   }
+  .autocomplete-item:last-child { border-bottom: none; }
+  .autocomplete-item:hover, .autocomplete-active { background-color: rgba(197, 160, 89, 0.16); }
 
-  .autocomplete-item:hover, .autocomplete-active {
-    background-color: rgba(197, 160, 89, 0.2);
-    color: #DFBF7A;
+  .tab-btn {
+    padding: 0.5rem 0.85rem;
+    border-radius: 0.6rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #94A3B8;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+  .tab-btn:hover { color: #F1F5F9; background: rgba(148,163,184,0.08); }
+  .tab-btn.active {
+    background: linear-gradient(135deg, #C5A059, #DFBF7A);
+    color: #070D18;
   }
 </style>
-
 </head>
 <body class="p-3 sm:p-5 md:p-8">
 
-  <!-- TOP BRAND HEADER & APP NAVIGATION -->
-  <header class="gold-card rounded-2xl p-4 sm:p-6 mb-6">
+  <!-- ============================================================= -->
+  <!-- TOP BRAND HEADER & NAVIGATION                                  -->
+  <!-- ============================================================= -->
+  <header class="gold-card p-4 sm:p-5 mb-6">
     <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
-      
-      <!-- Brand Logo & Title -->
-      <div class="flex items-center gap-4 text-right w-full lg:w-auto">
-        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#C5A059] to-[#DFBF7A] flex items-center justify-center text-[#070D18] shadow-lg shadow-amber-950/40 text-2xl flex-shrink-0">
+
+      <!-- Brand mark -->
+      <div class="flex items-center gap-3.5 w-full lg:w-auto">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#DFBF7A] to-[#9A7329] flex items-center justify-center text-[#070D18] shadow-lg shadow-amber-950/40 text-xl flex-shrink-0">
           <i class="fa-solid fa-crown"></i>
         </div>
-        <div>
+        <div class="min-w-0">
           <div class="flex items-center gap-2">
-            <span class="text-xs font-bold tracking-widest text-[#DFBF7A] uppercase font-mono">Amlaak Design</span>
-            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">v2.0 Production</span>
+            <span class="text-[11px] font-bold tracking-[0.14em] text-[#DFBF7A] uppercase font-mono-code">Amlaak Design</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">v2.0</span>
           </div>
-          <h1 class="text-lg sm:text-2xl font-black gold-gradient-text">Amlaak Video Library</h1>
-          <p class="text-xs text-slate-400 font-semibold">المنظومة المركزية لإدارة مكتبة فيديوهات المشاريع والمحتوى والتصاميم المعمارية</p>
+          <h1 class="text-lg sm:text-xl font-black gold-gradient-text leading-tight">Video Library</h1>
         </div>
       </div>
 
-      <!-- Navigation Switcher Tabs -->
-      <nav class="flex flex-wrap items-center justify-center gap-2 bg-[#081120] p-1.5 rounded-xl border border-slate-800 w-full lg:w-auto">
-        <button onclick="switchTab('dashboard')" id="btnTabDashboard" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]">
-          <i class="fa-solid fa-chart-pie"></i> <span>لوحة المؤشرات</span>
+      <!-- Nav -->
+      <nav class="flex flex-wrap items-center justify-center gap-1.5 bg-[#081120] p-1.5 rounded-xl border border-slate-800/80 w-full lg:w-auto">
+        <button onclick="switchTab('dashboard')" id="btnTabDashboard" class="tab-btn active">
+          <i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span>
         </button>
-        <button onclick="switchTab('addVideo')" id="btnTabAddVideo" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-2">
-          <i class="fa-solid fa-cloud-arrow-up"></i> <span>إضافة فيديو</span>
+        <button onclick="switchTab('addVideo')" id="btnTabAddVideo" class="tab-btn">
+          <i class="fa-solid fa-cloud-arrow-up"></i> <span>Add Video</span>
         </button>
-        <button onclick="switchTab('library')" id="btnTabLibrary" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-2">
-          <i class="fa-solid fa-film"></i> <span>مكتبة الفيديوهات</span>
+        <button onclick="switchTab('library')" id="btnTabLibrary" class="tab-btn">
+          <i class="fa-solid fa-film"></i> <span>Video Library</span>
         </button>
-        <button onclick="switchTab('units')" id="btnTabUnits" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-2">
-          <i class="fa-solid fa-building"></i> <span>الوحدات والـ PDFs</span>
+        <button onclick="switchTab('units')" id="btnTabUnits" class="tab-btn">
+          <i class="fa-solid fa-building"></i> <span>Units &amp; PDFs</span>
         </button>
-        <button onclick="switchTab('settings')" id="btnTabSettings" class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-2">
-          <i class="fa-solid fa-sliders"></i> <span>الإعدادات</span>
+        <button onclick="switchTab('settings')" id="btnTabSettings" class="tab-btn">
+          <i class="fa-solid fa-sliders"></i> <span>Settings</span>
         </button>
       </nav>
 
-      <!-- Active User & Sync Badge -->
+      <!-- Session status -->
       <div class="flex items-center gap-3 w-full lg:w-auto justify-end">
-        <div class="text-left hidden sm:block">
-          <div id="userEmailBadge" class="text-xs font-mono font-bold text-slate-200">Connecting...</div>
-          <div id="userRoleBadge" class="text-[10px] text-[#DFBF7A] font-bold">Checking Role...</div>
+        <div class="text-right hidden sm:block">
+          <div id="userEmailBadge" class="text-xs font-mono-code font-bold text-slate-200">louyashra@gmail.com</div>
+          <div id="userRoleBadge" class="text-[10px] text-[#DFBF7A] font-bold">Checking role…</div>
         </div>
-        <button onclick="reloadCurrentView()" title="تحديث البيانات" class="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700 text-slate-300 hover:text-[#DFBF7A] hover:border-amber-500/40 transition flex items-center justify-center">
-          <i id="syncIcon" class="fa-solid fa-arrows-rotate"></i>
+        <button onclick="reloadCurrentView()" title="Refresh data" class="w-9 h-9 rounded-lg bg-slate-800/70 border border-slate-700 text-slate-300 hover:text-[#DFBF7A] hover:border-amber-500/40 transition flex items-center justify-center">
+          <i id="syncIcon" class="fa-solid fa-arrows-rotate text-xs"></i>
         </button>
       </div>
 
@@ -259,394 +315,342 @@
   </header>
 
   <!-- ============================================================= -->
-  <!-- VIEW 1: DASHBOARD                                             -->
+  <!-- VIEW 1: DASHBOARD                                              -->
   <!-- ============================================================= -->
-  <section id="viewDashboard" class="tab-view space-y-6">
-    
-    <!-- Filter Date By & Range Header -->
-    <div class="gold-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+  <section id="viewDashboard" class="tab-view space-y-5">
+
+    <!-- Date filter bar -->
+    <div class="gold-card p-4 flex flex-wrap items-center justify-between gap-4">
       <div class="flex flex-wrap items-center gap-3">
         <div class="flex items-center gap-2">
-          <label class="text-xs text-slate-300 font-bold">تصفية التاريخ حسب:</label>
-          <select id="dashDateType" class="input-dark px-3 py-1.5 rounded-lg text-xs font-bold" onchange="loadDashboard()">
-            <option value="Added Date">تاريخ الإضافة (Added Date)</option>
-            <option value="Shooting Date">تاريخ التصوير (Shooting Date)</option>
+          <label class="text-xs text-slate-300 font-bold">Filter date by</label>
+          <select id="dashDateType" class="input-dark px-3 py-1.5 text-xs font-bold" onchange="loadDashboard()">
+            <option value="Added Date">Added Date</option>
+            <option value="Shooting Date">Shooting Date</option>
           </select>
         </div>
         <div class="flex items-center gap-2">
-          <label class="text-xs text-slate-400">من:</label>
-          <input type="date" id="dashStartDate" class="input-dark px-2.5 py-1.5 rounded-lg text-xs" onchange="loadDashboard()">
+          <label class="text-xs text-slate-400">From</label>
+          <input type="date" id="dashStartDate" class="input-dark px-2.5 py-1.5 text-xs" onchange="loadDashboard()">
         </div>
         <div class="flex items-center gap-2">
-          <label class="text-xs text-slate-400">إلى:</label>
-          <input type="date" id="dashEndDate" class="input-dark px-2.5 py-1.5 rounded-lg text-xs" onchange="loadDashboard()">
+          <label class="text-xs text-slate-400">To</label>
+          <input type="date" id="dashEndDate" class="input-dark px-2.5 py-1.5 text-xs" onchange="loadDashboard()">
         </div>
-        <button onclick="clearDashboardDates()" class="text-xs text-slate-400 hover:text-rose-400 transition underline">مسح التواريخ</button>
+        <button onclick="clearDashboardDates()" class="text-xs text-slate-400 hover:text-rose-400 transition underline">Clear dates</button>
       </div>
       <div class="text-xs text-amber-300/80 font-semibold flex items-center gap-1.5">
-        <i class="fa-solid fa-circle-check text-emerald-400"></i> بيانات حية مطابقة لجدول Google Sheets
+        <i class="fa-solid fa-circle-check text-emerald-400"></i> Live data from Google Sheets
       </div>
     </div>
 
-    <!-- 6 PRIMARY KPI CARDS -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-      
-      <!-- KPI 1: Logical Videos -->
-      <div class="gold-card rounded-2xl p-4 flex flex-col justify-between">
-        <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
-          <span>إجمالي الفيديوهات</span>
+    <!-- 6 KPI stat tiles -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+
+      <div class="gold-card p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] mb-2">
+          <span>Total Videos</span>
           <i class="fa-solid fa-film text-[#DFBF7A]"></i>
         </div>
         <div id="kpiLogicalVideos" class="text-2xl sm:text-3xl font-black text-white font-num">0</div>
-        <div class="text-[10px] text-slate-400 mt-1">فيديوهات فريدة (Logical)</div>
+        <div class="text-[10px] text-slate-400 mt-1">Distinct logical videos</div>
       </div>
 
-      <!-- KPI 2: Stored Versions -->
-      <div class="gold-card rounded-2xl p-4 flex flex-col justify-between">
-        <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
-          <span>النسخ المخزنة</span>
+      <div class="gold-card p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] mb-2">
+          <span>Stored Versions</span>
           <i class="fa-solid fa-code-branch text-blue-400"></i>
         </div>
         <div id="kpiStoredVersions" class="text-2xl sm:text-3xl font-black text-white font-num">0</div>
-        <div class="text-[10px] text-slate-400 mt-1">ملفات فيديو فعلية على Drive</div>
+        <div class="text-[10px] text-slate-400 mt-1">Physical files on Drive</div>
       </div>
 
-      <!-- KPI 3: Project Videos -->
-      <div class="gold-card rounded-2xl p-4 flex flex-col justify-between">
-        <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
-          <span>فيديوهات المشاريع</span>
+      <div class="gold-card p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] mb-2">
+          <span>Project Videos</span>
           <i class="fa-solid fa-hammer text-[#C5A059]"></i>
         </div>
         <div id="kpiProjectVideos" class="text-2xl sm:text-3xl font-black text-[#DFBF7A] font-num">0</div>
-        <div id="kpiProjectVersionsSub" class="text-[10px] text-slate-400 mt-1">0 نسخة مسجلة</div>
+        <div id="kpiProjectVersionsSub" class="text-[10px] text-slate-400 mt-1">0 versions recorded</div>
       </div>
 
-      <!-- KPI 4: Marketing Content -->
-      <div class="gold-card rounded-2xl p-4 flex flex-col justify-between">
-        <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
-          <span>المحتوى التسويقي</span>
+      <div class="gold-card p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] mb-2">
+          <span>Marketing Content</span>
           <i class="fa-solid fa-bullhorn text-sky-400"></i>
         </div>
         <div id="kpiMarketingVideos" class="text-2xl sm:text-3xl font-black text-sky-400 font-num">0</div>
-        <div id="kpiMarketingVersionsSub" class="text-[10px] text-slate-400 mt-1">0 نسخة مسجلة</div>
+        <div id="kpiMarketingVersionsSub" class="text-[10px] text-slate-400 mt-1">0 versions recorded</div>
       </div>
 
-      <!-- KPI 5: Units -->
-      <div class="gold-card rounded-2xl p-4 flex flex-col justify-between">
-        <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
-          <span>الوحدات المسجلة</span>
+      <div class="gold-card p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] mb-2">
+          <span>Units on File</span>
           <i class="fa-solid fa-building text-emerald-400"></i>
         </div>
         <div id="kpiTotalUnits" class="text-2xl sm:text-3xl font-black text-emerald-400 font-num">0</div>
-        <div class="text-[10px] text-slate-400 mt-1">سجلات العملاء والوحدات</div>
+        <div class="text-[10px] text-slate-400 mt-1">Client &amp; unit records</div>
       </div>
 
-      <!-- KPI 6: Design PDFs -->
-      <div class="gold-card rounded-2xl p-4 flex flex-col justify-between">
-        <div class="flex items-center justify-between text-slate-400 text-xs mb-2">
-          <span>مخططات الـ PDF</span>
+      <div class="gold-card p-4 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] mb-2">
+          <span>Design PDFs</span>
           <i class="fa-solid fa-file-pdf text-rose-400"></i>
         </div>
         <div id="kpiStoredPdfs" class="text-2xl sm:text-3xl font-black text-rose-400 font-num">0</div>
-        <div class="text-[10px] text-slate-400 mt-1">تصاميم معمارية مؤرشفة</div>
+        <div class="text-[10px] text-slate-400 mt-1">Archived design plans</div>
       </div>
 
     </div>
 
-    <!-- BREAKDOWN CARDS GRID -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      
-      <!-- BREAKDOWN 1: LOCATIONS -->
-      <div class="gold-card rounded-2xl p-5 flex flex-col justify-between">
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="font-bold text-sm text-white flex items-center gap-2">
-              <i class="fa-solid fa-location-dot text-[#DFBF7A]"></i> توزيع الفيديوهات حسب المنطقة
-            </h3>
-            <span class="text-[10px] text-slate-400 font-mono">Location</span>
-          </div>
-          <div id="chartLocationsList" class="space-y-2 max-h-56 overflow-y-auto pr-1">
-            <div class="text-xs text-slate-500 text-center py-4">جاري التحميل...</div>
-          </div>
+    <!-- Breakdown cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+      <div class="gold-card p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-sm text-white flex items-center gap-2">
+            <i class="fa-solid fa-location-dot text-[#DFBF7A]"></i> Videos by Location
+          </h3>
+          <span class="text-[10px] text-slate-500 font-mono-code">Location</span>
+        </div>
+        <div id="chartLocationsList" class="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+          <div class="text-xs text-slate-500 text-center py-4">Loading…</div>
         </div>
       </div>
 
-      <!-- BREAKDOWN 2: PROJECT STAGES -->
-      <div class="gold-card rounded-2xl p-5 flex flex-col justify-between">
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="font-bold text-sm text-white flex items-center gap-2">
-              <i class="fa-solid fa-layer-group text-blue-400"></i> مراحل التشطيب والتسليم
-            </h3>
-            <span class="text-[10px] text-slate-400 font-mono">Stage</span>
-          </div>
-          <div id="chartStagesList" class="space-y-2 max-h-56 overflow-y-auto pr-1">
-            <div class="text-xs text-slate-500 text-center py-4">جاري التحميل...</div>
-          </div>
+      <div class="gold-card p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-sm text-white flex items-center gap-2">
+            <i class="fa-solid fa-layer-group text-blue-400"></i> Finishing Stage
+          </h3>
+          <span class="text-[10px] text-slate-500 font-mono-code">Stage</span>
+        </div>
+        <div id="chartStagesList" class="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+          <div class="text-xs text-slate-500 text-center py-4">Loading…</div>
         </div>
       </div>
 
-      <!-- BREAKDOWN 3: SPACE TYPES -->
-      <div class="gold-card rounded-2xl p-5 flex flex-col justify-between">
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="font-bold text-sm text-white flex items-center gap-2">
-              <i class="fa-solid fa-vector-square text-emerald-400"></i> نوع الفراغ المعماري
-            </h3>
-            <span class="text-[10px] text-slate-400 font-mono">Space Type</span>
-          </div>
-          <div id="chartSpacesList" class="space-y-2 max-h-56 overflow-y-auto pr-1">
-            <div class="text-xs text-slate-500 text-center py-4">جاري التحميل...</div>
-          </div>
+      <div class="gold-card p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-sm text-white flex items-center gap-2">
+            <i class="fa-solid fa-vector-square text-emerald-400"></i> Space Type
+          </h3>
+          <span class="text-[10px] text-slate-500 font-mono-code">Space Type</span>
+        </div>
+        <div id="chartSpacesList" class="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+          <div class="text-xs text-slate-500 text-center py-4">Loading…</div>
         </div>
       </div>
 
-      <!-- BREAKDOWN 4: WORK CATEGORIES (Decision A Confirmed) -->
-      <div class="gold-card rounded-2xl p-5 flex flex-col justify-between">
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="font-bold text-sm text-white flex items-center gap-2">
-              <i class="fa-solid fa-trowel-bricks text-amber-400"></i> تصنيفات الأعمال الهندسية
-            </h3>
-            <span class="text-[10px] text-slate-400 font-mono">Work Category</span>
-          </div>
-          <div id="chartWorkCatList" class="space-y-2 max-h-56 overflow-y-auto pr-1">
-            <div class="text-xs text-slate-500 text-center py-4">جاري التحميل...</div>
-          </div>
+      <div class="gold-card p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-sm text-white flex items-center gap-2">
+            <i class="fa-solid fa-trowel-bricks text-amber-400"></i> Work Category
+          </h3>
+          <span class="text-[10px] text-slate-500 font-mono-code">Work Category</span>
+        </div>
+        <div id="chartWorkCatList" class="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+          <div class="text-xs text-slate-500 text-center py-4">Loading…</div>
         </div>
       </div>
 
     </div>
 
-    <!-- RECENT ACTIVITY AUDIT STREAM -->
-    <div class="gold-card rounded-2xl p-5">
+    <!-- Recent activity -->
+    <div class="gold-card p-5">
       <div class="flex items-center justify-between mb-4">
         <h3 class="font-bold text-sm text-white flex items-center gap-2">
-          <i class="fa-solid fa-clock-rotate-left text-[#DFBF7A]"></i> أحدث العمليات والأنشطة (Audit Log)
+          <i class="fa-solid fa-clock-rotate-left text-[#DFBF7A]"></i> Recent Activity
         </h3>
-        <span class="text-xs text-slate-400">سجل الأمان المباشر</span>
+        <span class="text-xs text-slate-500">Audit Log</span>
       </div>
-      <div id="dashRecentActivityList" class="space-y-2.5">
-        <div class="text-xs text-slate-500 text-center py-4">جاري التحميل...</div>
+      <div id="dashRecentActivityList" class="space-y-2">
+        <div class="text-xs text-slate-500 text-center py-4">Loading…</div>
       </div>
     </div>
 
   </section>
 
   <!-- ============================================================= -->
-  <!-- VIEW 2: ADD VIDEO                                             -->
+  <!-- VIEW 2: ADD VIDEO                                              -->
   <!-- ============================================================= -->
-  <section id="viewAddVideo" class="tab-view hidden max-w-4xl mx-auto space-y-6">
-    
-    <!-- SOURCE TYPE SWITCHER -->
-    <div class="gold-card rounded-2xl p-3 flex items-center justify-center gap-3">
-      <button type="button" onclick="setAddSource('Project Video')" id="btnSourceProject" class="flex-1 py-3 rounded-xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]">
-        <i class="fa-solid fa-house-chimney-crack"></i> <span>فيديو مشروع (Project Video)</span>
+  <section id="viewAddVideo" class="tab-view hidden max-w-4xl mx-auto space-y-5">
+
+    <div class="gold-card p-2 flex items-center gap-2">
+      <button type="button" onclick="setAddSource('Project Video')" id="btnSourceProject" class="flex-1 py-3 rounded-lg font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]">
+        <i class="fa-solid fa-house-chimney-crack"></i> <span>Project Video</span>
       </button>
-      <button type="button" onclick="setAddSource('Marketing Content')" id="btnSourceMarketing" class="flex-1 py-3 rounded-xl font-bold text-xs sm:text-sm text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center justify-center gap-2">
-        <i class="fa-solid fa-bullhorn"></i> <span>محتوى تسويقي (Marketing Content)</span>
+      <button type="button" onclick="setAddSource('Marketing Content')" id="btnSourceMarketing" class="flex-1 py-3 rounded-lg font-bold text-xs sm:text-sm text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center justify-center gap-2">
+        <i class="fa-solid fa-bullhorn"></i> <span>Marketing Content</span>
       </button>
     </div>
 
-    <!-- DRIVE PERMISSION REMINDER BANNER -->
-    <div class="rounded-xl p-4 bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-3">
+    <div class="rounded-xl p-4 bg-amber-500/10 border border-amber-500/25 text-xs flex items-start gap-3">
       <i class="fa-solid fa-triangle-exclamation text-amber-400 text-base mt-0.5"></i>
-      <div>
-        <strong class="font-bold">تنبيه صلاحيات Google Drive قبل الحفظ:</strong>
-        <p class="text-slate-300 mt-1 leading-relaxed">
-          المنظومة تقوم بإعادة تسمية ونقل الملف الأصلي نفسه (وليس إنشاء نسخة). يجب أن يكون ملف الفيديو على Drive مشاركاً بصلاحية 
-          <span class="text-[#DFBF7A] font-mono font-bold">Editor</span> مع حساب التطبيق (<span id="bannerExecuteEmail" class="font-mono underline">حساب التطبيق</span>) قبل حفظ الرابط.
-        </p>
+      <div class="text-slate-300 leading-relaxed">
+        <strong class="text-amber-200 font-bold">Before you save a link:</strong>
+        the app renames and moves the original file — it never copies it. The Drive file must already be shared as
+        <span class="text-[#DFBF7A] font-mono-code font-bold">Editor</span> with the app account
+        (<span id="bannerExecuteEmail" class="font-mono-code underline">louyashra@gmail.com</span>) before you paste its link, or the save will fail with a clear permission error.
       </div>
     </div>
 
     <!-- FORM: PROJECT VIDEO -->
-    <form id="formProjectVideo" onsubmit="submitProjectVideo(event)" class="gold-card rounded-2xl p-6 sm:p-8 space-y-6">
-      
-      <!-- Unit Selection Bar -->
+    <form id="formProjectVideo" onsubmit="submitProjectVideo(event)" class="gold-card p-6 sm:p-7 space-y-5">
+
       <div class="p-4 rounded-xl bg-[#081120] border border-slate-800 space-y-3">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <label class="text-xs font-bold text-[#DFBF7A] flex items-center gap-2">
-            <i class="fa-solid fa-link"></i> ربط الفيديو بوحدة سكنية / تجارية:
+            <i class="fa-solid fa-link"></i> Link this video to a unit
           </label>
-          <div class="flex items-center gap-2 text-xs">
-            <input type="radio" name="unitMode" id="unitModeExisting" value="existing" checked onchange="toggleUnitMode()">
-            <label for="unitModeExisting" class="cursor-pointer text-slate-300">اختيار وحدة سابقة</label>
-            <input type="radio" name="unitMode" id="unitModeNew" value="new" class="mr-3" onchange="toggleUnitMode()">
-            <label for="unitModeNew" class="cursor-pointer text-slate-300">تسجيل وحدة جديدة</label>
+          <div class="flex items-center gap-4 text-xs">
+            <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+              <input type="radio" name="unitMode" id="unitModeExisting" value="existing" checked onchange="toggleUnitMode()"> Existing unit
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
+              <input type="radio" name="unitMode" id="unitModeNew" value="new" onchange="toggleUnitMode()"> New unit
+            </label>
           </div>
         </div>
 
         <div id="unitSelectContainer" class="relative">
-          <input type="text" id="pvUnitSearch" placeholder="ابحث بكود الوحدة أو اسم العميل أو المنطقة..." class="w-full input-dark px-4 py-2.5 rounded-xl text-xs sm:text-sm" oninput="filterUnitSearch(this.value)" autocomplete="off">
+          <input type="text" id="pvUnitSearch" placeholder="Search by unit ID, client name or location…" class="w-full input-dark px-4 py-2.5 text-xs sm:text-sm" oninput="filterUnitSearch(this.value)" autocomplete="off">
           <input type="hidden" id="pvSelectedUnitId">
           <div id="pvUnitSearchResults" class="autocomplete-items hidden"></div>
         </div>
       </div>
 
-      <!-- Video Link -->
       <div>
-        <label class="block text-xs font-bold text-slate-300 mb-1.5">
-          رابط الفيديو على Google Drive <span class="text-rose-400">*</span>
-        </label>
-        <input type="url" id="pvVideoLink" required placeholder="https://drive.google.com/file/d/.../view" class="w-full input-dark px-4 py-3 rounded-xl text-xs sm:text-sm font-mono-code" oninput="updateProjectVideoPreview()">
-        <p class="text-[11px] text-slate-400 mt-1">يقبل روابط Google Drive المباشرة أو معرّف الملف (File ID).</p>
+        <label class="field-label">Google Drive video link <span class="field-required">*</span></label>
+        <input type="url" id="pvVideoLink" required placeholder="https://drive.google.com/file/d/…/view" class="w-full input-dark px-4 py-3 text-xs sm:text-sm font-mono-code" oninput="updateProjectVideoPreview()">
+        <p class="text-[11px] text-slate-500 mt-1">Accepts a Drive share link or a bare File ID.</p>
       </div>
 
-      <!-- Unit Information Grid -->
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">اسم العميل <span class="text-rose-400">*</span></label>
-          <input type="text" id="pvClientName" required placeholder="مثال: أحمد حسن" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" oninput="updateProjectVideoPreview()">
+          <label class="field-label">Client name <span class="field-required">*</span></label>
+          <input type="text" id="pvClientName" required placeholder="e.g. Ahmed Hassan" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="updateProjectVideoPreview()">
         </div>
-
         <div class="relative">
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">الموقع / المنطقة <span class="text-rose-400">*</span></label>
-          <input type="text" id="pvLocation" required placeholder="مثال: التجمع الخامس" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" oninput="filterLocationSearch(this.value, 'pvLocationResults', 'pvLocation')" autocomplete="off">
+          <label class="field-label">Location <span class="field-required">*</span></label>
+          <input type="text" id="pvLocation" required placeholder="e.g. New Cairo" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="filterLocationSearch(this.value, 'pvLocationResults', 'pvLocation')" autocomplete="off">
           <div id="pvLocationResults" class="autocomplete-items hidden"></div>
         </div>
-
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">نوع الوحدة <span class="text-rose-400">*</span></label>
-          <select id="pvUnitType" required class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
+          <label class="field-label">Unit type <span class="field-required">*</span></label>
+          <select id="pvUnitType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
         </div>
-
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">المساحة (م²)</label>
-          <input type="number" id="pvArea" placeholder="مثال: 220" min="1" step="any" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-num" oninput="updateProjectVideoPreview()">
+          <label class="field-label">Area (sqm)</label>
+          <input type="number" id="pvArea" placeholder="e.g. 220" min="1" step="any" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm font-num" oninput="updateProjectVideoPreview()">
         </div>
-
       </div>
 
-      <!-- Video Classification Grid -->
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-        
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">مرحلة الفيديو <span class="text-rose-400">*</span></label>
-          <select id="pvProjectVideoType" required class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
+          <label class="field-label">Project video type <span class="field-required">*</span></label>
+          <select id="pvProjectVideoType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
         </div>
-
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">نوع الفراغ <span class="text-rose-400">*</span></label>
-          <select id="pvSpaceType" required class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
+          <label class="field-label">Space type <span class="field-required">*</span></label>
+          <select id="pvSpaceType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
         </div>
-
-        <!-- Section 8.6 Work Category (Decision A Confirmed) -->
         <div>
-          <label class="block text-xs font-bold text-[#DFBF7A] mb-1.5">تصنيف الأعمال (Work Category) <span class="text-rose-400">*</span></label>
-          <select id="pvWorkCategory" required class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm border-amber-500/40" onchange="updateProjectVideoPreview()"></select>
+          <label class="field-label text-[#DFBF7A]">Work category <span class="field-required">*</span></label>
+          <select id="pvWorkCategory" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm border-amber-500/35" onchange="updateProjectVideoPreview()"></select>
         </div>
-
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">تاريخ التصوير <span class="text-rose-400">*</span></label>
-          <input type="date" id="pvShootingDate" required class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" oninput="updateProjectVideoPreview()">
+          <label class="field-label">Shooting date <span class="field-required">*</span></label>
+          <input type="date" id="pvShootingDate" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="updateProjectVideoPreview()">
         </div>
-
       </div>
 
-      <!-- Optional Unit Design PDF Attachment -->
       <div class="p-4 rounded-xl bg-[#081120] border border-slate-800 space-y-3">
         <div class="flex items-center justify-between">
           <label class="text-xs font-bold text-slate-300 flex items-center gap-2">
-            <i class="fa-solid fa-file-pdf text-rose-400"></i> إرفاق ملف المخطط المعماري (PDF) — اختياري:
+            <i class="fa-solid fa-file-pdf text-rose-400"></i> Attach unit design PDF — optional
           </label>
-          <span class="text-[10px] text-slate-500">يحفظ باسم الوحدة مع سجل النسخ V01</span>
+          <span class="text-[10px] text-slate-500">Saved to the unit as version V01</span>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input type="file" id="pvPdfFileInput" accept="application/pdf,.pdf" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700">
-          <input type="text" id="pvPdfTitle" placeholder="عنوان المخطط (اختياري، مثلاً: المخطط التنفيذي للديكور)" class="w-full input-dark px-3 py-2 rounded-lg text-xs">
+          <input type="text" id="pvPdfTitle" placeholder="Document title (optional), e.g. Approved lighting layout" class="w-full input-dark px-3 py-2 text-xs">
         </div>
       </div>
 
-      <!-- Version Notes -->
       <div>
-        <label class="block text-xs font-bold text-slate-300 mb-1.5">ملاحظات النسخة</label>
-        <input type="text" id="pvVersionNotes" placeholder="مثال: النسخة المعتمدة للتسليم النهائي بعد تعديل الإضاءة" class="w-full input-dark px-4 py-2.5 rounded-xl text-xs sm:text-sm">
+        <label class="field-label">Version notes</label>
+        <input type="text" id="pvVersionNotes" placeholder="e.g. Approved cut for final handover, lighting corrected" class="w-full input-dark px-4 py-2.5 text-xs sm:text-sm">
       </div>
 
-      <!-- Live Generated Filename Box -->
-      <div class="p-4 rounded-xl bg-gradient-to-r from-[#081120] to-[#0D1A30] border border-amber-500/30">
+      <div class="p-4 rounded-xl bg-gradient-to-r from-[#081120] to-[#0D1A30] border border-amber-500/25">
         <div class="text-[10px] font-bold text-[#DFBF7A] mb-1 flex items-center gap-1.5">
-          <i class="fa-solid fa-tag"></i> الاسم المعتمد للملف على Drive (Naming Rule §12):
+          <i class="fa-solid fa-tag"></i> Drive filename that will be generated
         </div>
         <div id="pvGeneratedFilenamePreview" class="text-xs sm:text-sm font-mono-code font-bold text-white break-all">
           Client Name - Location - Project Video Type - Space Type - Shooting Date - V01.mp4
         </div>
-        <div class="text-[10px] text-slate-400 mt-1">
-          * يتم تنقيح الرموز وإزالة الفواصل الزائدة تلقائياً. حقل تصنيف الأعمال (Work Category) لا يضاف لاسم الملف افتراضياً.
+        <div class="text-[10px] text-slate-500 mt-1">
+          Empty optional fields are omitted automatically. Work Category is not added to the filename by default.
         </div>
       </div>
 
-      <!-- Submit Button -->
-      <div class="flex items-center justify-end gap-3 pt-2">
-        <button type="reset" class="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition">إعادة تعيين</button>
-        <button type="submit" id="btnSubmitProjectVideo" class="gold-btn px-8 py-3 rounded-xl text-sm font-black flex items-center gap-2">
-          <i class="fa-solid fa-cloud-arrow-up"></i> <span>حفظ وتوثيق الفيديو</span>
+      <div class="flex items-center justify-end gap-2.5 pt-1">
+        <button type="reset" class="ghost-btn px-5 py-2.5 text-xs">Reset</button>
+        <button type="submit" id="btnSubmitProjectVideo" class="gold-btn px-8 py-3 text-sm font-black flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up"></i> <span>Save Video</span>
         </button>
       </div>
 
     </form>
 
     <!-- FORM: MARKETING CONTENT -->
-    <form id="formMarketingContent" onsubmit="submitMarketingContent(event)" class="gold-card rounded-2xl p-6 sm:p-8 space-y-6 hidden">
-      
-      <!-- Video Link -->
+    <form id="formMarketingContent" onsubmit="submitMarketingContent(event)" class="gold-card p-6 sm:p-7 space-y-5 hidden">
+
       <div>
-        <label class="block text-xs font-bold text-slate-300 mb-1.5">
-          رابط الفيديو على Google Drive <span class="text-rose-400">*</span>
-        </label>
-        <input type="url" id="mcVideoLink" required placeholder="https://drive.google.com/file/d/.../view" class="w-full input-dark px-4 py-3 rounded-xl text-xs sm:text-sm font-mono-code" oninput="updateMarketingContentPreview()">
+        <label class="field-label">Google Drive video link <span class="field-required">*</span></label>
+        <input type="url" id="mcVideoLink" required placeholder="https://drive.google.com/file/d/…/view" class="w-full input-dark px-4 py-3 text-xs sm:text-sm font-mono-code" oninput="updateMarketingContentPreview()">
       </div>
 
-      <!-- Classification Grid -->
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">نوع المحتوى التسويقي <span class="text-rose-400">*</span></label>
-          <select id="mcContentType" required class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" onchange="handleMarketingContentTypeChange()"></select>
+          <label class="field-label">Content type <span class="field-required">*</span></label>
+          <select id="mcContentType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="handleMarketingContentTypeChange()"></select>
         </div>
-
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">موضوع الفيديو (Topic) <span class="text-rose-400">*</span></label>
-          <input type="text" id="mcTopic" required placeholder="مثال: أخطاء تأسيس السباكة" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" oninput="updateMarketingContentPreview()">
+          <label class="field-label">Topic <span class="field-required">*</span></label>
+          <input type="text" id="mcTopic" required placeholder="e.g. Plumbing rough-in mistakes" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="updateMarketingContentPreview()">
         </div>
-
         <div id="mcSpaceTypeContainer">
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">نوع الفراغ (اختياري)</label>
-          <select id="mcSpaceType" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" onchange="updateMarketingContentPreview()"></select>
+          <label class="field-label">Space type (optional)</label>
+          <select id="mcSpaceType" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateMarketingContentPreview()"></select>
         </div>
-
       </div>
 
-      <!-- Date & Notes Grid -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">تاريخ التصوير <span class="text-rose-400">*</span></label>
-          <input type="date" id="mcShootingDate" required class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs sm:text-sm" oninput="updateMarketingContentPreview()">
+          <label class="field-label">Shooting date <span class="field-required">*</span></label>
+          <input type="date" id="mcShootingDate" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="updateMarketingContentPreview()">
         </div>
-
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">ملاحظات النسخة</label>
-          <input type="text" id="mcVersionNotes" placeholder="مثال: نسخة Reels مقاس 9:16 مع تعديل النص والموسيقى" class="w-full input-dark px-4 py-2.5 rounded-xl text-xs sm:text-sm">
+          <label class="field-label">Version notes</label>
+          <input type="text" id="mcVersionNotes" placeholder="e.g. 9:16 Reels cut, updated caption and music" class="w-full input-dark px-4 py-2.5 text-xs sm:text-sm">
         </div>
       </div>
 
-      <!-- Live Generated Filename Box -->
-      <div class="p-4 rounded-xl bg-gradient-to-r from-[#081120] to-[#0D1A30] border border-blue-500/30">
+      <div class="p-4 rounded-xl bg-gradient-to-r from-[#081120] to-[#0D1A30] border border-blue-500/25">
         <div class="text-[10px] font-bold text-sky-400 mb-1 flex items-center gap-1.5">
-          <i class="fa-solid fa-tag"></i> الاسم المعتمد للملف على Drive (Marketing Rule §12):
+          <i class="fa-solid fa-tag"></i> Drive filename that will be generated
         </div>
         <div id="mcGeneratedFilenamePreview" class="text-xs sm:text-sm font-mono-code font-bold text-white break-all">
           Content Type - Topic - Shooting Date - V01.mp4
         </div>
       </div>
 
-      <!-- Submit Button -->
-      <div class="flex items-center justify-end gap-3 pt-2">
-        <button type="reset" class="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition">إعادة تعيين</button>
-        <button type="submit" id="btnSubmitMarketingContent" class="gold-btn px-8 py-3 rounded-xl text-sm font-black flex items-center gap-2">
-          <i class="fa-solid fa-cloud-arrow-up"></i> <span>حفظ وتوثيق المحتوى</span>
+      <div class="flex items-center justify-end gap-2.5 pt-1">
+        <button type="reset" class="ghost-btn px-5 py-2.5 text-xs">Reset</button>
+        <button type="submit" id="btnSubmitMarketingContent" class="gold-btn px-8 py-3 text-sm font-black flex items-center gap-2">
+          <i class="fa-solid fa-cloud-arrow-up"></i> <span>Save Content</span>
         </button>
       </div>
 
@@ -655,125 +659,108 @@
   </section>
 
   <!-- ============================================================= -->
-  <!-- VIEW 3: VIDEO LIBRARY                                         -->
+  <!-- VIEW 3: VIDEO LIBRARY                                          -->
   <!-- ============================================================= -->
-  <section id="viewLibrary" class="tab-view hidden space-y-5">
-    
-    <!-- ADVANCED FILTER BAR -->
-    <div class="gold-card rounded-2xl p-5 space-y-4">
-      
-      <!-- Row 1: Search & Primary Filters -->
+  <section id="viewLibrary" class="tab-view hidden space-y-4">
+
+    <div class="gold-card p-5 space-y-4">
+
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <div>
-          <label class="block text-[11px] font-bold text-slate-400 mb-1">بحث سريع:</label>
+          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Search</label>
           <div class="relative">
-            <input type="text" id="filterSearch" placeholder="بحث بالاسم، العميل، الكود، الموضوع..." class="w-full input-dark pr-9 pl-3 py-2 rounded-xl text-xs" oninput="debounceLibrarySearch()">
-            <i class="fa-solid fa-magnifying-glass absolute right-3 top-3 text-slate-500 text-xs"></i>
+            <input type="text" id="filterSearch" placeholder="Client, unit, topic…" class="w-full input-dark pl-9 pr-3 py-2 text-xs" oninput="debounceLibrarySearch()">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
           </div>
         </div>
-
         <div>
-          <label class="block text-[11px] font-bold text-slate-400 mb-1">مصدر الفيديو (Source):</label>
-          <select id="filterSource" class="w-full input-dark px-3 py-2 rounded-xl text-xs" onchange="loadLibrary()">
-            <option value="">كل المصادر</option>
-            <option value="Project Video">فيديوهات المشاريع</option>
-            <option value="Marketing Content">المحتوى التسويقي</option>
+          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Video source</label>
+          <select id="filterSource" class="w-full input-dark px-3 py-2 text-xs" onchange="loadLibrary()">
+            <option value="">All sources</option>
+            <option value="Project Video">Project Video</option>
+            <option value="Marketing Content">Marketing Content</option>
           </select>
         </div>
-
         <div>
-          <label class="block text-[11px] font-bold text-slate-400 mb-1">المرحلة (Stage):</label>
-          <select id="filterStage" class="w-full input-dark px-3 py-2 rounded-xl text-xs" onchange="loadLibrary()">
-            <option value="">كل المراحل</option>
+          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Stage</label>
+          <select id="filterStage" class="w-full input-dark px-3 py-2 text-xs" onchange="loadLibrary()">
+            <option value="">All stages</option>
           </select>
         </div>
-
         <div>
-          <label class="block text-[11px] font-bold text-slate-400 mb-1">نوع الفراغ (Space):</label>
-          <select id="filterSpace" class="w-full input-dark px-3 py-2 rounded-xl text-xs" onchange="loadLibrary()">
-            <option value="">كل الفراغات</option>
+          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Space type</label>
+          <select id="filterSpace" class="w-full input-dark px-3 py-2 text-xs" onchange="loadLibrary()">
+            <option value="">All spaces</option>
           </select>
         </div>
       </div>
 
-      <!-- Row 2: Work Category, Location, Dates, and Version Toggle -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-800">
-        
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-3 border-t border-slate-800">
         <div>
-          <label class="block text-[11px] font-bold text-[#DFBF7A] mb-1">تصنيف الأعمال (Work Category):</label>
-          <select id="filterWorkCat" class="w-full input-dark px-3 py-2 rounded-xl text-xs border-amber-500/30" onchange="loadLibrary()">
-            <option value="">كل تصنيفات الأعمال</option>
+          <label class="text-[11px] font-bold text-[#DFBF7A] mb-1 block">Work category</label>
+          <select id="filterWorkCat" class="w-full input-dark px-3 py-2 text-xs border-amber-500/25" onchange="loadLibrary()">
+            <option value="">All categories</option>
           </select>
         </div>
-
         <div>
-          <label class="block text-[11px] font-bold text-slate-400 mb-1">المنطقة (Location):</label>
-          <select id="filterLocation" class="w-full input-dark px-3 py-2 rounded-xl text-xs" onchange="loadLibrary()">
-            <option value="">كل المناطق</option>
+          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Location</label>
+          <select id="filterLocation" class="w-full input-dark px-3 py-2 text-xs" onchange="loadLibrary()">
+            <option value="">All locations</option>
           </select>
         </div>
-
         <div>
-          <label class="block text-[11px] font-bold text-slate-400 mb-1">تصفية التاريخ حسب:</label>
-          <select id="filterDateType" class="w-full input-dark px-3 py-2 rounded-xl text-xs" onchange="loadLibrary()">
-            <option value="Added Date">تاريخ الإضافة (Added Date)</option>
-            <option value="Shooting Date">تاريخ التصوير (Shooting Date)</option>
+          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Filter date by</label>
+          <select id="filterDateType" class="w-full input-dark px-3 py-2 text-xs" onchange="loadLibrary()">
+            <option value="Added Date">Added Date</option>
+            <option value="Shooting Date">Shooting Date</option>
           </select>
         </div>
-
         <div>
-          <label class="block text-[11px] font-bold text-slate-400 mb-1">الفترة الزمنية:</label>
-          <div class="flex items-center gap-1">
-            <input type="date" id="filterStartDate" class="w-1/2 input-dark px-2 py-2 rounded-lg text-[11px]" onchange="loadLibrary()">
-            <input type="date" id="filterEndDate" class="w-1/2 input-dark px-2 py-2 rounded-lg text-[11px]" onchange="loadLibrary()">
+          <label class="text-[11px] font-bold text-slate-400 mb-1 block">Date range</label>
+          <div class="flex items-center gap-1.5">
+            <input type="date" id="filterStartDate" class="w-1/2 input-dark px-2 py-2 text-[11px]" onchange="loadLibrary()">
+            <input type="date" id="filterEndDate" class="w-1/2 input-dark px-2 py-2 text-[11px]" onchange="loadLibrary()">
           </div>
         </div>
-
         <div class="flex items-center justify-between sm:justify-start gap-3 pt-4">
           <label class="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-amber-300">
             <input type="checkbox" id="filterIncludePrevious" class="w-4 h-4 rounded accent-[#C5A059]" onchange="loadLibrary()">
-            <span>عرض النسخ السابقة</span>
+            <span>Include previous versions</span>
           </label>
-          <button onclick="resetLibraryFilters()" class="text-[11px] text-slate-400 hover:text-rose-400 underline">مسح الفلاتر</button>
+          <button onclick="resetLibraryFilters()" class="text-[11px] text-slate-400 hover:text-rose-400 underline">Clear filters</button>
         </div>
-
       </div>
 
     </div>
 
-    <!-- LIBRARY RESULTS TABLE & COUNT -->
-    <div class="gold-card rounded-2xl overflow-hidden">
-      <div class="p-4 bg-[#081120] border-b border-slate-800 flex items-center justify-between">
+    <div class="gold-card overflow-hidden">
+      <div class="p-4 bg-[#081120] border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
         <div class="text-xs font-bold text-slate-300 flex items-center gap-2">
-          <span>نتائج البحث:</span>
+          <span>Results:</span>
           <span id="libraryResultsCount" class="font-num text-[#DFBF7A] text-sm font-black">0</span>
-          <span>فيديو / نسخة مطابقة</span>
+          <span>matching videos / versions</span>
         </div>
-        <div class="text-[11px] text-slate-500">
-          * يتم عرض النسخ الحالية (Current Versions) فقط افتراضياً
-        </div>
+        <div class="text-[11px] text-slate-500">Current versions shown by default</div>
       </div>
 
       <div class="overflow-x-auto">
-        <table class="w-full text-right text-xs">
+        <table class="w-full text-left text-xs">
           <thead class="bg-[#0B1528] text-slate-400 font-bold border-b border-slate-800">
             <tr>
-              <th class="p-3.5 whitespace-nowrap">رقم الفيديو</th>
-              <th class="p-3.5 whitespace-nowrap">النسخة</th>
-              <th class="p-3.5 whitespace-nowrap">المصدر</th>
-              <th class="p-3.5 whitespace-nowrap">اسم الملف المعتمد (Drive Name)</th>
-              <th class="p-3.5 whitespace-nowrap">العميل / الموضوع</th>
-              <th class="p-3.5 whitespace-nowrap">المنطقة</th>
-              <th class="p-3.5 whitespace-nowrap">المرحلة / الفراغ</th>
-              <th class="p-3.5 whitespace-nowrap">تصنيف الأعمال</th>
-              <th class="p-3.5 whitespace-nowrap">تاريخ التصوير</th>
-              <th class="p-3.5 whitespace-nowrap text-center">إجراءات</th>
+              <th class="p-3.5 whitespace-nowrap">Video #</th>
+              <th class="p-3.5 whitespace-nowrap">Version</th>
+              <th class="p-3.5 whitespace-nowrap">Source</th>
+              <th class="p-3.5 whitespace-nowrap">Drive filename</th>
+              <th class="p-3.5 whitespace-nowrap">Client / Topic</th>
+              <th class="p-3.5 whitespace-nowrap">Location</th>
+              <th class="p-3.5 whitespace-nowrap">Stage / Space</th>
+              <th class="p-3.5 whitespace-nowrap">Work category</th>
+              <th class="p-3.5 whitespace-nowrap">Shooting date</th>
+              <th class="p-3.5 whitespace-nowrap text-center">Actions</th>
             </tr>
           </thead>
           <tbody id="libraryTableBody" class="divide-y divide-slate-800/60">
-            <tr>
-              <td colspan="10" class="p-8 text-center text-slate-500">جاري تحميل مكتبة الفيديوهات...</td>
-            </tr>
+            <tr><td colspan="10" class="p-8 text-center text-slate-500">Loading video library…</td></tr>
           </tbody>
         </table>
       </div>
@@ -782,92 +769,84 @@
   </section>
 
   <!-- ============================================================= -->
-  <!-- VIEW 4: UNITS & DESIGN PDFS                                   -->
+  <!-- VIEW 4: UNITS & DESIGN PDFS                                    -->
   <!-- ============================================================= -->
-  <section id="viewUnits" class="tab-view hidden space-y-6">
-    
-    <!-- Units Catalog Header -->
-    <div class="gold-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+  <section id="viewUnits" class="tab-view hidden space-y-5">
+
+    <div class="gold-card p-4 flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg">
+        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg">
           <i class="fa-solid fa-building"></i>
         </div>
         <div>
-          <h2 class="text-base font-bold text-white">دليل الوحدات ومخططات الـ PDF المعمارية</h2>
-          <p class="text-xs text-slate-400">الوحدة هي المرجع الأساسي — الفيديوهات ومخططات التصميم ترتبط بكود الوحدة (Unit ID)</p>
+          <h2 class="text-base font-bold text-white">Units &amp; Design PDFs</h2>
+          <p class="text-xs text-slate-400">The unit is the source of truth — videos and design PDFs both relate to it by Unit ID</p>
         </div>
       </div>
       <div class="flex items-center gap-3">
-        <input type="text" id="unitsSearchInput" placeholder="بحث باسم العميل أو الكود أو المنطقة..." class="input-dark px-3 py-1.5 rounded-lg text-xs w-64" oninput="filterUnitsCatalog(this.value)">
-        <button onclick="openNewUnitModal()" class="gold-btn px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5">
-          <i class="fa-solid fa-plus"></i> <span>إضافة وحدة جديدة</span>
+        <input type="text" id="unitsSearchInput" placeholder="Search client, unit ID or location…" class="input-dark px-3 py-1.5 text-xs w-64" oninput="filterUnitsCatalog(this.value)">
+        <button onclick="openNewUnitModal()" class="gold-btn px-4 py-2 text-xs font-bold flex items-center gap-1.5">
+          <i class="fa-solid fa-plus"></i> <span>New Unit</span>
         </button>
       </div>
     </div>
 
-    <!-- Units Cards Grid -->
     <div id="unitsCatalogGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <div class="col-span-full p-8 text-center text-slate-500">جاري تحميل الوحدات...</div>
+      <div class="col-span-full p-8 text-center text-slate-500">Loading units…</div>
     </div>
 
   </section>
 
   <!-- ============================================================= -->
-  <!-- VIEW 5: SETTINGS & SETUP                                      -->
+  <!-- VIEW 5: SETTINGS                                               -->
   <!-- ============================================================= -->
-  <section id="viewSettings" class="tab-view hidden max-w-3xl mx-auto space-y-6">
-    
-    <div class="gold-card rounded-2xl p-6 sm:p-8 space-y-6">
+  <section id="viewSettings" class="tab-view hidden max-w-3xl mx-auto space-y-5">
+
+    <div class="gold-card p-6 sm:p-7 space-y-6">
       <div>
         <h2 class="text-lg font-bold text-white flex items-center gap-2">
-          <i class="fa-solid fa-sliders text-[#DFBF7A]"></i> إعدادات المنظومة وربط الموارد
+          <i class="fa-solid fa-sliders text-[#DFBF7A]"></i> System Settings
         </h2>
-        <p class="text-xs text-slate-400 mt-1">إدارة تهيئة جداول Google Sheets ومجلدات Google Drive المعتمدة</p>
+        <p class="text-xs text-slate-400 mt-1">Manage the Google Sheets and Drive resources this app is connected to</p>
       </div>
 
-      <!-- Current Config Card -->
       <div class="p-4 rounded-xl bg-[#081120] border border-slate-800 space-y-2 text-xs">
         <div class="flex items-center justify-between">
-          <span class="text-slate-400">حالة الربط:</span>
-          <span id="configStatusBadge" class="font-bold text-emerald-400">جاهز ومتصل</span>
+          <span class="text-slate-400">Connection status</span>
+          <span id="configStatusBadge" class="font-bold text-emerald-400">Connected</span>
         </div>
         <div class="flex items-center justify-between font-mono-code">
-          <span class="text-slate-400">Spreadsheet ID:</span>
-          <span id="configSpreadsheetId" class="text-slate-200">Loading...</span>
+          <span class="text-slate-400">Spreadsheet ID</span>
+          <span id="configSpreadsheetId" class="text-slate-200">Loading…</span>
         </div>
         <div class="flex items-center justify-between font-mono-code">
-          <span class="text-slate-400">Drive Root Folder ID:</span>
-          <span id="configRootFolderId" class="text-slate-200">Loading...</span>
+          <span class="text-slate-400">Drive root folder ID</span>
+          <span id="configRootFolderId" class="text-slate-200">Loading…</span>
         </div>
       </div>
 
-      <!-- Setup Trigger Button (Idempotent) -->
-      <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+      <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-3">
         <div class="text-xs text-amber-200 leading-relaxed">
-          <strong>التهيئة الذاتية التكرارية (Idempotent Setup):</strong><br>
-          تشغيل التهيئة يقوم بفحص أو إنشاء مجلدات Drive الرئيسية الـ 3 وجدول البيانات وقوائم التصنيف وصلاحيات المستخدمين، دون تكرار أي ملف أو صف موجود مسبقاً.
+          <strong>Idempotent setup:</strong> running setup checks or creates the 3 main Drive folders, the spreadsheet, the taxonomy lists, and user permissions — without duplicating anything that already exists.
         </div>
-        <button onclick="triggerSystemSetup()" id="btnTriggerSetup" class="gold-btn px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2">
-          <i class="fa-solid fa-wrench"></i> <span>إعادة فحص / تهيئة المنظومة الآن</span>
+        <button onclick="triggerSystemSetup()" id="btnTriggerSetup" class="gold-btn px-6 py-2.5 text-xs font-black flex items-center gap-2">
+          <i class="fa-solid fa-wrench"></i> <span>Run / Re-check Setup</span>
         </button>
       </div>
 
-      <!-- Authorized Users Section -->
       <div>
-        <h3 class="text-sm font-bold text-white mb-2">قائمة المستخدمين المصرح لهم (Authorised Users)</h3>
+        <h3 class="text-sm font-bold text-white mb-2">Authorised Users</h3>
         <div class="overflow-x-auto rounded-xl border border-slate-800">
-          <table class="w-full text-right text-xs">
+          <table class="w-full text-left text-xs">
             <thead class="bg-[#081120] text-slate-400">
               <tr>
-                <th class="p-2.5">البريد الإلكتروني</th>
-                <th class="p-2.5">الدور (Role)</th>
-                <th class="p-2.5">الحالة</th>
+                <th class="p-2.5">Email</th>
+                <th class="p-2.5">Role</th>
+                <th class="p-2.5">Status</th>
               </tr>
             </thead>
             <tbody id="configUsersTableBody" class="divide-y divide-slate-800">
-              <tr>
-                <td colspan="3" class="p-4 text-center text-slate-500">جاري التحميل...</td>
-              </tr>
+              <tr><td colspan="3" class="p-4 text-center text-slate-500">Loading…</td></tr>
             </tbody>
           </table>
         </div>
@@ -878,17 +857,17 @@
   </section>
 
   <!-- ============================================================= -->
-  <!-- MODAL: BATCH RENAME CONFIRMATION (DECISION C §2.3)             -->
+  <!-- MODAL: BATCH RENAME CONFIRMATION (Decision C, execution prompt §2.3) -->
   <!-- ============================================================= -->
   <div id="modalBatchRename" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
-    <div class="gold-card max-w-2xl w-full rounded-2xl p-6 sm:p-7 space-y-5 border-amber-500/60 shadow-2xl">
+    <div class="gold-card max-w-2xl w-full p-6 sm:p-7 space-y-5 border-amber-500/55 shadow-2xl">
       <div class="flex items-center gap-3 text-amber-300">
-        <div class="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center text-xl text-amber-400">
+        <div class="w-11 h-11 rounded-lg bg-amber-500/15 flex items-center justify-center text-lg text-amber-400">
           <i class="fa-solid fa-triangle-exclamation"></i>
         </div>
         <div>
-          <h3 class="text-base font-black text-white">تأكيد إعادة التسمية المجمعة لملفات Google Drive</h3>
-          <p class="text-xs text-amber-200/80">تعديل بيانات الوحدة سيغير أسماء الملفات الفيزيائية التالية المرتبطة بها:</p>
+          <h3 class="text-base font-black text-white">Confirm batch rename on Google Drive</h3>
+          <p class="text-xs text-amber-200/80">This unit correction changes the generated filename for the files below.</p>
         </div>
       </div>
 
@@ -897,33 +876,33 @@
       </div>
 
       <div class="text-[11px] text-slate-400 leading-relaxed bg-slate-900/60 p-3 rounded-lg border border-slate-800">
-        * تم تحديث البيانات الوصفية في الشيت بالفعل. اختيار <strong>"تأكيد وإعادة التسمية"</strong> سيعيد تسمية الملفات الأصلية في Google Drive وتوثيق العملية في سجل الأمان (Audit Log).
+        Sheet metadata has already been updated. Choosing <strong class="text-white">"Confirm &amp; Rename All"</strong> renames the original files on Google Drive and logs the change in the Audit Log.
       </div>
 
-      <div class="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-2">
-        <button type="button" onclick="cancelBatchRename()" class="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-800 transition">
-          إلغاء — الإبقاء على الأسماء الحالية في Drive
+      <div class="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 pt-1">
+        <button type="button" onclick="cancelBatchRename()" class="w-full sm:w-auto ghost-btn px-5 py-2.5 text-xs">
+          Cancel — keep current Drive filenames
         </button>
-        <button type="button" onclick="confirmBatchRename()" id="btnConfirmBatchRename" class="w-full sm:w-auto gold-btn px-6 py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2">
-          <i class="fa-solid fa-check"></i> <span>تأكيد وإعادة تسمية جميع الملفات</span>
+        <button type="button" onclick="confirmBatchRename()" id="btnConfirmBatchRename" class="w-full sm:w-auto gold-btn px-6 py-2.5 text-xs font-black flex items-center justify-center gap-2">
+          <i class="fa-solid fa-check"></i> <span>Confirm &amp; Rename All</span>
         </button>
       </div>
     </div>
   </div>
 
   <!-- ============================================================= -->
-  <!-- MODAL: ADD NEW VERSION (SECTION 14)                           -->
+  <!-- MODAL: ADD NEW VERSION -->
   <!-- ============================================================= -->
   <div id="modalAddVersion" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
-    <div class="gold-card max-w-xl w-full rounded-2xl p-6 space-y-5 border-blue-500/50 shadow-2xl">
+    <div class="gold-card max-w-xl w-full p-6 space-y-5 border-blue-500/45 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center text-lg">
+          <div class="w-10 h-10 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center text-lg">
             <i class="fa-solid fa-code-branch"></i>
           </div>
           <div>
-            <h3 class="text-sm sm:text-base font-bold text-white">إضافة نسخة جديدة للفيديو</h3>
-            <p id="mvVideoHeader" class="text-xs text-slate-400 font-mono">Video 0001</p>
+            <h3 class="text-sm sm:text-base font-bold text-white">Add New Version</h3>
+            <p id="mvVideoHeader" class="text-xs text-slate-400 font-mono-code">Video 0001</p>
           </div>
         </div>
         <button onclick="closeAddVersionModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -933,33 +912,30 @@
         <input type="hidden" id="mvVideoNumber">
 
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">
-            رابط الفيديو الجديد على Google Drive <span class="text-rose-400">*</span>
-          </label>
-          <input type="url" id="mvVideoLink" required placeholder="https://drive.google.com/file/d/.../view" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs font-mono-code" oninput="updateVersionModalPreview()">
+          <label class="field-label">New Google Drive video link <span class="field-required">*</span></label>
+          <input type="url" id="mvVideoLink" required placeholder="https://drive.google.com/file/d/…/view" class="w-full input-dark px-3.5 py-2.5 text-xs font-mono-code" oninput="updateVersionModalPreview()">
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">ملاحظات النسخة الجديدة (سبب التعديل)</label>
-          <input type="text" id="mvVersionNotes" placeholder="مثال: تعديل ألوان وإعادة مونتاج مقاس 16:9" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs">
+          <label class="field-label">Version notes (reason for the edit)</label>
+          <input type="text" id="mvVersionNotes" placeholder="e.g. Colour grading pass, re-cut to 16:9" class="w-full input-dark px-3.5 py-2.5 text-xs">
         </div>
 
-        <!-- Next Version Preview -->
         <div class="p-3.5 rounded-xl bg-[#081120] border border-slate-800 space-y-2">
           <div class="flex items-center justify-between text-xs">
-            <span class="text-slate-400">رقم النسخة المستهدف:</span>
-            <span id="mvTargetVersionBadge" class="font-bold text-[#DFBF7A] font-mono">V02</span>
+            <span class="text-slate-400">Target version number</span>
+            <span id="mvTargetVersionBadge" class="font-bold text-[#DFBF7A] font-mono-code">V02</span>
           </div>
           <div class="text-[11px] text-slate-400">
-            اسم الملف المقترح:
-            <div id="mvProposedFilename" class="text-white font-mono-code font-bold mt-1 break-all">Generating...</div>
+            Proposed filename
+            <div id="mvProposedFilename" class="text-white font-mono-code font-bold mt-1 break-all">Generating…</div>
           </div>
         </div>
 
-        <div class="flex items-center justify-end gap-3 pt-2">
-          <button type="button" onclick="closeAddVersionModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white">إلغاء</button>
-          <button type="submit" id="btnSubmitAddVersion" class="gold-btn px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2">
-            <i class="fa-solid fa-plus"></i> <span>اعتماد وحفظ النسخة</span>
+        <div class="flex items-center justify-end gap-2.5 pt-1">
+          <button type="button" onclick="closeAddVersionModal()" class="ghost-btn px-4 py-2 text-xs">Cancel</button>
+          <button type="submit" id="btnSubmitAddVersion" class="gold-btn px-6 py-2.5 text-xs font-black flex items-center gap-2">
+            <i class="fa-solid fa-plus"></i> <span>Save New Version</span>
           </button>
         </div>
       </form>
@@ -967,18 +943,18 @@
   </div>
 
   <!-- ============================================================= -->
-  <!-- MODAL: VERSION HISTORY DRAWER                                 -->
+  <!-- MODAL: VERSION HISTORY -->
   <!-- ============================================================= -->
   <div id="modalVersionHistory" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
-    <div class="gold-card max-w-2xl w-full rounded-2xl p-6 space-y-4 border-slate-700 shadow-2xl">
+    <div class="gold-card max-w-2xl w-full p-6 space-y-4 border-slate-700 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-amber-500/15 text-[#DFBF7A] flex items-center justify-center text-lg">
+          <div class="w-10 h-10 rounded-lg bg-amber-500/15 text-[#DFBF7A] flex items-center justify-center text-lg">
             <i class="fa-solid fa-clock-rotate-left"></i>
           </div>
           <div>
-            <h3 class="text-base font-bold text-white">سجل النسخ والتعديلات (Version History)</h3>
-            <p id="vhVideoTitle" class="text-xs text-slate-400 font-mono">Video 0001</p>
+            <h3 class="text-base font-bold text-white">Version History</h3>
+            <p id="vhVideoTitle" class="text-xs text-slate-400 font-mono-code">Video 0001</p>
           </div>
         </div>
         <button onclick="closeVersionHistoryModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -987,97 +963,95 @@
       <div id="vhVersionsList" class="space-y-3 max-h-80 overflow-y-auto pr-1"></div>
 
       <div class="flex justify-end pt-2">
-        <button onclick="closeVersionHistoryModal()" class="px-5 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-xs font-bold">إغلاق</button>
+        <button onclick="closeVersionHistoryModal()" class="ghost-btn px-5 py-2 text-xs bg-slate-800/60">Close</button>
       </div>
     </div>
   </div>
 
   <!-- ============================================================= -->
-  <!-- MODAL: UNIT DETAIL VIEW (§17)                                 -->
+  <!-- MODAL: UNIT DETAIL -->
   <!-- ============================================================= -->
   <div id="modalUnitDetail" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
-    <div class="gold-card max-w-3xl w-full rounded-2xl p-6 sm:p-7 space-y-5 border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
-      
+    <div class="gold-card max-w-3xl w-full p-6 sm:p-7 space-y-5 border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-3">
-          <div class="w-11 h-11 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-xl">
+          <div class="w-11 h-11 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-xl">
             <i class="fa-solid fa-building"></i>
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h3 id="udClientName" class="text-base font-black text-white">أحمد حسن</h3>
-              <span id="udUnitIdBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-[#DFBF7A] font-mono font-bold">U-0001</span>
+              <h3 id="udClientName" class="text-base font-black text-white">Ahmed Hassan</h3>
+              <span id="udUnitIdBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-[#DFBF7A] font-mono-code font-bold">U-0001</span>
             </div>
-            <p id="udLocationType" class="text-xs text-slate-400">التجمع الخامس • شقة سكنية (220 م²)</p>
+            <p id="udLocationType" class="text-xs text-slate-400">New Cairo • Apartment (220 sqm)</p>
           </div>
         </div>
         <button onclick="closeUnitDetailModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
-      <!-- Unit Master Edit Bar -->
       <div class="p-4 rounded-xl bg-[#081120] border border-slate-800 space-y-3">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-slate-300">البيانات الأساسية للوحدة (Master Unit Record):</span>
+          <span class="text-xs font-bold text-slate-300">Master Unit Record</span>
           <button onclick="toggleUnitEditMode()" id="btnToggleUnitEdit" class="text-xs text-[#DFBF7A] hover:underline font-bold">
-            <i class="fa-solid fa-pen-to-square"></i> تعديل بيانات الوحدة
+            <i class="fa-solid fa-pen-to-square"></i> Edit unit
           </button>
         </div>
         <div id="unitEditFormContainer" class="hidden space-y-3 pt-2 border-t border-slate-800">
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            <input type="text" id="ueClientName" placeholder="اسم العميل" class="input-dark px-3 py-2 rounded-lg text-xs">
-            <input type="text" id="ueLocation" placeholder="الموقع" class="input-dark px-3 py-2 rounded-lg text-xs">
-            <select id="ueUnitType" class="input-dark px-3 py-2 rounded-lg text-xs"></select>
-            <input type="number" id="ueArea" placeholder="المساحة م²" class="input-dark px-3 py-2 rounded-lg text-xs font-num">
+            <input type="text" id="ueClientName" placeholder="Client name" class="input-dark px-3 py-2 text-xs">
+            <input type="text" id="ueLocation" placeholder="Location" class="input-dark px-3 py-2 text-xs">
+            <select id="ueUnitType" class="input-dark px-3 py-2 text-xs"></select>
+            <input type="number" id="ueArea" placeholder="Area (sqm)" class="input-dark px-3 py-2 text-xs font-num">
           </div>
+          <p class="text-[10px] text-amber-300/80 leading-relaxed">
+            Saving here corrects the master record. Every linked video and PDF is updated automatically; if any generated filename changes as a result, you'll see the batch rename screen before anything on Drive is touched.
+          </p>
           <div class="flex items-center justify-end gap-2">
-            <button onclick="toggleUnitEditMode()" class="px-3 py-1.5 rounded-lg text-xs text-slate-400">إلغاء</button>
-            <button onclick="saveUnitMasterEdit()" class="gold-btn px-4 py-1.5 rounded-lg text-xs font-bold">حفظ ونشر التعديل</button>
+            <button onclick="toggleUnitEditMode()" class="ghost-btn px-3 py-1.5 text-xs">Cancel</button>
+            <button onclick="saveUnitMasterEdit()" class="gold-btn px-4 py-1.5 text-xs font-bold">Save &amp; Propagate</button>
           </div>
         </div>
       </div>
 
-      <!-- Linked Videos List -->
       <div class="space-y-3">
-        <div class="flex items-center justify-between">
-          <h4 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-            <i class="fa-solid fa-film text-[#DFBF7A]"></i> الفيديوهات المرتبطة بالوحدة:
-          </h4>
-        </div>
+        <h4 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-film text-[#DFBF7A]"></i> Linked videos
+        </h4>
         <div id="udVideosList" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
       </div>
 
-      <!-- Linked Architectural Design PDFs -->
       <div class="space-y-3 pt-3 border-t border-slate-800">
         <div class="flex items-center justify-between">
           <h4 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-            <i class="fa-solid fa-file-pdf text-rose-400"></i> مخططات التصميم الهندسي (PDF Versioning):
+            <i class="fa-solid fa-file-pdf text-rose-400"></i> Design PDFs (versioned)
           </h4>
           <button onclick="openUploadPdfModalForCurrentUnit()" class="text-xs text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1">
-            <i class="fa-solid fa-upload"></i> رفع نسخة تصميم جديدة
+            <i class="fa-solid fa-upload"></i> Upload new version
           </button>
         </div>
         <div id="udPdfsList" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
       </div>
 
       <div class="flex justify-end pt-2 border-t border-slate-800">
-        <button onclick="closeUnitDetailModal()" class="px-5 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-xs font-bold">إغلاق</button>
+        <button onclick="closeUnitDetailModal()" class="ghost-btn px-5 py-2 text-xs bg-slate-800/60">Close</button>
       </div>
 
     </div>
   </div>
 
   <!-- ============================================================= -->
-  <!-- MODAL: UPLOAD DESIGN PDF (§15)                                -->
+  <!-- MODAL: UPLOAD DESIGN PDF -->
   <!-- ============================================================= -->
   <div id="modalUploadPdf" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md p-4 hidden">
-    <div class="gold-card max-w-lg w-full rounded-2xl p-6 space-y-5 border-rose-500/40 shadow-2xl">
+    <div class="gold-card max-w-lg w-full p-6 space-y-5 border-rose-500/35 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center text-lg">
+          <div class="w-10 h-10 rounded-lg bg-rose-500/15 text-rose-400 flex items-center justify-center text-lg">
             <i class="fa-solid fa-file-pdf"></i>
           </div>
           <div>
-            <h3 class="text-sm sm:text-base font-bold text-white">رفع مخطط تصميم معماري (PDF)</h3>
+            <h3 class="text-sm sm:text-base font-bold text-white">Upload Design PDF</h3>
             <p id="upModalUnitHeader" class="text-xs text-slate-400">Unit ID: U-0001</p>
           </div>
         </div>
@@ -1088,43 +1062,42 @@
         <input type="hidden" id="upUnitId">
 
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">ملف المخطط (PDF فقط) <span class="text-rose-400">*</span></label>
-          <input type="file" id="upPdfFile" accept="application/pdf,.pdf" required class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700">
+          <label class="field-label">Design file (PDF only) <span class="field-required">*</span></label>
+          <input type="file" id="upPdfFile" accept="application/pdf,.pdf" required class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700">
         </div>
-
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">عنوان المستند (Document Title)</label>
-          <input type="text" id="upDocumentTitle" placeholder="مثال: المخطط التنفيذي وتوزيع الإضاءة المعتمد" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs">
+          <label class="field-label">Document title</label>
+          <input type="text" id="upDocumentTitle" placeholder="e.g. Approved execution &amp; lighting layout" class="w-full input-dark px-3.5 py-2.5 text-xs">
         </div>
-
         <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1.5">ملاحظات النسخة (Version Notes)</label>
-          <input type="text" id="upVersionNotes" placeholder="مثال: النسخة المعتمدة بعد تعديل مسار التكييفات" class="w-full input-dark px-3.5 py-2.5 rounded-xl text-xs">
+          <label class="field-label">Version notes</label>
+          <input type="text" id="upVersionNotes" placeholder="e.g. Approved after AC routing correction" class="w-full input-dark px-3.5 py-2.5 text-xs">
         </div>
 
-        <div class="flex items-center justify-end gap-3 pt-2">
-          <button type="button" onclick="closeUploadPdfModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white">إلغاء</button>
-          <button type="submit" id="btnSubmitUploadPdf" class="gold-btn px-6 py-2.5 rounded-xl text-xs font-black flex items-center gap-2">
-            <i class="fa-solid fa-upload"></i> <span>رفع وأرشفة المخطط</span>
+        <div class="flex items-center justify-end gap-2.5 pt-1">
+          <button type="button" onclick="closeUploadPdfModal()" class="ghost-btn px-4 py-2 text-xs">Cancel</button>
+          <button type="submit" id="btnSubmitUploadPdf" class="gold-btn px-6 py-2.5 text-xs font-black flex items-center gap-2">
+            <i class="fa-solid fa-upload"></i> <span>Upload &amp; Archive</span>
           </button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- TOAST NOTIFICATIONS CONTAINER -->
-  <div id="toastContainer" class="fixed bottom-5 left-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+  <!-- Toasts & global loading -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
 
-  <!-- GLOBAL LOADING OVERLAY -->
   <div id="globalLoadingOverlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#070D18]/80 backdrop-blur-sm hidden">
     <div class="loader-spinner mb-3"></div>
-    <div id="globalLoadingText" class="text-xs font-bold text-white tracking-wide">جاري المعالجة...</div>
+    <div id="globalLoadingText" class="text-xs font-bold text-white tracking-wide">Working…</div>
   </div>
 
   <script>
 /**
- * Amlaak Video Library — Client-Side Application Engine
- * Orchestrates UI state, async google.script.run calls, validation, and real-time previews.
+ * Amlaak Video Library — client-side application engine.
+ * Orchestrates UI state, async google.script.run calls, validation and
+ * live filename previews. Runs against setupLocalPreviewMocks() when there
+ * is no Apps Script container (e.g. opened as a plain HTML file for review).
  */
 
 var AppState = {
@@ -1143,25 +1116,24 @@ var AppState = {
   allVideos: [],
   currentTab: 'dashboard',
   selectedAddSource: 'Project Video',
-  activeUnitForDetail: null,
+  activeUnitDetail: null,
   activeVideoForVersion: null,
   pendingBatchRename: null,
   debounceTimer: null
 };
 
 // =============================================================
-// INITIALIZATION & LIFECYCLE
+// INITIALISATION & LIFECYCLE
 // =============================================================
 document.addEventListener('DOMContentLoaded', function() {
   initApp();
 });
 
 function initApp() {
-  showGlobalLoading('جاري الاتصال بالمنظومة والتحقق من الصلاحيات...');
+  showGlobalLoading('Connecting and checking permissions…');
 
-  // Fallback mock if running outside Apps Script container for local preview/tests
   if (typeof google === 'undefined' || !google.script || !google.script.run) {
-    console.warn('Running outside Google Apps Script container. Using local mock dispatcher.');
+    console.warn('Running outside the Google Apps Script container. Using local preview mocks.');
     setupLocalPreviewMocks();
     return;
   }
@@ -1170,7 +1142,7 @@ function initApp() {
     .withSuccessHandler(function(response) {
       hideGlobalLoading();
       if (!response.ok) {
-        showToast('error', response.message || 'فشل تحميل بيانات التهيئة.');
+        showToast('error', response.message || 'Failed to load initial configuration.');
         return;
       }
 
@@ -1179,29 +1151,24 @@ function initApp() {
       AppState.lists = data.lists;
       AppState.isConfigured = data.isConfigured;
 
-      // Update User Badge in Header
       var emailBadge = document.getElementById('userEmailBadge');
       var roleBadge = document.getElementById('userRoleBadge');
       if (data.user && data.user.email) {
         emailBadge.textContent = data.user.email;
-        roleBadge.textContent = data.user.role || 'مصرح له';
+        roleBadge.textContent = data.user.role || 'Authorised';
         document.getElementById('bannerExecuteEmail').textContent = data.user.email;
       } else {
-        emailBadge.textContent = 'غير مسجل';
-        roleBadge.textContent = 'غير مصرح';
+        emailBadge.textContent = 'Not signed in';
+        roleBadge.textContent = 'Not authorised';
       }
 
-      // Populate Dropdowns
       populateTaxonomyDropdowns();
-
-      // Load initial Dashboard
       loadDashboard();
-      // Pre-load Units and Library
       loadUnitsCatalog();
     })
     .withFailureHandler(function(err) {
       hideGlobalLoading();
-      showToast('error', 'خطأ في الاتصال بالخادم: ' + (err.message || err));
+      showToast('error', 'Server connection error: ' + (err.message || err));
     })
     .apiGetInitialData();
 }
@@ -1224,7 +1191,7 @@ function reloadCurrentView() {
 }
 
 // =============================================================
-// NAVIGATION CONTROLLER
+// NAVIGATION
 // =============================================================
 function switchTab(tabId) {
   AppState.currentTab = tabId;
@@ -1236,10 +1203,10 @@ function switchTab(tabId) {
     if (view && btn) {
       if (t === tabId) {
         view.classList.remove('hidden');
-        btn.className = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition flex items-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]';
+        btn.classList.add('active');
       } else {
         view.classList.add('hidden');
-        btn.className = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-2';
+        btn.classList.remove('active');
       }
     }
   });
@@ -1255,7 +1222,7 @@ function capitalizeFirst(str) {
 }
 
 // =============================================================
-// DROPDOWNS POPULATOR
+// TAXONOMY DROPDOWNS
 // =============================================================
 function populateTaxonomyDropdowns() {
   var lists = AppState.lists;
@@ -1278,28 +1245,24 @@ function populateTaxonomyDropdowns() {
     });
   }
 
-  // Project Video Form
-  fillSelect('pvUnitType', lists.unitType, '-- اختر نوع الوحدة --');
-  fillSelect('pvProjectVideoType', lists.projectVideoType, '-- اختر مرحلة الفيديو --');
-  fillSelect('pvSpaceType', lists.spaceType, '-- اختر نوع الفراغ --');
-  fillSelect('pvWorkCategory', lists.workCategory, '-- اختر تصنيف الأعمال --');
+  fillSelect('pvUnitType', lists.unitType, '— Select unit type —');
+  fillSelect('pvProjectVideoType', lists.projectVideoType, '— Select video type —');
+  fillSelect('pvSpaceType', lists.spaceType, '— Select space type —');
+  fillSelect('pvWorkCategory', lists.workCategory, '— Select work category —');
 
-  // Marketing Form
-  fillSelect('mcContentType', lists.marketingContentType, '-- اختر نوع المحتوى --');
-  fillSelect('mcSpaceType', lists.spaceType, '-- فراغ عام / بدون تحديد --');
+  fillSelect('mcContentType', lists.marketingContentType, '— Select content type —');
+  fillSelect('mcSpaceType', lists.spaceType, '— General / not specified —');
 
-  // Filters
-  fillSelect('filterStage', lists.projectVideoType, 'كل المراحل');
-  fillSelect('filterSpace', lists.spaceType, 'كل الفراغات');
-  fillSelect('filterWorkCat', lists.workCategory, 'كل تصنيفات الأعمال');
-  fillSelect('filterLocation', lists.locations, 'كل المناطق');
+  fillSelect('filterStage', lists.projectVideoType, 'All stages');
+  fillSelect('filterSpace', lists.spaceType, 'All spaces');
+  fillSelect('filterWorkCat', lists.workCategory, 'All categories');
+  fillSelect('filterLocation', lists.locations, 'All locations');
 
-  // Modals
   fillSelect('ueUnitType', lists.unitType);
 }
 
 // =============================================================
-// DASHBOARD CONTROLLER (§19)
+// DASHBOARD
 // =============================================================
 function loadDashboard(callback) {
   var filters = {
@@ -1319,72 +1282,73 @@ function loadDashboard(callback) {
     var kpis = data.kpis;
     var breakdowns = data.breakdowns;
 
-    // Render KPIs
     document.getElementById('kpiLogicalVideos').textContent = kpis.totalLogicalVideos;
     document.getElementById('kpiStoredVersions').textContent = kpis.totalStoredVersions;
     document.getElementById('kpiProjectVideos').textContent = kpis.totalProjectVideos;
-    document.getElementById('kpiProjectVersionsSub').textContent = kpis.projectVersionsCount + ' نسخة مسجلة';
+    document.getElementById('kpiProjectVersionsSub').textContent = kpis.projectVersionsCount + ' versions recorded';
     document.getElementById('kpiMarketingVideos').textContent = kpis.totalMarketingContent;
-    document.getElementById('kpiMarketingVersionsSub').textContent = kpis.marketingVersionsCount + ' نسخة مسجلة';
+    document.getElementById('kpiMarketingVersionsSub').textContent = kpis.marketingVersionsCount + ' versions recorded';
     document.getElementById('kpiTotalUnits').textContent = kpis.totalUnits;
     document.getElementById('kpiStoredPdfs').textContent = kpis.totalStoredPdfs;
 
-    // Render Breakdown distributions
     renderBreakdownList('chartLocationsList', breakdowns.locations, 'fa-location-dot', 'text-[#DFBF7A]');
     renderBreakdownList('chartStagesList', breakdowns.stages, 'fa-layer-group', 'text-blue-400');
     renderBreakdownList('chartSpacesList', breakdowns.spaces, 'fa-vector-square', 'text-emerald-400');
     renderBreakdownList('chartWorkCatList', breakdowns.workCategories, 'fa-trowel-bricks', 'text-amber-400');
 
-    // Render Recent Activity Stream
     var actContainer = document.getElementById('dashRecentActivityList');
     actContainer.innerHTML = '';
     if (!data.recentActivity || data.recentActivity.length === 0) {
-      actContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-3">لا توجد عمليات مسجلة حتى الآن.</div>';
+      actContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-3">No activity recorded yet.</div>';
     } else {
       data.recentActivity.forEach(function(act) {
         var row = document.createElement('div');
         row.className = 'flex items-center justify-between p-2.5 rounded-xl bg-[#081120] border border-slate-800 text-xs';
-        row.innerHTML = 
+        row.innerHTML =
           '<div class="flex items-center gap-2.5">' +
             '<span class="w-2 h-2 rounded-full bg-emerald-400"></span>' +
             '<div>' +
               '<span class="font-bold text-white">' + escapeHtml(act.message || act.action) + '</span>' +
-              '<div class="text-[10px] text-slate-400 mt-0.5">' + escapeHtml(act.user) + ' • <span class="font-num">' + escapeHtml(act.timestamp) + '</span></div>' +
+              '<div class="text-[10px] text-slate-400 mt-0.5">' + escapeHtml(act.user) + ' &bull; <span class="font-num">' + escapeHtml(act.timestamp) + '</span></div>' +
             '</div>' +
           '</div>' +
-          '<span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-[#DFBF7A]">' + escapeHtml(act.action) + '</span>';
+          '<span class="text-[10px] font-mono-code px-2 py-0.5 rounded bg-slate-800 text-[#DFBF7A]">' + escapeHtml(act.action) + '</span>';
         actContainer.appendChild(row);
       });
     }
   });
 }
 
+/**
+ * Ranked bar list for one-series magnitude data (dataviz: sequential,
+ * single hue, thin rounded marks). Kept intentionally simple — no external
+ * charting library is loaded so the Apps Script HtmlService payload stays small.
+ */
 function renderBreakdownList(containerId, items, iconClass, colorClass) {
   var container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = '';
 
   if (!items || items.length === 0) {
-    container.innerHTML = '<div class="text-xs text-slate-500 text-center py-3">لا توجد بيانات متاحة.</div>';
+    container.innerHTML = '<div class="text-xs text-slate-500 text-center py-3">No data available.</div>';
     return;
   }
 
   var maxCount = items[0].count || 1;
 
   items.forEach(function(item) {
-    var pct = Math.round((item.count / maxCount) * 100);
+    var pct = Math.max(4, Math.round((item.count / maxCount) * 100));
     var row = document.createElement('div');
-    row.className = 'space-y-1';
-    row.innerHTML = 
+    row.className = 'rank-row space-y-1';
+    row.title = item.name + ': ' + item.count;
+    row.innerHTML =
       '<div class="flex items-center justify-between text-xs">' +
         '<span class="text-slate-200 font-semibold truncate flex items-center gap-1.5">' +
           '<i class="fa-solid ' + iconClass + ' ' + colorClass + ' text-[10px]"></i> ' + escapeHtml(item.name) +
         '</span>' +
         '<span class="font-num font-bold text-white text-[11px]">' + item.count + '</span>' +
       '</div>' +
-      '<div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">' +
-        '<div class="h-full bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] rounded-full" style="width: ' + pct + '%"></div>' +
-      '</div>';
+      '<div class="rank-track"><div class="rank-fill" style="width: ' + pct + '%"></div></div>';
     container.appendChild(row);
   });
 }
@@ -1396,7 +1360,7 @@ function clearDashboardDates() {
 }
 
 // =============================================================
-// ADD VIDEO CONTROLLER (§10, §11, §12)
+// ADD VIDEO
 // =============================================================
 function setAddSource(source) {
   AppState.selectedAddSource = source;
@@ -1404,15 +1368,17 @@ function setAddSource(source) {
   var btnMkt = document.getElementById('btnSourceMarketing');
   var formProj = document.getElementById('formProjectVideo');
   var formMkt = document.getElementById('formMarketingContent');
+  var activeClass = 'flex-1 py-3 rounded-lg font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]';
+  var inactiveClass = 'flex-1 py-3 rounded-lg font-bold text-xs sm:text-sm text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center justify-center gap-2';
 
   if (source === 'Project Video') {
-    btnProj.className = 'flex-1 py-3 rounded-xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]';
-    btnMkt.className = 'flex-1 py-3 rounded-xl font-bold text-xs sm:text-sm text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center justify-center gap-2';
+    btnProj.className = activeClass;
+    btnMkt.className = inactiveClass;
     formProj.classList.remove('hidden');
     formMkt.classList.add('hidden');
   } else {
-    btnMkt.className = 'flex-1 py-3 rounded-xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]';
-    btnProj.className = 'flex-1 py-3 rounded-xl font-bold text-xs sm:text-sm text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center justify-center gap-2';
+    btnMkt.className = activeClass;
+    btnProj.className = inactiveClass;
     formMkt.classList.remove('hidden');
     formProj.classList.add('hidden');
   }
@@ -1448,7 +1414,7 @@ function filterUnitSearch(query) {
 
   resultsBox.innerHTML = '';
   if (matches.length === 0) {
-    resultsBox.innerHTML = '<div class="autocomplete-item text-slate-500 text-center text-xs">لا توجد وحدات مطابقة. اختر "تسجيل وحدة جديدة" للإضافة.</div>';
+    resultsBox.innerHTML = '<div class="autocomplete-item text-slate-500 text-center text-xs">No matching units. Switch to "New unit" to create one.</div>';
     resultsBox.classList.remove('hidden');
     return;
   }
@@ -1456,12 +1422,12 @@ function filterUnitSearch(query) {
   matches.forEach(function(u) {
     var div = document.createElement('div');
     div.className = 'autocomplete-item text-xs flex items-center justify-between';
-    div.innerHTML = 
+    div.innerHTML =
       '<div>' +
         '<strong class="text-white">' + escapeHtml(u.clientName) + '</strong>' +
-        '<div class="text-[10px] text-slate-400">' + escapeHtml(u.location) + ' • ' + escapeHtml(u.unitType) + '</div>' +
+        '<div class="text-[10px] text-slate-400">' + escapeHtml(u.location) + ' &bull; ' + escapeHtml(u.unitType) + '</div>' +
       '</div>' +
-      '<span class="font-mono text-[#DFBF7A] text-[10px]">' + u.unitId + '</span>';
+      '<span class="font-mono-code text-[#DFBF7A] text-[10px]">' + u.unitId + '</span>';
     div.onclick = function() {
       selectUnitForProjectVideo(u);
     };
@@ -1472,7 +1438,7 @@ function filterUnitSearch(query) {
 
 function selectUnitForProjectVideo(unit) {
   document.getElementById('pvSelectedUnitId').value = unit.unitId;
-  document.getElementById('pvUnitSearch').value = unit.clientName + ' (' + unit.unitId + ' - ' + unit.location + ')';
+  document.getElementById('pvUnitSearch').value = unit.clientName + ' (' + unit.unitId + ' — ' + unit.location + ')';
   document.getElementById('pvClientName').value = unit.clientName;
   document.getElementById('pvLocation').value = unit.location;
   document.getElementById('pvUnitType').value = unit.unitType;
@@ -1502,7 +1468,7 @@ function filterLocationSearch(query, resultsId, targetInputId) {
       box.classList.add('hidden');
       updateProjectVideoPreview();
     };
-    resultsBox.appendChild(div);
+    box.appendChild(div);
   });
   if (matches.length > 0) box.classList.remove('hidden');
   else box.classList.add('hidden');
@@ -1523,9 +1489,7 @@ function updateProjectVideoPreview() {
   if (date) parts.push(date);
   parts.push('V01');
 
-  var previewEl = document.getElementById('pvGeneratedFilenamePreview');
-  var name = parts.join(' - ') + '.mp4';
-  previewEl.textContent = name;
+  document.getElementById('pvGeneratedFilenamePreview').textContent = parts.join(' - ') + '.mp4';
 }
 
 function handleMarketingContentTypeChange() {
@@ -1533,7 +1497,7 @@ function handleMarketingContentTypeChange() {
   var spaceContainer = document.getElementById('mcSpaceTypeContainer');
   var spaceSelect = document.getElementById('mcSpaceType');
 
-  // Educational hides and clears Space Type per Section 11 & 12
+  // Educational hides and clears Space Type (execution prompt §11 / §12)
   if (type === 'Educational') {
     spaceContainer.classList.add('hidden');
     spaceSelect.value = '';
@@ -1558,15 +1522,14 @@ function updateMarketingContentPreview() {
   if (date) parts.push(date);
   parts.push('V01');
 
-  var previewEl = document.getElementById('mcGeneratedFilenamePreview');
-  previewEl.textContent = parts.join(' - ') + '.mp4';
+  document.getElementById('mcGeneratedFilenamePreview').textContent = parts.join(' - ') + '.mp4';
 }
 
 function submitProjectVideo(e) {
   e.preventDefault();
   var btn = document.getElementById('btnSubmitProjectVideo');
   btn.disabled = true;
-  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري المعالجة والرفع...';
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Saving…';
 
   var payload = {
     unitId: document.getElementById('pvSelectedUnitId').value || '',
@@ -1582,14 +1545,12 @@ function submitProjectVideo(e) {
     versionNotes: document.getElementById('pvVersionNotes').value.trim()
   };
 
-  // Check if PDF is attached
   var pdfFileInput = document.getElementById('pvPdfFileInput');
   if (pdfFileInput.files && pdfFileInput.files.length > 0) {
     var file = pdfFileInput.files[0];
     var reader = new FileReader();
     reader.onload = function(evt) {
-      var base64 = evt.target.result.split(',')[1];
-      payload.pdfFileBase64 = base64;
+      payload.pdfFileBase64 = evt.target.result.split(',')[1];
       payload.pdfFileName = file.name;
       payload.pdfDocumentTitle = document.getElementById('pvPdfTitle').value.trim();
       executeSaveProjectVideo(payload, btn);
@@ -1603,14 +1564,14 @@ function submitProjectVideo(e) {
 function executeSaveProjectVideo(payload, btn) {
   callApi('apiAddProjectVideo', [payload], function(res) {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>حفظ وتوثيق الفيديو</span>';
+    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>Save Video</span>';
 
     if (!res.ok) {
       showToast('error', res.message);
       return;
     }
 
-    showToast('success', 'تم حفظ وتوثيق فيديو المشروع بنجاح: ' + res.data.video.videoName);
+    showToast('success', 'Project video saved: ' + res.data.video.videoName);
     document.getElementById('formProjectVideo').reset();
     document.getElementById('pvSelectedUnitId').value = '';
     loadDashboard();
@@ -1623,7 +1584,7 @@ function submitMarketingContent(e) {
   e.preventDefault();
   var btn = document.getElementById('btnSubmitMarketingContent');
   btn.disabled = true;
-  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري الحفظ...';
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Saving…';
 
   var payload = {
     videoLink: document.getElementById('mcVideoLink').value.trim(),
@@ -1636,14 +1597,14 @@ function submitMarketingContent(e) {
 
   callApi('apiAddMarketingContent', [payload], function(res) {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>حفظ وتوثيق المحتوى</span>';
+    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>Save Content</span>';
 
     if (!res.ok) {
       showToast('error', res.message);
       return;
     }
 
-    showToast('success', 'تم حفظ وتوثيق المحتوى التسويقي بنجاح: ' + res.data.video.videoName);
+    showToast('success', 'Marketing content saved: ' + res.data.video.videoName);
     document.getElementById('formMarketingContent').reset();
     loadDashboard();
     switchTab('library');
@@ -1651,7 +1612,7 @@ function submitMarketingContent(e) {
 }
 
 // =============================================================
-// VIDEO LIBRARY CONTROLLER (§16, §18)
+// VIDEO LIBRARY
 // =============================================================
 function debounceLibrarySearch() {
   clearTimeout(AppState.debounceTimer);
@@ -1675,7 +1636,7 @@ function loadLibrary(callback) {
   };
 
   var tbody = document.getElementById('libraryTableBody');
-  tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-500">جاري تحميل الفيديوهات وتطبيق الفلاتر...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-500">Loading videos and applying filters…</td></tr>';
 
   callApi('apiGetVideos', [filters], function(res) {
     if (callback) callback();
@@ -1689,7 +1650,7 @@ function loadLibrary(callback) {
     document.getElementById('libraryResultsCount').textContent = videos.length;
 
     if (videos.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-500">لا توجد فيديوهات مطابقة لمعايير البحث الحالية.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-500">No videos match the current filters.</td></tr>';
       return;
     }
 
@@ -1699,20 +1660,20 @@ function loadLibrary(callback) {
       tr.className = 'hover:bg-slate-800/40 transition';
 
       var isCur = v.isCurrentVersion;
-      var verBadge = isCur 
-        ? '<span class="badge-current text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">' + escapeHtml(v.versionNumber) + ' [Current]</span>'
-        : '<span class="badge-previous text-[10px] px-2 py-0.5 rounded-full font-mono">' + escapeHtml(v.versionNumber) + ' [Previous]</span>';
+      var verChip = isCur
+        ? '<span class="chip chip-current font-mono-code">' + escapeHtml(v.versionNumber) + ' &middot; Current</span>'
+        : '<span class="chip chip-previous font-mono-code">' + escapeHtml(v.versionNumber) + ' &middot; Previous</span>';
 
-      var srcBadge = v.videoSource === 'Project Video'
-        ? '<span class="badge-project text-[10px] px-2 py-0.5 rounded-full font-bold">مشروع</span>'
-        : '<span class="badge-marketing text-[10px] px-2 py-0.5 rounded-full font-bold">تسويقي</span>';
+      var srcChip = v.videoSource === 'Project Video'
+        ? '<span class="chip chip-project">Project</span>'
+        : '<span class="chip chip-marketing">Marketing</span>';
 
       var driveLink = v.videoLink || ('https://drive.google.com/file/d/' + v.driveFileId + '/view');
 
-      tr.innerHTML = 
-        '<td class="p-3.5 font-mono text-[#DFBF7A] font-bold">' + escapeHtml(v.videoNumber) + '</td>' +
-        '<td class="p-3.5 whitespace-nowrap">' + verBadge + '</td>' +
-        '<td class="p-3.5 whitespace-nowrap">' + srcBadge + '</td>' +
+      tr.innerHTML =
+        '<td class="p-3.5 font-mono-code text-[#DFBF7A] font-bold">' + escapeHtml(v.videoNumber) + '</td>' +
+        '<td class="p-3.5 whitespace-nowrap">' + verChip + '</td>' +
+        '<td class="p-3.5 whitespace-nowrap">' + srcChip + '</td>' +
         '<td class="p-3.5 font-mono-code text-white font-semibold max-w-xs truncate" title="' + escapeHtml(v.videoName) + '">' +
           escapeHtml(v.videoName) +
         '</td>' +
@@ -1723,13 +1684,13 @@ function loadLibrary(callback) {
         '<td class="p-3.5 font-num text-slate-400 whitespace-nowrap">' + escapeHtml(v.shootingDate || '—') + '</td>' +
         '<td class="p-3.5 text-center whitespace-nowrap">' +
           '<div class="flex items-center justify-center gap-2">' +
-            '<a href="' + driveLink + '" target="_blank" title="فتح الملف على Google Drive" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition">' +
+            '<a href="' + driveLink + '" target="_blank" rel="noopener" title="Open in Google Drive" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition">' +
               '<i class="fa-solid fa-arrow-up-right-from-square"></i>' +
             '</a>' +
-            '<button onclick="openAddVersionModal(\'' + v.videoNumber + '\')" title="إضافة نسخة جديدة" class="p-1.5 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/30 transition">' +
+            '<button onclick="openAddVersionModal(\'' + v.videoNumber + '\')" title="Add new version" class="p-1.5 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/30 transition">' +
               '<i class="fa-solid fa-code-branch"></i>' +
             '</button>' +
-            '<button onclick="openVersionHistoryModal(\'' + v.videoNumber + '\')" title="سجل النسخ والتعديلات" class="p-1.5 rounded-lg bg-amber-500/15 text-[#DFBF7A] hover:bg-amber-500/30 transition">' +
+            '<button onclick="openVersionHistoryModal(\'' + v.videoNumber + '\')" title="Version history" class="p-1.5 rounded-lg bg-amber-500/15 text-[#DFBF7A] hover:bg-amber-500/30 transition">' +
               '<i class="fa-solid fa-clock-rotate-left"></i>' +
             '</button>' +
           '</div>' +
@@ -1754,24 +1715,22 @@ function resetLibraryFilters() {
 }
 
 // =============================================================
-// ADD VERSION MODAL CONTROLLER (§14)
+// ADD NEW VERSION MODAL
 // =============================================================
 function openAddVersionModal(videoNumber) {
   var matching = (AppState.allVideos || []).filter(function(v) {
     return v.videoNumber === videoNumber;
   });
-
   if (matching.length === 0) return;
 
   var currentVer = matching.find(function(v) { return v.isCurrentVersion; }) || matching[0];
   AppState.activeVideoForVersion = currentVer;
 
   document.getElementById('mvVideoNumber').value = videoNumber;
-  document.getElementById('mvVideoHeader').textContent = 'Video ' + videoNumber + ' • ' + (currentVer.clientName || currentVer.topic);
+  document.getElementById('mvVideoHeader').textContent = 'Video ' + videoNumber + ' — ' + (currentVer.clientName || currentVer.topic);
   document.getElementById('mvVideoLink').value = '';
   document.getElementById('mvVersionNotes').value = '';
 
-  // Calculate next version
   var maxVer = 0;
   matching.forEach(function(v) {
     var match = String(v.versionNumber).match(/V?(\d+)/i);
@@ -1821,7 +1780,7 @@ function submitAddVersion(e) {
   e.preventDefault();
   var btn = document.getElementById('btnSubmitAddVersion');
   btn.disabled = true;
-  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري اعتماد النسخة...';
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Saving version…';
 
   var payload = {
     videoNumber: document.getElementById('mvVideoNumber').value,
@@ -1831,14 +1790,14 @@ function submitAddVersion(e) {
 
   callApi('apiAddNewVersion', [payload], function(res) {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-plus"></i> <span>اعتماد وحفظ النسخة</span>';
+    btn.innerHTML = '<i class="fa-solid fa-plus"></i> <span>Save New Version</span>';
 
     if (!res.ok) {
       showToast('error', res.message);
       return;
     }
 
-    showToast('success', 'تمت إضافة النسخة الجديدة بنجاح: ' + res.data.videoName);
+    showToast('success', 'New version saved: ' + res.data.videoName);
     closeAddVersionModal();
     loadDashboard();
     loadLibrary();
@@ -1846,18 +1805,16 @@ function submitAddVersion(e) {
 }
 
 // =============================================================
-// VERSION HISTORY MODAL CONTROLLER (§16)
+// VERSION HISTORY MODAL
 // =============================================================
 function openVersionHistoryModal(videoNumber) {
   var matching = (AppState.allVideos || []).filter(function(v) {
     return v.videoNumber === videoNumber;
   });
-
   if (matching.length === 0) return;
 
-  document.getElementById('vhVideoTitle').textContent = 'Video ' + videoNumber + ' • ' + (matching[0].clientName || matching[0].topic);
+  document.getElementById('vhVideoTitle').textContent = 'Video ' + videoNumber + ' — ' + (matching[0].clientName || matching[0].topic);
 
-  // Sort descending by version number
   matching.sort(function(a, b) {
     var vA = parseInt(String(a.versionNumber).replace(/\D/g, ''), 10) || 0;
     var vB = parseInt(String(b.versionNumber).replace(/\D/g, ''), 10) || 0;
@@ -1874,19 +1831,19 @@ function openVersionHistoryModal(videoNumber) {
 
     var driveLink = ver.videoLink || ('https://drive.google.com/file/d/' + ver.driveFileId + '/view');
 
-    div.innerHTML = 
+    div.innerHTML =
       '<div class="flex items-center justify-between">' +
         '<div class="flex items-center gap-2">' +
-          '<span class="font-mono font-bold text-sm ' + (isCur ? 'text-emerald-400' : 'text-slate-300') + '">' + escapeHtml(ver.versionNumber) + '</span>' +
-          (isCur ? '<span class="badge-current text-[10px] px-2 py-0.5 rounded-full font-bold">النسخة الحالية (Current)</span>' : '<span class="badge-previous text-[10px] px-2 py-0.5 rounded-full">نسخة سابقة (Previous)</span>') +
+          '<span class="font-mono-code font-bold text-sm ' + (isCur ? 'text-emerald-400' : 'text-slate-300') + '">' + escapeHtml(ver.versionNumber) + '</span>' +
+          (isCur ? '<span class="chip chip-current">Current</span>' : '<span class="chip chip-previous">Previous</span>') +
         '</div>' +
-        '<a href="' + driveLink + '" target="_blank" class="text-xs text-[#DFBF7A] hover:underline font-bold flex items-center gap-1">' +
-          '<span>فتح في Drive</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>' +
+        '<a href="' + driveLink + '" target="_blank" rel="noopener" class="text-xs text-[#DFBF7A] hover:underline font-bold flex items-center gap-1">' +
+          '<span>Open in Drive</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>' +
         '</a>' +
       '</div>' +
       '<div class="text-xs font-mono-code text-white break-all">' + escapeHtml(ver.videoName) + '</div>' +
       '<div class="text-[11px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800/60">' +
-        '<span>ملاحظات: ' + escapeHtml(ver.versionNotes || 'لا توجد ملاحظات') + '</span>' +
+        '<span>' + escapeHtml(ver.versionNotes || 'No notes') + '</span>' +
         '<span class="font-num">' + escapeHtml(ver.addedDate || '') + '</span>' +
       '</div>';
 
@@ -1901,7 +1858,7 @@ function closeVersionHistoryModal() {
 }
 
 // =============================================================
-// UNITS & DESIGN PDFS CONTROLLER (§15, §17, DECISION C §2.3)
+// UNITS & DESIGN PDFS (Decision C — propagation & batch rename)
 // =============================================================
 function loadUnitsCatalog(callback) {
   callApi('apiGetUnits', [], function(res) {
@@ -1922,32 +1879,32 @@ function renderUnitsCatalog(units) {
   grid.innerHTML = '';
 
   if (units.length === 0) {
-    grid.innerHTML = '<div class="col-span-full p-8 text-center text-slate-500">لا توجد وحدات مسجلة حتى الآن.</div>';
+    grid.innerHTML = '<div class="col-span-full p-8 text-center text-slate-500">No units on file yet.</div>';
     return;
   }
 
   units.forEach(function(u) {
     var card = document.createElement('div');
-    card.className = 'gold-card rounded-2xl p-5 space-y-4 hover:border-amber-500/50 transition flex flex-col justify-between';
-    card.innerHTML = 
+    card.className = 'gold-card interactive p-5 space-y-4 flex flex-col justify-between';
+    card.innerHTML =
       '<div>' +
         '<div class="flex items-center justify-between mb-2">' +
-          '<span class="text-xs font-mono font-bold text-[#DFBF7A] px-2 py-0.5 rounded bg-[#081120] border border-amber-500/20">' + u.unitId + '</span>' +
+          '<span class="text-xs font-mono-code font-bold text-[#DFBF7A] px-2 py-0.5 rounded bg-[#081120] border border-amber-500/20">' + u.unitId + '</span>' +
           '<span class="text-xs text-slate-400">' + escapeHtml(u.unitType) + '</span>' +
         '</div>' +
         '<h3 class="text-base font-bold text-white mb-1">' + escapeHtml(u.clientName) + '</h3>' +
         '<div class="text-xs text-slate-400 flex items-center gap-2">' +
           '<span><i class="fa-solid fa-location-dot text-[#DFBF7A] text-[10px]"></i> ' + escapeHtml(u.location) + '</span>' +
-          (u.area ? '<span>• ' + u.area + ' م²</span>' : '') +
+          (u.area ? '<span>&bull; ' + u.area + ' sqm</span>' : '') +
         '</div>' +
       '</div>' +
       '<div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">' +
         '<div class="flex items-center gap-3 text-slate-300">' +
-          '<span title="الفيديوهات المرتبطة"><i class="fa-solid fa-film text-[#DFBF7A] ml-1"></i> ' + u.videoCount + '</span>' +
-          '<span title="مخططات الـ PDF"><i class="fa-solid fa-file-pdf text-rose-400 ml-1"></i> ' + u.pdfCount + '</span>' +
+          '<span title="Linked videos"><i class="fa-solid fa-film text-[#DFBF7A] mr-1"></i> ' + u.videoCount + '</span>' +
+          '<span title="Design PDFs"><i class="fa-solid fa-file-pdf text-rose-400 mr-1"></i> ' + u.pdfCount + '</span>' +
         '</div>' +
         '<button onclick="openUnitDetail(\'' + u.unitId + '\')" class="text-xs font-bold text-[#DFBF7A] hover:underline flex items-center gap-1">' +
-          '<span>التفاصيل</span> <i class="fa-solid fa-arrow-left text-[10px]"></i>' +
+          '<span>Details</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>' +
         '</button>' +
       '</div>';
     grid.appendChild(card);
@@ -1969,7 +1926,7 @@ function filterUnitsCatalog(query) {
 }
 
 function openUnitDetail(unitId) {
-  showGlobalLoading('جاري جلب تفاصيل الوحدة...');
+  showGlobalLoading('Loading unit details…');
   callApi('apiGetUnitDetail', [unitId], function(res) {
     hideGlobalLoading();
     if (!res.ok) {
@@ -1982,64 +1939,61 @@ function openUnitDetail(unitId) {
 
     document.getElementById('udClientName').textContent = detail.unit.clientName;
     document.getElementById('udUnitIdBadge').textContent = detail.unit.unitId;
-    document.getElementById('udLocationType').textContent = detail.unit.location + ' • ' + detail.unit.unitType + (detail.unit.area ? ' (' + detail.unit.area + ' م²)' : '');
+    document.getElementById('udLocationType').textContent = detail.unit.location + ' • ' + detail.unit.unitType + (detail.unit.area ? ' (' + detail.unit.area + ' sqm)' : '');
 
-    // Reset edit mode
     document.getElementById('unitEditFormContainer').classList.add('hidden');
     document.getElementById('ueClientName').value = detail.unit.clientName;
     document.getElementById('ueLocation').value = detail.unit.location;
     document.getElementById('ueUnitType').value = detail.unit.unitType;
     document.getElementById('ueArea').value = detail.unit.area || '';
 
-    // Render Videos
     var vContainer = document.getElementById('udVideosList');
     vContainer.innerHTML = '';
     if (detail.videos.length === 0) {
-      vContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-2">لا توجد فيديوهات مرتبطة بهذه الوحدة بعد.</div>';
+      vContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-2">No videos linked to this unit yet.</div>';
     } else {
       detail.videos.forEach(function(v) {
         var vDiv = document.createElement('div');
         vDiv.className = 'p-2.5 rounded-xl bg-[#081120] border border-slate-800 text-xs flex items-center justify-between';
         var curVer = v.currentVersion || (v.versions[0] || {});
-        vDiv.innerHTML = 
+        vDiv.innerHTML =
           '<div>' +
             '<div class="flex items-center gap-2">' +
-              '<span class="font-mono text-[#DFBF7A] font-bold">Video ' + v.videoNumber + '</span>' +
-              '<span class="badge-current text-[10px] px-1.5 py-0.5 rounded">' + curVer.versionNumber + '</span>' +
+              '<span class="font-mono-code text-[#DFBF7A] font-bold">Video ' + v.videoNumber + '</span>' +
+              '<span class="chip chip-current">' + curVer.versionNumber + '</span>' +
               '<span class="text-slate-300 font-semibold">' + escapeHtml(v.projectVideoType) + ' (' + escapeHtml(v.spaceType) + ')</span>' +
             '</div>' +
             '<div class="text-[10px] font-mono-code text-slate-400 mt-0.5 truncate max-w-sm">' + escapeHtml(curVer.videoName) + '</div>' +
           '</div>' +
           '<div class="flex items-center gap-2">' +
-            '<button onclick="openAddVersionModal(\'' + v.videoNumber + '\')" class="p-1 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-xs" title="إضافة نسخة"><i class="fa-solid fa-code-branch"></i></button>' +
-            '<button onclick="openVersionHistoryModal(\'' + v.videoNumber + '\')" class="p-1 rounded bg-amber-500/20 text-[#DFBF7A] hover:bg-amber-500/30 text-xs" title="سجل النسخ"><i class="fa-solid fa-clock-rotate-left"></i></button>' +
+            '<button onclick="openAddVersionModal(\'' + v.videoNumber + '\')" class="p-1 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-xs" title="Add version"><i class="fa-solid fa-code-branch"></i></button>' +
+            '<button onclick="openVersionHistoryModal(\'' + v.videoNumber + '\')" class="p-1 rounded bg-amber-500/20 text-[#DFBF7A] hover:bg-amber-500/30 text-xs" title="Version history"><i class="fa-solid fa-clock-rotate-left"></i></button>' +
           '</div>';
         vContainer.appendChild(vDiv);
       });
     }
 
-    // Render PDFs (Decision B Version History)
     var pContainer = document.getElementById('udPdfsList');
     pContainer.innerHTML = '';
     if (detail.pdfs.length === 0) {
-      pContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-2">لا توجد مخططات PDF معمارية لهذه الوحدة.</div>';
+      pContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-2">No design PDFs for this unit yet.</div>';
     } else {
       detail.pdfs.forEach(function(pdf) {
         var isCur = pdf.isCurrentVersion;
         var pDiv = document.createElement('div');
         pDiv.className = 'p-2.5 rounded-xl ' + (isCur ? 'bg-rose-500/10 border border-rose-500/30' : 'bg-[#081120] border border-slate-800') + ' text-xs flex items-center justify-between';
         var pdfLink = pdf.pdfLink || ('https://drive.google.com/file/d/' + pdf.driveFileId + '/view');
-        pDiv.innerHTML = 
+        pDiv.innerHTML =
           '<div>' +
             '<div class="flex items-center gap-2">' +
               '<i class="fa-solid fa-file-pdf text-rose-400"></i>' +
               '<span class="font-bold text-white">' + escapeHtml(pdf.documentTitle) + '</span>' +
-              '<span class="font-mono text-[10px] px-1.5 py-0.5 rounded ' + (isCur ? 'badge-current' : 'badge-previous') + '">' + pdf.pdfVersionNumber + '</span>' +
+              '<span class="font-mono-code text-[10px] px-1.5 py-0.5 rounded ' + (isCur ? 'chip-current' : 'chip-previous') + ' chip">' + pdf.pdfVersionNumber + '</span>' +
             '</div>' +
-            '<div class="text-[10px] text-slate-400 mt-0.5">' + escapeHtml(pdf.versionNotes || '') + ' • ' + escapeHtml(pdf.addedDate || '') + '</div>' +
+            '<div class="text-[10px] text-slate-400 mt-0.5">' + escapeHtml(pdf.versionNotes || '') + ' &bull; ' + escapeHtml(pdf.addedDate || '') + '</div>' +
           '</div>' +
-          '<a href="' + pdfLink + '" target="_blank" class="text-xs text-rose-400 hover:underline font-bold flex items-center gap-1">' +
-            '<span>عرض PDF</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>' +
+          '<a href="' + pdfLink + '" target="_blank" rel="noopener" class="text-xs text-rose-400 hover:underline font-bold flex items-center gap-1">' +
+            '<span>View PDF</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>' +
           '</a>';
         pContainer.appendChild(pDiv);
       });
@@ -2054,12 +2008,15 @@ function closeUnitDetailModal() {
 }
 
 function toggleUnitEditMode() {
-  var form = document.getElementById('unitEditFormContainer');
-  form.classList.toggle('hidden');
+  document.getElementById('unitEditFormContainer').classList.toggle('hidden');
 }
 
 /**
- * Saves unit master edit with Decision C propagation.
+ * Saves a Unit master-record edit. Per Decision C (execution prompt §2.3):
+ * the server propagates the corrected fields to every linked Video Versions
+ * / Unit Design PDFs row, and if that changes any generated filename it
+ * returns requiresBatchRename + proposedRenames instead of renaming
+ * anything on Drive — the batch confirmation screen decides from there.
  */
 function saveUnitMasterEdit() {
   var detail = AppState.activeUnitDetail;
@@ -2073,7 +2030,7 @@ function saveUnitMasterEdit() {
     area: document.getElementById('ueArea').value
   };
 
-  showGlobalLoading('جاري تحديث بيانات الوحدة ونشر التغييرات...');
+  showGlobalLoading('Updating unit and propagating changes…');
   callApi('apiUpdateUnit', [unitId, updatedFields, false], function(res) {
     hideGlobalLoading();
     if (!res.ok) {
@@ -2083,15 +2040,10 @@ function saveUnitMasterEdit() {
 
     var data = res.data;
     if (data.requiresBatchRename && data.proposedRenames && data.proposedRenames.length > 0) {
-      // Show Batch Rename Screen (Decision C §2.3)
-      AppState.pendingBatchRename = {
-        unitId: unitId,
-        fields: updatedFields,
-        renames: data.proposedRenames
-      };
+      AppState.pendingBatchRename = { unitId: unitId, fields: updatedFields, renames: data.proposedRenames };
       showBatchRenameModal(data.proposedRenames);
     } else {
-      showToast('success', data.message || 'تم تحديث بيانات الوحدة بنجاح.');
+      showToast('success', data.message || 'Unit updated successfully.');
       toggleUnitEditMode();
       openUnitDetail(unitId);
       loadUnitsCatalog();
@@ -2101,7 +2053,7 @@ function saveUnitMasterEdit() {
 }
 
 // =============================================================
-// BATCH RENAME MODAL CONTROLLER (DECISION C §2.3)
+// BATCH RENAME MODAL (Decision C — execution prompt §2.3)
 // =============================================================
 function showBatchRenameModal(proposedList) {
   var container = document.getElementById('batchRenameItemsList');
@@ -2110,13 +2062,13 @@ function showBatchRenameModal(proposedList) {
   proposedList.forEach(function(item) {
     var div = document.createElement('div');
     div.className = 'p-3 rounded-lg bg-[#070D18] border border-slate-800 space-y-1.5';
-    div.innerHTML = 
+    div.innerHTML =
       '<div class="flex items-center justify-between text-[11px]">' +
         '<span class="font-bold text-[#DFBF7A]">' + escapeHtml(item.entityType) + ' (' + escapeHtml(item.entityId) + ')</span>' +
-        '<span class="font-mono text-slate-500 text-[10px]">Drive File: ' + escapeHtml(item.fileId) + '</span>' +
+        '<span class="font-mono-code text-slate-500 text-[10px]">Drive file: ' + escapeHtml(item.fileId) + '</span>' +
       '</div>' +
-      '<div class="text-[11px] text-rose-400/90 font-mono-code truncate line-through">الاسم الحالي: ' + escapeHtml(item.currentName) + '</div>' +
-      '<div class="text-[11px] text-emerald-400 font-mono-code font-bold">الاسم المقترح: ' + escapeHtml(item.proposedName) + '</div>';
+      '<div class="text-[11px] text-rose-400/90 font-mono-code truncate line-through">Current: ' + escapeHtml(item.currentName) + '</div>' +
+      '<div class="text-[11px] text-emerald-400 font-mono-code font-bold">Proposed: ' + escapeHtml(item.proposedName) + '</div>';
     container.appendChild(div);
   });
 
@@ -2126,7 +2078,7 @@ function showBatchRenameModal(proposedList) {
 function cancelBatchRename() {
   document.getElementById('modalBatchRename').classList.add('hidden');
   AppState.pendingBatchRename = null;
-  showToast('info', 'تم الإبقاء على أسماء الملفات الحالية في Google Drive، مع تحديث بيانات الشيت.');
+  showToast('info', 'Kept the current Drive filenames — sheet metadata is already updated.');
   if (AppState.activeUnitDetail) {
     openUnitDetail(AppState.activeUnitDetail.unit.unitId);
   }
@@ -2138,11 +2090,11 @@ function confirmBatchRename() {
 
   var btn = document.getElementById('btnConfirmBatchRename');
   btn.disabled = true;
-  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري إعادة تسمية الملفات في Drive...';
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Renaming files on Drive…';
 
   callApi('apiUpdateUnit', [pending.unitId, pending.fields, true], function(res) {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-check"></i> <span>تأكيد وإعادة تسمية جميع الملفات</span>';
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> <span>Confirm &amp; Rename All</span>';
     document.getElementById('modalBatchRename').classList.add('hidden');
 
     if (!res.ok) {
@@ -2150,7 +2102,7 @@ function confirmBatchRename() {
       return;
     }
 
-    showToast('success', res.data.message || 'تمت إعادة تسمية الملفات وتوثيق العملية في سجل الأمان.');
+    showToast('success', res.data.message || 'Files renamed and logged to the Audit Log.');
     AppState.pendingBatchRename = null;
     if (AppState.activeUnitDetail) {
       openUnitDetail(AppState.activeUnitDetail.unit.unitId);
@@ -2161,14 +2113,14 @@ function confirmBatchRename() {
 }
 
 // =============================================================
-// UPLOAD DESIGN PDF MODAL CONTROLLER (§15)
+// UPLOAD DESIGN PDF MODAL
 // =============================================================
 function openUploadPdfModalForCurrentUnit() {
   var detail = AppState.activeUnitDetail;
   if (!detail) return;
 
   document.getElementById('upUnitId').value = detail.unit.unitId;
-  document.getElementById('upModalUnitHeader').textContent = 'الوحدة: ' + detail.unit.clientName + ' (' + detail.unit.unitId + ')';
+  document.getElementById('upModalUnitHeader').textContent = 'Unit: ' + detail.unit.clientName + ' (' + detail.unit.unitId + ')';
   document.getElementById('upDocumentTitle').value = '';
   document.getElementById('upVersionNotes').value = '';
   document.getElementById('upPdfFile').value = '';
@@ -2184,36 +2136,35 @@ function submitUploadPdf(e) {
   e.preventDefault();
   var fileInput = document.getElementById('upPdfFile');
   if (!fileInput.files || fileInput.files.length === 0) {
-    showToast('error', 'يرجى اختيار ملف PDF صالح.');
+    showToast('error', 'Please choose a valid PDF file.');
     return;
   }
 
   var file = fileInput.files[0];
   var btn = document.getElementById('btnSubmitUploadPdf');
   btn.disabled = true;
-  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري رفع المخطط...';
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Uploading…';
 
   var reader = new FileReader();
   reader.onload = function(evt) {
-    var base64 = evt.target.result.split(',')[1];
     var payload = {
       unitId: document.getElementById('upUnitId').value,
       fileName: file.name,
       documentTitle: document.getElementById('upDocumentTitle').value.trim() || file.name,
       versionNotes: document.getElementById('upVersionNotes').value.trim(),
-      base64Content: base64
+      base64Content: evt.target.result.split(',')[1]
     };
 
     callApi('apiUploadPdf', [payload], function(res) {
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-upload"></i> <span>رفع وأرشفة المخطط</span>';
+      btn.innerHTML = '<i class="fa-solid fa-upload"></i> <span>Upload &amp; Archive</span>';
 
       if (!res.ok) {
         showToast('error', res.message);
         return;
       }
 
-      showToast('success', 'تم رفع المخطط المعماري بنجاح.');
+      showToast('success', 'Design PDF uploaded successfully.');
       closeUploadPdfModal();
       if (AppState.activeUnitDetail) {
         openUnitDetail(AppState.activeUnitDetail.unit.unitId);
@@ -2226,7 +2177,7 @@ function submitUploadPdf(e) {
 }
 
 // =============================================================
-// SETTINGS & SETUP CONTROLLER (§5)
+// SETTINGS
 // =============================================================
 function loadSettings(callback) {
   callApi('apiGetSystemConfig', [], function(res) {
@@ -2237,20 +2188,20 @@ function loadSettings(callback) {
     }
 
     var cfg = res.data;
-    document.getElementById('configSpreadsheetId').textContent = cfg.spreadsheetId || 'غير محدد';
-    document.getElementById('configRootFolderId').textContent = cfg.rootFolderId || 'غير محدد';
+    document.getElementById('configSpreadsheetId').textContent = cfg.spreadsheetId || 'Not set';
+    document.getElementById('configRootFolderId').textContent = cfg.rootFolderId || 'Not set';
 
     var tbody = document.getElementById('configUsersTableBody');
     tbody.innerHTML = '';
     if (!cfg.users || cfg.users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center text-slate-500">لا يوجد مستخدمون مسجلون.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center text-slate-500">No authorised users on file.</td></tr>';
     } else {
       cfg.users.forEach(function(u) {
         var tr = document.createElement('tr');
-        tr.innerHTML = 
-          '<td class="p-2.5 font-mono text-slate-200">' + escapeHtml(u.email) + '</td>' +
+        tr.innerHTML =
+          '<td class="p-2.5 font-mono-code text-slate-200">' + escapeHtml(u.email) + '</td>' +
           '<td class="p-2.5 text-[#DFBF7A] font-bold">' + escapeHtml(u.role) + '</td>' +
-          '<td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 font-bold">نشط</span></td>';
+          '<td class="p-2.5"><span class="chip chip-current">Active</span></td>';
         tbody.appendChild(tr);
       });
     }
@@ -2258,24 +2209,24 @@ function loadSettings(callback) {
 }
 
 function triggerSystemSetup() {
-  if (!confirm('هل تريد تشغيل فحص وتهيئة المنظومة الآن؟ العملية آمنة ولا تقوم بحذف أو تكرار أي بيانات.')) {
+  if (!confirm('Run setup / re-check now? This is safe — it never deletes or duplicates existing data.')) {
     return;
   }
 
   var btn = document.getElementById('btnTriggerSetup');
   btn.disabled = true;
-  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري فحص وتهيئة المنظومة...';
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Running setup…';
 
   callApi('apiSetupSystem', [{}], function(res) {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-wrench"></i> <span>إعادة فحص / تهيئة المنظومة الآن</span>';
+    btn.innerHTML = '<i class="fa-solid fa-wrench"></i> <span>Run / Re-check Setup</span>';
 
     if (!res.ok) {
       showToast('error', res.message);
       return;
     }
 
-    showToast('success', res.data.message || 'تمت تهيئة المنظومة بنجاح.');
+    showToast('success', res.data.message || 'Setup completed successfully.');
     loadSettings();
     initApp();
   });
@@ -2287,12 +2238,8 @@ function triggerSystemSetup() {
 function callApi(fnName, args, callback) {
   if (typeof google !== 'undefined' && google.script && google.script.run) {
     var runner = google.script.run
-      .withSuccessHandler(function(response) {
-        callback(response);
-      })
-      .withFailureHandler(function(err) {
-        callback({ ok: false, message: err.message || err.toString() });
-      });
+      .withSuccessHandler(function(response) { callback(response); })
+      .withFailureHandler(function(err) { callback({ ok: false, message: err.message || err.toString() }); });
 
     runner[fnName].apply(runner, args);
   } else if (window._localMockDispatcher) {
@@ -2315,7 +2262,7 @@ function showToast(type, message) {
                   'fa-circle-check text-emerald-400';
 
   toast.className = 'p-3.5 rounded-xl border shadow-xl backdrop-blur-md text-xs font-bold flex items-start gap-3 transition duration-300 pointer-events-auto ' + bgClass;
-  toast.innerHTML = 
+  toast.innerHTML =
     '<i class="fa-solid ' + iconClass + ' text-base mt-0.5"></i>' +
     '<div class="flex-1 leading-relaxed">' + escapeHtml(message) + '</div>' +
     '<button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>';
@@ -2347,6 +2294,93 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// =============================================================
+// LOCAL PREVIEW MOCKS — only used when opened outside Apps Script
+// =============================================================
+function setupLocalPreviewMocks() {
+  var mockLists = {
+    unitType: ['Apartment', 'Studio', 'Duplex', 'Penthouse', 'Roof Apartment', 'Standalone Villa', 'Twin House', 'Townhouse', 'Chalet', 'Cabin', 'Office', 'Clinic', 'Retail / Commercial Unit', 'Restaurant / Cafe', 'Other'],
+    projectVideoType: ['Red Brick', 'Phase 1', 'Phase 2', 'Final', 'Final with Furniture', 'Client Interview', 'Before & After'],
+    spaceType: ['Full Unit', 'Reception', 'Kitchen', 'Bathroom', 'Bedroom', 'Dressing Room', 'Entrance', 'Terrace', 'Garden', 'Multiple Spaces', 'Other'],
+    marketingContentType: ['Educational', 'Demonstration', 'Testimonial', 'Sales', 'Offer', 'Other'],
+    workCategory: ['Roof', 'Ceiling', 'Materials', 'Furniture', 'Decoration', 'HDF', 'Ceramics', 'Electrical', 'Gypsum Board', 'Air Conditioning', 'Sound System', 'Doors', 'Windows', 'Painting', 'Plastering'],
+    locations: ['New Cairo', 'Sheikh Zayed', '6th of October', 'Zamalek', 'Madinaty']
+  };
+
+  var mockUnits = [
+    { unitId: 'U-0001', clientName: 'Ahmed Hassan', location: 'New Cairo', unitType: 'Apartment', area: 220, videoCount: 2, pdfCount: 1 },
+    { unitId: 'U-0002', clientName: 'Mona Farid', location: 'Sheikh Zayed', unitType: 'Duplex', area: 340, videoCount: 1, pdfCount: 0 }
+  ];
+
+  var mockVideos = [
+    { videoNumber: '0001', versionNumber: 'V02', isCurrentVersion: true, videoSource: 'Project Video', clientName: 'Ahmed Hassan', location: 'New Cairo', projectVideoType: 'Final', spaceType: 'Kitchen', workCategory: 'Ceramics', shootingDate: '2026-08-17', videoName: 'Ahmed Hassan - New Cairo - Final - Kitchen - 2026-08-17 - V02.mp4', driveFileId: 'mock1', versionNotes: 'Approved cut', addedDate: '2026-08-18' },
+    { videoNumber: '0001', versionNumber: 'V01', isCurrentVersion: false, videoSource: 'Project Video', clientName: 'Ahmed Hassan', location: 'New Cairo', projectVideoType: 'Final', spaceType: 'Kitchen', workCategory: 'Ceramics', shootingDate: '2026-08-17', videoName: 'Ahmed Hassan - New Cairo - Final - Kitchen - 2026-08-17 - V01.mp4', driveFileId: 'mock1a', versionNotes: 'Initial cut', addedDate: '2026-08-14' },
+    { videoNumber: '0002', versionNumber: 'V01', isCurrentVersion: true, videoSource: 'Marketing Content', topic: 'Plumbing rough-in mistakes', contentType: 'Educational', spaceType: '', shootingDate: '2026-08-10', videoName: 'Educational - Plumbing rough-in mistakes - 2026-08-10 - V01.mp4', driveFileId: 'mock2', versionNotes: '', addedDate: '2026-08-11' }
+  ];
+
+  window._localMockDispatcher = function(fnName, args, callback) {
+    setTimeout(function() {
+      if (fnName === 'apiGetInitialData') {
+        callback({ ok: true, data: { user: { email: 'louyashra@gmail.com', role: 'System Owner' }, lists: mockLists, isConfigured: true } });
+      } else if (fnName === 'apiGetDashboard') {
+        callback({ ok: true, data: {
+          kpis: { totalLogicalVideos: 2, totalStoredVersions: 3, totalProjectVideos: 1, projectVersionsCount: 2, totalMarketingContent: 1, marketingVersionsCount: 1, totalUnits: 2, totalStoredPdfs: 1 },
+          breakdowns: {
+            locations: [{ name: 'New Cairo', count: 2 }, { name: 'Sheikh Zayed', count: 1 }],
+            stages: [{ name: 'Final', count: 2 }, { name: 'Educational', count: 1 }],
+            spaces: [{ name: 'Kitchen', count: 2 }],
+            workCategories: [{ name: 'Ceramics', count: 2 }]
+          },
+          recentActivity: [{ message: 'Saved video 0001 (Final, Kitchen)', user: 'louyashra@gmail.com', timestamp: '2026-08-18 10:02', action: 'ADD_VERSION' }]
+        }});
+      } else if (fnName === 'apiGetUnits') {
+        callback({ ok: true, data: mockUnits });
+      } else if (fnName === 'apiGetVideos') {
+        callback({ ok: true, data: mockVideos.filter(function(v){ return v.isCurrentVersion; }) });
+      } else if (fnName === 'apiGetUnitDetail') {
+        var unitId = args[0];
+        var unit = mockUnits.find(function(u){ return u.unitId === unitId; }) || mockUnits[0];
+        callback({ ok: true, data: {
+          unit: unit,
+          videos: [{ videoNumber: '0001', projectVideoType: 'Final', spaceType: 'Kitchen', currentVersion: mockVideos[0], versions: [mockVideos[0], mockVideos[1]] }],
+          pdfs: [{ documentTitle: 'Approved lighting layout', pdfVersionNumber: 'V01', isCurrentVersion: true, versionNotes: '', addedDate: '2026-08-12', driveFileId: 'mockpdf1' }]
+        }});
+      } else if (fnName === 'apiGetSystemConfig') {
+        callback({ ok: true, data: { spreadsheetId: '1KLsNGiIGSyd2vTz95Qmfw0np6jayX-JJZWX3wmmgzZ4', rootFolderId: '172YFf4GteBT5x_WxQxr-ldo79f0XuRrh', users: [{ email: 'louyashra@gmail.com', role: 'System Owner' }] } });
+      } else {
+        callback({ ok: true, data: { message: '(local preview) "' + fnName + '" is a mock — nothing was actually saved.', video: { videoName: 'preview.mp4' }, videoName: 'preview.mp4' } });
+      }
+    }, 350);
+  };
+
+  // Drive the same startup sequence initApp() would run after a successful
+  // apiGetInitialData call — done directly here (not via initApp()) so we
+  // don't re-enter the "no google.script" branch and recurse forever.
+  showGlobalLoading('Connecting and checking permissions… (local preview)');
+  callApi('apiGetInitialData', [], function(response) {
+    hideGlobalLoading();
+    if (!response.ok) {
+      showToast('error', response.message || 'Failed to load initial configuration.');
+      return;
+    }
+
+    var data = response.data;
+    AppState.currentUser = data.user;
+    AppState.lists = data.lists;
+    AppState.isConfigured = data.isConfigured;
+
+    var emailBadge = document.getElementById('userEmailBadge');
+    var roleBadge = document.getElementById('userRoleBadge');
+    emailBadge.textContent = data.user.email;
+    roleBadge.textContent = data.user.role;
+    document.getElementById('bannerExecuteEmail').textContent = data.user.email;
+
+    populateTaxonomyDropdowns();
+    loadDashboard();
+    loadUnitsCatalog();
+  });
 }
 </script>
 
