@@ -10,10 +10,9 @@ import { initGoogleAuth, signOut, getCurrentUser, renderSignInButton } from './a
 const GOOGLE_CLIENT_ID = window.ENV_GOOGLE_CLIENT_ID || '';
 
 /**
- * Amlaak Video Library — client-side application engine.
- * Orchestrates UI state, async REST API calls, validation and
- * live filename previews. Runs against setupLocalPreviewMocks() when there
- * is no Apps Script container (e.g. opened as a plain HTML file for review).
+ * Amlaak Video Library — Client Application Engine.
+ * Orchestrates UI state, async REST API calls, validation, and live filename previews.
+ * Connects exclusively to authenticated backend API without mocks in production.
  */
 
 var AppState = {
@@ -118,13 +117,128 @@ document.addEventListener('DOMContentLoaded', function() {
 
 var isBootstrapping = false;
 
+function renderUnavailableDatabaseState(errorCode, message) {
+  var code = errorCode || 'ERR-CONN-UNAVAILABLE';
+  var banner = document.getElementById('dbUnavailableBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'dbUnavailableBanner';
+    banner.className = 'gold-card p-4 sm:p-5 border-rose-500/40 bg-rose-950/30 text-slate-200 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4';
+    banner.setAttribute('role', 'alert');
+    var mainContainer = document.getElementById('mainContent') || document.querySelector('main') || document.body;
+    if (mainContainer && mainContainer.firstChild) {
+      mainContainer.insertBefore(banner, mainContainer.firstChild);
+    }
+  }
+
+  banner.innerHTML =
+    '<div class="flex items-start gap-3.5">' +
+      '<div class="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center text-lg shrink-0">' +
+        '<i class="fa-solid fa-triangle-exclamation"></i>' +
+      '</div>' +
+      '<div>' +
+        '<div class="text-sm font-bold text-white mb-1">Database Connection Unavailable</div>' +
+        '<div class="text-xs text-rose-200/90 leading-relaxed font-medium">' +
+          'The application is currently unavailable because a secure database connection could not be established.' +
+        '</div>' +
+        '<div class="text-[11px] font-mono-code text-rose-300/80 mt-1">' +
+          'Correlation Code: <span class="font-bold text-white">' + escapeHtml(code) + '</span>' +
+          (message ? ' &bull; ' + escapeHtml(message) : '') +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="shrink-0 flex items-center gap-2">' +
+      '<button type="button" onclick="initApp()" class="secondary-btn text-xs font-bold border-rose-500/40 hover:bg-rose-900/40 hover:text-white px-4 py-2.5 min-h-[40px]">' +
+        '<i class="fa-solid fa-arrows-rotate"></i> <span>Retry Connection</span>' +
+      '</button>' +
+    '</div>';
+
+  banner.classList.remove('hidden');
+
+  var statusInd = document.getElementById('connectionStatusIndicator');
+  if (statusInd) {
+    statusInd.className = 'text-xs text-rose-400 font-semibold flex items-center gap-1.5';
+    statusInd.innerHTML = '<i class="fa-solid fa-circle-xmark text-rose-400"></i> <span>Database Offline</span>';
+  }
+  var statusBadge = document.getElementById('configStatusBadge');
+  if (statusBadge) {
+    statusBadge.textContent = 'Disconnected';
+    statusBadge.className = 'font-bold text-rose-400';
+  }
+
+  // Zero state for all KPIs (§4)
+  var kpiIds = ['kpiLogicalVideos', 'kpiStoredVersions', 'kpiProjectVideos', 'kpiMarketingContent', 'kpiUnits', 'kpiStoredPdfs'];
+  kpiIds.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = '0';
+  });
+
+  // Empty table states (§4)
+  var libTbody = document.getElementById('libraryTableBody');
+  if (libTbody) {
+    libTbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-xs text-slate-400 font-medium">No records found. Secure database connection required.</td></tr>';
+  }
+  var unitsContainer = document.getElementById('unitsCatalogContainer');
+  if (unitsContainer) {
+    unitsContainer.innerHTML = '<div class="col-span-full p-8 text-center text-xs text-slate-400 font-medium bg-slate-900/40 rounded-xl border border-slate-800">No records found. Secure database connection required.</div>';
+  }
+
+  // Disable all creation & edit forms (§4)
+  var buttonsToDisable = [
+    'btnSubmitProjectVideo',
+    'btnSubmitMarketingContent',
+    'btnSaveUnit',
+    'btnSubmitUploadPdf',
+    'btnSubmitNewUnit',
+    'btnSubmitEditMeta',
+    'btnSubmitAddVersion'
+  ];
+  buttonsToDisable.forEach(function(btnId) {
+    var btn = document.getElementById(btnId);
+    if (btn) {
+      btn.disabled = true;
+      btn.classList.add('opacity-50', 'cursor-not-allowed');
+      btn.setAttribute('title', 'Database connection unavailable');
+    }
+  });
+}
+
+function clearUnavailableDatabaseState() {
+  var banner = document.getElementById('dbUnavailableBanner');
+  if (banner) banner.classList.add('hidden');
+
+  var statusInd = document.getElementById('connectionStatusIndicator');
+  if (statusInd) {
+    statusInd.className = 'text-xs text-amber-300/80 font-semibold flex items-center gap-1.5';
+    statusInd.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> <span>Live data from Google Sheets</span>';
+  }
+
+  var buttonsToEnable = [
+    'btnSubmitProjectVideo',
+    'btnSubmitMarketingContent',
+    'btnSaveUnit',
+    'btnSubmitUploadPdf',
+    'btnSubmitNewUnit',
+    'btnSubmitEditMeta',
+    'btnSubmitAddVersion'
+  ];
+  buttonsToEnable.forEach(function(btnId) {
+    var btn = document.getElementById(btnId);
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      btn.removeAttribute('title');
+    }
+  });
+}
+
 function initApp() {
-  if (isBootstrapping || (AppState && AppState.isBootstrapped)) return;
+  if (isBootstrapping) return;
   isBootstrapping = true;
 
-  showGlobalLoading('Connecting and initializing Amlaak Video Library…');
+  showGlobalLoading('Connecting to Amlaak Video Library API…');
 
-  if (!getAuthToken() && !window.FORCE_LOCAL_MOCKS && GOOGLE_CLIENT_ID) {
+  if (!getAuthToken() && GOOGLE_CLIENT_ID) {
     console.info('Awaiting Google Identity authentication...');
     var authModal = document.getElementById('authModal');
     if (authModal) authModal.classList.remove('hidden');
@@ -133,22 +247,19 @@ function initApp() {
     hideGlobalLoading();
     return;
   }
-  if (!getAuthToken() && (window.FORCE_LOCAL_MOCKS || !GOOGLE_CLIENT_ID)) {
-    console.warn('Running with local preview mocks (Standalone Mode).');
-    setupLocalPreviewMocks();
-    isBootstrapping = false;
-    return;
-  }
 
   callApi('apiGetAppBootstrapData', [], function(response) {
     hideGlobalLoading();
     isBootstrapping = false;
 
     if (!response.ok) {
-      showToast('error', response.message || 'Failed to load initial configuration.');
+      console.warn('Bootstrap failed:', response.errorCode, response.message);
+      renderUnavailableDatabaseState(response.errorCode, response.message);
+      showToast('error', response.message || 'Database connection could not be established.');
       return;
     }
 
+    clearUnavailableDatabaseState();
     AppState.isBootstrapped = true;
     var data = response.data;
     AppState.currentUser = data.user;
@@ -433,17 +544,19 @@ function setAddSource(source) {
   var btnMkt = document.getElementById('btnSourceMarketing');
   var formProj = document.getElementById('formProjectVideo');
   var formMkt = document.getElementById('formMarketingContent');
-  var activeClass = 'flex-1 py-3 rounded-lg font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]';
-  var inactiveClass = 'flex-1 py-3 rounded-lg font-bold text-xs sm:text-sm text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center justify-center gap-2';
 
   if (source === 'Project Video') {
-    btnProj.className = activeClass;
-    btnMkt.className = inactiveClass;
+    btnProj.className = 'flex-1 py-3 rounded-lg font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 toggle-btn-active';
+    btnProj.setAttribute('aria-selected', 'true');
+    btnMkt.className = 'flex-1 py-3 rounded-lg font-medium text-xs sm:text-sm transition flex items-center justify-center gap-2 toggle-btn-inactive';
+    btnMkt.setAttribute('aria-selected', 'false');
     formProj.classList.remove('hidden');
     formMkt.classList.add('hidden');
   } else {
-    btnMkt.className = activeClass;
-    btnProj.className = inactiveClass;
+    btnMkt.className = 'flex-1 py-3 rounded-lg font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 toggle-btn-active';
+    btnMkt.setAttribute('aria-selected', 'true');
+    btnProj.className = 'flex-1 py-3 rounded-lg font-medium text-xs sm:text-sm transition flex items-center justify-center gap-2 toggle-btn-inactive';
+    btnProj.setAttribute('aria-selected', 'false');
     formMkt.classList.remove('hidden');
     formProj.classList.add('hidden');
     var wCat = document.getElementById('pvWorkCategory');
@@ -969,19 +1082,19 @@ function loadLibrary(page, callback) {
         '<td class="p-3.5 font-num text-slate-400 whitespace-nowrap">' + escapeHtml(v.shootingDate || '—') + '</td>' +
         '<td class="p-3.5 text-center whitespace-nowrap">' +
           '<div class="flex items-center justify-center gap-1.5">' +
-            (fileId ? ('<button type="button" class="btn-lib-preview p-1.5 rounded-lg bg-sky-500/15 text-sky-400 hover:bg-sky-500/30 transition" title="Preview video" data-file-id="' + escapeHtml(fileId) + '" data-title="' + escapeHtml(v.videoName || '') + '" aria-label="Preview video">' +
+            (fileId ? ('<button type="button" class="btn-lib-preview action-btn-icon bg-sky-500/15 text-sky-400 hover:bg-sky-500/30 border-sky-500/20" title="Preview video" data-file-id="' + escapeHtml(fileId) + '" data-title="' + escapeHtml(v.videoName || '') + '" aria-label="Preview video">' +
               '<i class="fa-solid fa-play"></i>' +
             '</button>') : '') +
-            (fileId ? ('<a href="' + driveLink + '" target="_blank" rel="noopener noreferrer" title="Open in Google Drive" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition" aria-label="Open in Google Drive">' +
+            (fileId ? ('<a href="' + driveLink + '" target="_blank" rel="noopener noreferrer" title="Open in Google Drive" class="action-btn-icon bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 border-slate-700" aria-label="Open in Google Drive">' +
               '<i class="fa-solid fa-arrow-up-right-from-square"></i>' +
             '</a>') : '') +
-            '<button type="button" class="btn-lib-edit-meta p-1.5 rounded-lg bg-amber-500/15 text-[#DFBF7A] hover:bg-amber-500/30 transition" title="Edit metadata" data-video-number="' + escapeHtml(v.videoNumber) + '" data-file-id="' + escapeHtml(fileId) + '" aria-label="Edit metadata">' +
+            '<button type="button" class="btn-lib-edit-meta action-btn-icon bg-amber-500/15 text-[#DFBF7A] hover:bg-amber-500/30 border-amber-500/20" title="Edit metadata" data-video-number="' + escapeHtml(v.videoNumber) + '" data-file-id="' + escapeHtml(fileId) + '" aria-label="Edit metadata">' +
               '<i class="fa-solid fa-pen-to-square"></i>' +
             '</button>' +
-            '<button type="button" class="btn-lib-add-ver p-1.5 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/30 transition" title="Add new version" data-video-number="' + escapeHtml(v.videoNumber) + '" aria-label="Add new version">' +
+            '<button type="button" class="btn-lib-add-ver action-btn-icon bg-blue-500/15 text-blue-400 hover:bg-blue-500/30 border-blue-500/20" title="Add new version" data-video-number="' + escapeHtml(v.videoNumber) + '" aria-label="Add new version">' +
               '<i class="fa-solid fa-code-branch"></i>' +
             '</button>' +
-            '<button type="button" class="btn-lib-ver-hist p-1.5 rounded-lg bg-purple-500/15 text-purple-300 hover:bg-purple-500/30 transition" title="Version history" data-video-number="' + escapeHtml(v.videoNumber) + '" aria-label="Version history">' +
+            '<button type="button" class="btn-lib-ver-hist action-btn-icon bg-purple-500/15 text-purple-300 hover:bg-purple-500/30 border-purple-500/20" title="Version history" data-video-number="' + escapeHtml(v.videoNumber) + '" aria-label="Version history">' +
               '<i class="fa-solid fa-clock-rotate-left"></i>' +
             '</button>' +
           '</div>' +
@@ -1566,10 +1679,10 @@ function openUnitDetail(unitId) {
             '</div>' +
             '<div class="text-[10px] font-mono-code text-slate-400 mt-0.5 truncate max-w-sm">' + escapeHtml(curVer.videoName || '') + '</div>' +
           '</div>' +
-          '<div class="flex items-center gap-2">' +
-            (fileId ? ('<button type="button" class="btn-ud-preview p-1 rounded bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 text-xs" data-file-id="' + escapeHtml(fileId) + '" data-title="' + escapeHtml(curVer.videoName || '') + '" title="Preview video" aria-label="Preview video"><i class="fa-solid fa-play"></i></button>') : '') +
-            '<button type="button" class="btn-ud-add-ver p-1 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-xs" data-video-number="' + escapeHtml(v.videoNumber) + '" title="Add version" aria-label="Add version"><i class="fa-solid fa-code-branch"></i></button>' +
-            '<button type="button" class="btn-ud-ver-hist p-1 rounded bg-amber-500/20 text-[#DFBF7A] hover:bg-amber-500/30 text-xs" data-video-number="' + escapeHtml(v.videoNumber) + '" title="Version history" aria-label="Version history"><i class="fa-solid fa-clock-rotate-left"></i></button>' +
+          '<div class="flex items-center gap-1.5">' +
+            (fileId ? ('<button type="button" class="btn-ud-preview action-btn-icon bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 border-sky-500/20" data-file-id="' + escapeHtml(fileId) + '" data-title="' + escapeHtml(curVer.videoName || '') + '" title="Preview video" aria-label="Preview video"><i class="fa-solid fa-play"></i></button>') : '') +
+            '<button type="button" class="btn-ud-add-ver action-btn-icon bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 border-blue-500/20" data-video-number="' + escapeHtml(v.videoNumber) + '" title="Add version" aria-label="Add version"><i class="fa-solid fa-code-branch"></i></button>' +
+            '<button type="button" class="btn-ud-ver-hist action-btn-icon bg-amber-500/20 text-[#DFBF7A] hover:bg-amber-500/30 border-amber-500/20" data-video-number="' + escapeHtml(v.videoNumber) + '" title="Version history" aria-label="Version history"><i class="fa-solid fa-clock-rotate-left"></i></button>' +
           '</div>';
         vContainer.appendChild(vDiv);
       });
@@ -1596,8 +1709,8 @@ function openUnitDetail(unitId) {
             '</div>' +
             '<div class="text-[10px] text-slate-400 mt-0.5">' + escapeHtml(pdf.versionNotes || '') + ' &bull; ' + escapeHtml(pdf.addedDate || '') + '</div>' +
           '</div>' +
-          (pdfFileId ? ('<a href="' + pdfLink + '" target="_blank" rel="noopener noreferrer" class="text-xs text-rose-400 hover:underline font-bold flex items-center gap-1">' +
-            '<span>View PDF</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>' +
+          (pdfFileId ? ('<a href="' + pdfLink + '" target="_blank" rel="noopener noreferrer" class="action-btn-icon bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border-rose-500/20" title="View PDF in Google Drive" aria-label="View PDF in Google Drive">' +
+            '<i class="fa-solid fa-arrow-up-right-from-square"></i>' +
           '</a>') : '');
         pContainer.appendChild(pDiv);
       });
@@ -1867,10 +1980,6 @@ function triggerSystemSetup() {
 function callApi(fnName, args, callback) {
   if (typeof callback !== 'function') callback = function() {};
 
-  if (window._localMockDispatcher && (window.FORCE_LOCAL_MOCKS || !getAuthToken())) {
-    window._localMockDispatcher(fnName, args, callback);
-    return;
-  }
 
   var a = args || [];
   (async function() {
@@ -2047,145 +2156,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-// =============================================================
-// LOCAL PREVIEW MOCKS — only used when opened outside Apps Script
-// =============================================================
-function setupLocalPreviewMocks() {
-  var mockLists = {
-    unitType: ['Apartment', 'Studio', 'Duplex', 'Penthouse', 'Roof Apartment', 'Standalone Villa', 'Twin House', 'Townhouse', 'Chalet', 'Cabin', 'Office', 'Clinic', 'Retail / Commercial Unit', 'Restaurant / Cafe', 'Other'],
-    projectVideoType: ['Red Brick', 'Phase 1', 'Phase 2', 'Final', 'Final with Furniture', 'Client Interview', 'Before & After'],
-    spaceType: ['Full Unit', 'Reception', 'Kitchen', 'Bathroom', 'Bedroom', 'Dressing Room', 'Entrance', 'Terrace', 'Garden', 'Multiple Spaces', 'Other'],
-    marketingContentType: ['Educational', 'Demonstration', 'Testimonial', 'Sales', 'Offer', 'Other'],
-    workCategory: ['Roof', 'Ceiling', 'Materials', 'Furniture', 'Decoration', 'HDF', 'Ceramics', 'Electrical', 'Gypsum Board', 'Air Conditioning', 'Sound System', 'Doors', 'Windows', 'Painting', 'Plastering'],
-    locations: ['New Cairo', 'Sheikh Zayed', '6th of October', 'Zamalek', 'Madinaty']
-  };
 
-  var mockUnits = [
-    { unitId: 'U-0001', clientName: 'Ahmed Hassan', location: 'New Cairo', unitType: 'Apartment', area: 220, videoCount: 2, pdfCount: 1 },
-    { unitId: 'U-0002', clientName: 'Mona Farid', location: 'Sheikh Zayed', unitType: 'Duplex', area: 340, videoCount: 1, pdfCount: 0 }
-  ];
-
-  var mockVideos = [
-    { videoNumber: '0001', versionNumber: 'V02', isCurrentVersion: true, videoSource: 'Project Video', clientName: 'Ahmed Hassan', location: 'New Cairo', projectVideoType: 'Final', spaceType: 'Kitchen', workCategory: 'Ceramics', shootingDate: '2026-08-17', videoName: 'Ahmed Hassan - New Cairo - Final - Kitchen - 2026-08-17 - V02.mp4', driveFileId: 'mock1abcdefghijklmnopqrstuv', versionNotes: 'Approved cut', addedDate: '2026-08-18' },
-    { videoNumber: '0001', versionNumber: 'V01', isCurrentVersion: false, videoSource: 'Project Video', clientName: 'Ahmed Hassan', location: 'New Cairo', projectVideoType: 'Final', spaceType: 'Kitchen', workCategory: 'Ceramics', shootingDate: '2026-08-17', videoName: 'Ahmed Hassan - New Cairo - Final - Kitchen - 2026-08-17 - V01.mp4', driveFileId: 'mock1a_bcdefghijklmnopqrstuv', versionNotes: 'Initial cut', addedDate: '2026-08-14' },
-    { videoNumber: '0002', versionNumber: 'V01', isCurrentVersion: true, videoSource: 'Marketing Content', topic: 'Plumbing rough-in mistakes', contentType: 'Educational', spaceType: '', shootingDate: '2026-08-10', videoName: 'Educational - Plumbing rough-in mistakes - 2026-08-10 - V01.mp4', driveFileId: 'mock2_abcdefghijklmnopqrstuv', versionNotes: '', addedDate: '2026-08-11' }
-  ];
-
-  window._localMockDispatcher = function(fnName, args, callback) {
-    setTimeout(function() {
-      if (fnName === 'apiGetAppBootstrapData') {
-        callback({
-          ok: true,
-          data: {
-            user: { email: 'louyashra@gmail.com', role: 'System Owner', isAuthorized: true },
-            lists: mockLists,
-            isConfigured: true,
-            dashboard: {
-              kpis: { totalLogicalVideos: 2, totalStoredVersions: 3, totalProjectVideos: 1, projectVersionsCount: 2, totalMarketingContent: 1, marketingVersionsCount: 1, totalUnits: 2, totalStoredPdfs: 1 },
-              breakdowns: {
-                locations: [{ name: 'New Cairo', count: 2 }, { name: 'Sheikh Zayed', count: 1 }],
-                stages: [{ name: 'Final', count: 2 }, { name: 'Educational', count: 1 }],
-                spaces: [{ name: 'Kitchen', count: 2 }],
-                workCategories: [{ name: 'Ceramics', count: 2 }]
-              },
-              recentActivity: [{ message: 'Saved video 0001 (Final, Kitchen)', user: 'louyashra@gmail.com', timestamp: '2026-08-18 10:02', action: 'ADD_VERSION' }]
-            },
-            unitLookups: [
-              { unitId: 'U-0001', clientName: 'Ahmed Hassan', location: 'New Cairo', unitType: 'Apartment', area: 220 },
-              { unitId: 'U-0002', clientName: 'Mona Farid', location: 'Sheikh Zayed', unitType: 'Duplex', area: 340 }
-            ],
-            config: { spreadsheetId: '1KLsNGiIGSyd2vTz95Qmfw0np6jayX-JJZWX3wmmgzZ4', rootFolderId: '172YFf4GteBT5x_WxQxr-ldo79f0XuRrh' }
-          }
-        });
-      } else if (fnName === 'apiGetInitialData') {
-        callback({ ok: true, data: { user: { email: 'louyashra@gmail.com', role: 'System Owner' }, lists: mockLists, isConfigured: true } });
-      } else if (fnName === 'apiGetDashboard') {
-        callback({ ok: true, data: {
-          kpis: { totalLogicalVideos: 2, totalStoredVersions: 3, totalProjectVideos: 1, projectVersionsCount: 2, totalMarketingContent: 1, marketingVersionsCount: 1, totalUnits: 2, totalStoredPdfs: 1 },
-          breakdowns: {
-            locations: [{ name: 'New Cairo', count: 2 }, { name: 'Sheikh Zayed', count: 1 }],
-            stages: [{ name: 'Final', count: 2 }, { name: 'Educational', count: 1 }],
-            spaces: [{ name: 'Kitchen', count: 2 }],
-            workCategories: [{ name: 'Ceramics', count: 2 }]
-          },
-          recentActivity: [{ message: 'Saved video 0001 (Final, Kitchen)', user: 'louyashra@gmail.com', timestamp: '2026-08-18 10:02', action: 'ADD_VERSION' }]
-        }});
-      } else if (fnName === 'apiGetUnits') {
-        callback({ ok: true, data: mockUnits });
-      } else if (fnName === 'apiGetVideos') {
-        var f = args && args[0] ? args[0] : {};
-        var curOnly = !f.includePreviousVersions;
-        var vids = curOnly ? mockVideos.filter(function(v){ return v.isCurrentVersion; }) : mockVideos;
-        callback({ ok: true, data: { items: vids, page: 1, pageSize: 25, totalCount: vids.length, totalPages: 1, hasMore: false } });
-      } else if (fnName === 'apiGetVideoVersionHistory') {
-        var vNum = args[0];
-        var matched = mockVideos.filter(function(v) { return v.videoNumber === vNum; });
-        if (matched.length === 0) matched = mockVideos;
-        callback({ ok: true, data: { videoNumber: vNum, title: matched[0].clientName || matched[0].topic, videoSource: matched[0].videoSource, currentVersion: matched[0], totalVersions: matched.length, versions: matched } });
-      } else if (fnName === 'apiCreateUnit') {
-        var payload = args[0];
-        var newU = {
-          unitId: 'U-' + (mockUnits.length + 1 < 10 ? '000' : '00') + (mockUnits.length + 1),
-          clientName: payload.clientName,
-          location: payload.location,
-          unitType: payload.unitType,
-          area: payload.area,
-          videoCount: 0,
-          pdfCount: 0
-        };
-        mockUnits.push(newU);
-        callback({ ok: true, data: newU });
-      } else if (fnName === 'apiUpdateSingleVideoMetadata') {
-        var driveFileId = args[0];
-        var fields = args[1];
-        var confirmRename = args[2];
-        var target = mockVideos.find(function(v){ return v.driveFileId === driveFileId; }) || mockVideos[0];
-        callback({ ok: true, data: { success: true, renamed: true, newName: 'Renamed-' + target.videoName } });
-      } else if (fnName === 'apiGetUnitDetail') {
-        var unitId = args[0];
-        var unit = mockUnits.find(function(u){ return u.unitId === unitId; }) || mockUnits[0];
-        callback({ ok: true, data: {
-          unit: unit,
-          videos: [{ videoNumber: '0001', projectVideoType: 'Final', spaceType: 'Kitchen', currentVersion: mockVideos[0], versions: [mockVideos[0], mockVideos[1]] }],
-          pdfs: [{ documentTitle: 'Approved lighting layout', pdfVersionNumber: 'V01', isCurrentVersion: true, versionNotes: '', addedDate: '2026-08-12', driveFileId: 'mockpdf1_abcdefghijklmnopqrstuv' }]
-        }});
-      } else if (fnName === 'apiGetSystemConfig') {
-        callback({ ok: true, data: { spreadsheetId: '1KLsNGiIGSyd2vTz95Qmfw0np6jayX-JJZWX3wmmgzZ4', rootFolderId: '172YFf4GteBT5x_WxQxr-ldo79f0XuRrh', users: [{ email: 'louyashra@gmail.com', role: 'System Owner' }] } });
-      } else {
-        callback({ ok: true, data: { message: '(local preview) "' + fnName + '" is a mock — nothing was actually saved.', video: { videoName: 'preview.mp4' }, videoName: 'preview.mp4' } });
-      }
-    }, 350);
-  };
-
-  // Drive unified bootstrap startup sequence in preview mode
-  showGlobalLoading('Connecting and checking permissions… (local preview)');
-  callApi('apiGetAppBootstrapData', [], function(response) {
-    hideGlobalLoading();
-    if (!response.ok) {
-      showToast('error', response.message || 'Failed to load initial configuration.');
-      return;
-    }
-
-    AppState.isBootstrapped = true;
-    var data = response.data;
-    AppState.currentUser = data.user;
-    AppState.lists = data.lists;
-    AppState.isConfigured = data.isConfigured;
-    AppState.unitLookups = data.unitLookups || [];
-
-    var emailBadge = document.getElementById('userEmailBadge');
-    var roleBadge = document.getElementById('userRoleBadge');
-    emailBadge.textContent = data.user.email;
-    roleBadge.textContent = data.user.role;
-    document.getElementById('bannerExecuteEmail').textContent = data.user.email;
-
-    populateTaxonomyDropdowns();
-    if (data.dashboard) {
-      renderDashboardData(data.dashboard);
-      AppState.dashboardLoaded = true;
-    }
-  });
-}
 
 // Expose functions to window for HTML inline event handlers
 window.switchTab = switchTab;
@@ -2255,27 +2226,25 @@ window.submitAddVersion = submitAddVersion;
 window.updateVersionModalPreview = updateVersionModalPreview;
 window.submitUploadPdf = submitUploadPdf;
 
-window.useLocalDemoMode = function() {
-  window.FORCE_LOCAL_MOCKS = true;
-  var authModal = document.getElementById('authModal');
-  if (authModal) authModal.classList.add('hidden');
-  initApp();
-};
-
 window.handleSignOut = function() {
   signOut();
   window.location.reload();
 };
 
-// Initialise Google Authentication Lifecycle
+// Initialise Google Authentication Lifecycle (§8, §14)
 document.addEventListener('DOMContentLoaded', function() {
-  initGoogleAuth(GOOGLE_CLIENT_ID, function(user) {
-    if (user) {
-      var authModal = document.getElementById('authModal');
-      if (authModal) authModal.classList.add('hidden');
-      var badge = document.getElementById('userEmailBadge');
-      if (badge) badge.textContent = user.email;
-      initApp();
-    }
-  });
+  if (GOOGLE_CLIENT_ID) {
+    initGoogleAuth(GOOGLE_CLIENT_ID, function(user) {
+      if (user) {
+        var authModal = document.getElementById('authModal');
+        if (authModal) authModal.classList.add('hidden');
+        var badge = document.getElementById('userEmailBadge');
+        if (badge) badge.textContent = user.email;
+        initApp();
+      }
+    });
+  } else {
+    // Attempt connection directly to report true database status
+    initApp();
+  }
 });

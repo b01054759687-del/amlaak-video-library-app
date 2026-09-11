@@ -28,26 +28,16 @@ export function parseJwt(token) {
 export function initGoogleAuth(clientId, onAuthChanged) {
   onAuthChangedCallback = onAuthChanged;
 
-  // 1. Check local storage for existing session
-  const storedToken = localStorage.getItem(STORAGE_KEY);
-  if (storedToken) {
-    const claims = parseJwt(storedToken);
-    // Check expiration (exp in seconds)
-    if (claims && claims.exp * 1000 > Date.now()) {
-      currentUser = {
-        email: claims.email,
-        name: claims.name || claims.email.split('@')[0],
-        picture: claims.picture || null,
-        token: storedToken
-      };
-      setAuthToken(storedToken);
-      if (onAuthChangedCallback) onAuthChangedCallback(currentUser);
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
+  // (§9) Purge legacy tokens from localStorage - tokens held strictly in memory only
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('amlaak_auth_token');
+    localStorage.removeItem('id_token');
+  } catch (e) {
+    // ignore storage access restrictions
   }
 
-  // 2. Initialize Google Identity Services if loaded
+  // Initialize Google Identity Services if loaded
   if (window.google && window.google.accounts && window.google.accounts.id && clientId) {
     window.google.accounts.id.initialize({
       client_id: clientId,
@@ -67,7 +57,7 @@ export function handleCredentialResponse(response) {
     return;
   }
 
-  localStorage.setItem(STORAGE_KEY, idToken);
+  // Token is kept strictly in memory (§9) - never written to localStorage
   setAuthToken(idToken);
 
   currentUser = {

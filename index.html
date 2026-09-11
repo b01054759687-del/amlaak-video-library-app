@@ -18,6 +18,11 @@
 </head>
 <body class="p-3 sm:p-5 md:p-8">
 
+  <!-- Accessibility (§13d): Skip Navigation Link -->
+  <a href="#mainContent" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-[#DFBF7A] focus:text-slate-950 focus:font-bold focus:rounded-lg focus:shadow-xl">
+    Skip to main content
+  </a>
+
   <!-- ============================================================= -->
   <!-- TOP BRAND HEADER & NAVIGATION                                  -->
   <!-- ============================================================= -->
@@ -39,7 +44,7 @@
       </div>
 
       <!-- Nav -->
-      <nav class="flex flex-wrap items-center justify-center gap-1.5 bg-[#081120] p-1.5 rounded-xl border border-slate-800/80 w-full lg:w-auto">
+      <nav class="flex flex-wrap items-center justify-center gap-1.5 bg-[#081120] p-1.5 rounded-xl border border-slate-800/80 w-full lg:w-auto" role="navigation" aria-label="Main Views">
         <button onclick="switchTab('dashboard')" id="btnTabDashboard" class="tab-btn active">
           <i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span>
         </button>
@@ -60,16 +65,19 @@
       <!-- Session status -->
       <div class="flex items-center gap-3 w-full lg:w-auto justify-end">
         <div class="text-right hidden sm:block">
-          <div id="userEmailBadge" class="text-xs font-mono-code font-bold text-slate-200">louyashra@gmail.com</div>
-          <div id="userRoleBadge" class="text-[10px] text-[#DFBF7A] font-bold">Checking role…</div>
+          <div id="userEmailBadge" class="text-xs font-mono-code font-bold text-slate-200">Not authenticated</div>
+          <div id="userRoleBadge" class="text-[10px] text-[#DFBF7A] font-bold">Sign in required</div>
         </div>
-        <button onclick="reloadCurrentView()" title="Refresh data" class="w-9 h-9 rounded-lg bg-slate-800/70 border border-slate-700 text-slate-300 hover:text-[#DFBF7A] hover:border-amber-500/40 transition flex items-center justify-center">
+        <button onclick="reloadCurrentView()" title="Refresh data" aria-label="Refresh data" class="w-9 h-9 rounded-lg bg-slate-800/70 border border-slate-700 text-slate-300 hover:text-[#DFBF7A] hover:border-amber-500/40 transition flex items-center justify-center">
           <i id="syncIcon" class="fa-solid fa-arrows-rotate text-xs"></i>
         </button>
       </div>
 
     </div>
   </header>
+
+  <!-- Main View Container (§13d) -->
+  <main id="mainContent">
 
   <!-- ============================================================= -->
   <!-- VIEW 1: DASHBOARD                                              -->
@@ -94,10 +102,12 @@
           <label class="text-xs text-slate-400">To</label>
           <input type="date" id="dashEndDate" class="input-dark px-2.5 py-1.5 text-xs" onchange="loadDashboard()">
         </div>
-        <button onclick="clearDashboardDates()" class="text-xs text-slate-400 hover:text-rose-400 transition underline">Clear dates</button>
+        <button type="button" onclick="clearDashboardDates()" class="secondary-btn text-xs min-h-[40px] px-3 py-2" aria-label="Clear dashboard date filters">
+          <i class="fa-solid fa-rotate-left"></i> <span>Clear dates</span>
+        </button>
       </div>
-      <div class="text-xs text-amber-300/80 font-semibold flex items-center gap-1.5">
-        <i class="fa-solid fa-circle-check text-emerald-400"></i> Live data from Google Sheets
+      <div id="connectionStatusIndicator" class="text-xs text-amber-300/80 font-semibold flex items-center gap-1.5">
+        <i id="connectionStatusDot" class="fa-solid fa-circle-check text-emerald-400"></i> <span id="connectionStatusText">Live data from Google Sheets</span>
       </div>
     </div>
 
@@ -233,11 +243,11 @@
   <!-- ============================================================= -->
   <section id="viewAddVideo" class="tab-view hidden max-w-4xl mx-auto space-y-5">
 
-    <div class="gold-card p-2 flex items-center gap-2">
-      <button type="button" onclick="setAddSource('Project Video')" id="btnSourceProject" class="flex-1 py-3 rounded-lg font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-[#C5A059] to-[#DFBF7A] text-[#070D18]">
+    <div class="gold-card p-2 flex items-center gap-2" role="tablist" aria-label="Video Source Type">
+      <button type="button" onclick="setAddSource('Project Video')" id="btnSourceProject" role="tab" aria-selected="true" class="flex-1 py-3 rounded-lg font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 toggle-btn-active">
         <i class="fa-solid fa-house-chimney-crack"></i> <span>Project Video</span>
       </button>
-      <button type="button" onclick="setAddSource('Marketing Content')" id="btnSourceMarketing" class="flex-1 py-3 rounded-lg font-bold text-xs sm:text-sm text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center justify-center gap-2">
+      <button type="button" onclick="setAddSource('Marketing Content')" id="btnSourceMarketing" role="tab" aria-selected="false" class="flex-1 py-3 rounded-lg font-medium text-xs sm:text-sm transition flex items-center justify-center gap-2 toggle-btn-inactive">
         <i class="fa-solid fa-bullhorn"></i> <span>Marketing Content</span>
       </button>
     </div>
@@ -248,7 +258,7 @@
         <strong class="text-amber-200 font-bold">Before you save a link:</strong>
         the app renames and moves the original file — it never copies it. The Drive file must already be shared as
         <span class="text-[#DFBF7A] font-mono-code font-bold">Editor</span> with the app account
-        (<span id="bannerExecuteEmail" class="font-mono-code underline">louyashra@gmail.com</span>) before you paste its link, or the save will fail with a clear permission error.
+        (<span id="bannerExecuteEmail" class="font-mono-code underline">the system service account</span>) before you paste its link, or the save will fail with a clear permission error.
       </div>
     </div>
 
@@ -294,7 +304,7 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div>
           <label for="pvClientName" class="field-label">Client name <span class="field-required">*</span></label>
-          <input type="text" id="pvClientName" required placeholder="e.g. Ahmed Hassan" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="updateProjectVideoPreview()">
+          <input type="text" id="pvClientName" required placeholder="e.g. Client Name" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" oninput="updateProjectVideoPreview()">
         </div>
         <div class="relative">
           <label for="pvLocation" class="field-label">Location <span class="field-required">*</span></label>
@@ -525,7 +535,9 @@
             <input type="checkbox" id="filterIncludePrevious" class="w-4 h-4 rounded accent-[#C5A059]" onchange="resetLibraryPageAndLoad()">
             <span>Include previous versions</span>
           </label>
-          <button onclick="resetLibraryFilters()" class="text-[11px] text-slate-400 hover:text-rose-400 underline">Clear</button>
+          <button type="button" onclick="resetLibraryFilters()" class="secondary-btn text-xs min-h-[40px] px-3 py-2" aria-label="Reset library filters">
+            <i class="fa-solid fa-filter-circle-xmark"></i> <span>Reset filters</span>
+          </button>
         </div>
       </div>
 
@@ -678,6 +690,7 @@
     </div>
 
   </section>
+  </main>
 
   <!-- ============================================================= -->
   <!-- MODAL: NEW UNIT CREATION                                       -->
@@ -1008,10 +1021,10 @@
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h3 id="udClientName" class="text-base font-black text-white">Ahmed Hassan</h3>
-              <span id="udUnitIdBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-[#DFBF7A] font-mono-code font-bold">U-0001</span>
+              <h3 id="udClientName" class="text-base font-black text-white">—</h3>
+              <span id="udUnitIdBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-[#DFBF7A] font-mono-code font-bold">—</span>
             </div>
-            <p id="udLocationType" class="text-xs text-slate-400">New Cairo • Apartment (220 sqm)</p>
+            <p id="udLocationType" class="text-xs text-slate-400">—</p>
           </div>
         </div>
         <button onclick="closeUnitDetailModal()" class="text-slate-400 hover:text-white" aria-label="Close unit detail modal"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -1128,9 +1141,6 @@
       <h2 class="text-xl font-bold text-white mb-2">Amlaak Video Library Authentication</h2>
       <p class="text-xs text-slate-300 leading-relaxed mb-6">Please sign in with your authorised Amlaak Google Workspace account to access production engineering archives.</p>
       <div id="gsiModalButtonContainer" class="flex justify-center mb-4 min-h-[44px]"></div>
-      <button onclick="window.useLocalDemoMode()" class="ghost-btn text-xs text-slate-400 hover:text-white px-3 py-1.5 border border-slate-700 rounded-lg">
-        Continue in Local Preview Mode
-      </button>
     </div>
   </div>
 
