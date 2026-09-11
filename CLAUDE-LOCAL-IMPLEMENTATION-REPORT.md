@@ -1,8 +1,44 @@
 # Claude Local Implementation Report — Amlaak Video Library
 
 Date: 2026-09-11
+Repository path (this workspace): `C:\Users\l\code\amlaak-video-library-app`
 Branch: `fix/apps-script-owner-only-production`
-Starting SHA (main): `b0a4031db3657011f6650491ab8b804cbcbafa4f`
+Starting SHA (main tip when branch was created): `b0a4031db3657011f6650491ab8b804cbcbafa4f`
+Final local commit SHA: `85b2743b02e854415dfeb2370fd948c512697f9f`
+`git status`: clean (`nothing to commit, working tree clean`) — verified after two consecutive `node build-dist.js` runs produced no diff.
+
+**Note on workspace identity**: this repository is a separate local clone of
+`https://github.com/b01054759687-del/amlaak-video-library-app.git`, cloned
+fresh into `C:\Users\l\code\amlaak-video-library-app` for this task. It is
+**not** the same directory as any other local clone (e.g. one used by
+Antigravity/Gemini at `D:\AntigravityProjects\amlaak-video-library-app`,
+which was independently confirmed to be on a different branch,
+`fix/free-apps-script-api-production` @ `7e39fadd407d8284b9c99ce4fc87b269e5631fd6`,
+with its own uncommitted `ANTIGRAVITY-PRODUCTION-DEPLOYMENT-REPORT.md`). The
+two clones share no filesystem state and this branch was never pushed, so
+that other clone/tool cannot see this work without an explicit transfer —
+see `GIT-BUNDLE-EXPORT-MANIFEST.md` for the exported bundle used to hand it
+across.
+
+## dist/ artifact hashes (SHA-256, recomputed fresh, two consecutive builds byte-identical)
+
+```
+dist/Code.gs:         C6BB8A63A48A297300DA0868E16801749A53813F40DA87E1483CB7B733BE8709
+dist/Index.html:      2A33FD396B6C385F9043E1DE6F2D18A7A1AABAC3154410CB9489683539C3DEC0
+dist/appsscript.json: EB0C40AA63123A43BC079DB09761C9B2F9A59FA002A3FF8EB023C0D94EE639F0
+```
+
+## Test results (freshly re-run)
+
+- `node tests/unit-tests.js` → **44/44 PASSED**
+- `node tests/integration-simulation.js` → **7/7 PASSED**
+
+## Confirmation
+
+No `git push`, no merge, no `clasp push`, no Apps Script deployment, no
+Google authentication, no Google Cloud resources, no live Sheet/Drive
+writes, and no permission changes were performed against this repository
+or any other, at any point.
 
 ## 1. Architecture implemented
 

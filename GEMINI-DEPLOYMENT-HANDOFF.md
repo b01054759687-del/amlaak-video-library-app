@@ -2,23 +2,34 @@
 
 This is a strict handoff. Read it fully before doing anything.
 
+**IMPORTANT — delivery mechanism**: this branch was produced in a separate
+local clone (`C:\Users\l\code\amlaak-video-library-app` on the machine
+where Claude Code ran) and was **never pushed to `origin`**. It cannot be
+fetched from GitHub. It is delivered to you as a **Git bundle**:
+`D:\AntigravityExports\AMLAAK-CLAUDE-HANDOFF\amlaak-claude-approved.bundle`
+(see `GIT-BUNDLE-EXPORT-MANIFEST.md` in that same folder for full details).
+Import from the bundle, not from `origin`.
+
 ## 1. What is approved
 
 - **Source branch**: `fix/apps-script-owner-only-production`.
-- **Approved commit**: the single commit on that branch that is ahead of
-  `main`. Before doing anything else, run:
+- **Approved commit SHA**: `85b2743b02e854415dfeb2370fd948c512697f9f`
+  — this is the exact, single commit approved for deployment. It is one
+  commit ahead of `main` (`b0a4031db3657011f6650491ab8b804cbcbafa4f`).
+- **Before doing anything else**, verify the bundle and import it into your
+  own working repository (`D:\AntigravityProjects\amlaak-video-library-app`
+  or wherever you are operating):
   ```bash
-  git fetch origin
-  git log origin/main..origin/fix/apps-script-owner-only-production --oneline
+  git bundle verify "D:\AntigravityExports\AMLAAK-CLAUDE-HANDOFF\amlaak-claude-approved.bundle"
+  git fetch "D:\AntigravityExports\AMLAAK-CLAUDE-HANDOFF\amlaak-claude-approved.bundle" fix/apps-script-owner-only-production:claude-approved
+  git log -1 --format="%H %s" claude-approved
   ```
-  This **must** show exactly one commit, with the message
-  `fix: restore secure Apps Script production workflows` (or the exact
-  message reported by Claude in `CLAUDE-LOCAL-IMPLEMENTATION-REPORT.md`).
-  **If it shows zero commits, more than one commit, or a different message,
-  STOP and do not proceed.** Report the discrepancy back instead of guessing
-  which commit was intended.
-- Once confirmed, that commit's SHA (`git rev-parse origin/fix/apps-script-owner-only-production`)
-  is "the approved commit" referenced everywhere below.
+  This **must** print exactly `85b2743b02e854415dfeb2370fd948c512697f9f fix: restore secure Apps Script production workflows`.
+  **If the SHA differs, if the bundle fails verification, or if the branch
+  is missing, STOP and do not proceed.** Report the discrepancy back instead
+  of guessing which commit was intended. Do not merge `claude-approved` into
+  your own working branch's history beyond what is needed to read its
+  `dist/` files — do not rewrite or rebase it.
 
 ## 2. What you may deploy
 
@@ -28,6 +39,19 @@ by `node build-dist.js` from the modular source files in the same commit,
 verified deterministic (two consecutive builds produced byte-identical
 SHA-256 hashes), and scanned for mock data, Cloud Run/OAuth remnants, and
 `localStorage`/token usage (all clean — see `TEST-REPORT.md` §1).
+
+**Verify your imported copy matches before deploying it** — after checking
+out `claude-approved` (or extracting its `dist/` tree), compute:
+```powershell
+Get-FileHash dist\Code.gs, dist\Index.html, dist\appsscript.json -Algorithm SHA256
+```
+and confirm it matches exactly:
+```
+dist/Code.gs:         C6BB8A63A48A297300DA0868E16801749A53813F40DA87E1483CB7B733BE8709
+dist/Index.html:      2A33FD396B6C385F9043E1DE6F2D18A7A1AABAC3154410CB9489683539C3DEC0
+dist/appsscript.json: EB0C40AA63123A43BC079DB09761C9B2F9A59FA002A3FF8EB023C0D94EE639F0
+```
+If any hash differs, STOP — you are not looking at the approved build.
 
 ## 3. What you must NOT do
 

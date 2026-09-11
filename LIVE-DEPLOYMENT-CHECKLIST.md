@@ -4,6 +4,11 @@ This is the exact sequence for a human (or Gemini/Antigravity acting under
 `GEMINI-DEPLOYMENT-HANDOFF.md`) to take the approved local commit live.
 Nothing in this checklist was performed by this task.
 
+Approved commit: `85b2743b02e854415dfeb2370fd948c512697f9f` on branch
+`fix/apps-script-owner-only-production`, delivered via the Git bundle at
+`D:\AntigravityExports\AMLAAK-CLAUDE-HANDOFF\amlaak-claude-approved.bundle`
+(never pushed to `origin`).
+
 ## 0. Prerequisites
 
 - The approved local commit exists on branch `fix/apps-script-owner-only-production`.

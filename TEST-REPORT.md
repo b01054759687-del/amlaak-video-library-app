@@ -1,6 +1,19 @@
 # Amlaak Video Library — Test Report
 
-Date: 2026-09-11 | Branch: `fix/apps-script-owner-only-production`
+Date: 2026-09-11
+Repository path: `C:\Users\l\code\amlaak-video-library-app`
+Branch: `fix/apps-script-owner-only-production`
+Starting SHA (main): `b0a4031db3657011f6650491ab8b804cbcbafa4f`
+Final local commit SHA: `85b2743b02e854415dfeb2370fd948c512697f9f`
+
+## Freshly recomputed results (re-run at handoff time, not reused from earlier in the conversation)
+
+- `node tests/unit-tests.js` → **44/44 PASSED, 0 FAILED**
+- `node tests/integration-simulation.js` → **7/7 PASSED, 0 FAILED**
+- `node build-dist.js` run twice consecutively → `git status --short` empty both times (no diff)
+- `dist/Code.gs` SHA-256: `C6BB8A63A48A297300DA0868E16801749A53813F40DA87E1483CB7B733BE8709`
+- `dist/Index.html` SHA-256: `2A33FD396B6C385F9043E1DE6F2D18A7A1AABAC3154410CB9489683539C3DEC0`
+- `dist/appsscript.json` SHA-256: `EB0C40AA63123A43BC079DB09761C9B2F9A59FA002A3FF8EB023C0D94EE639F0`
 
 This report distinguishes four kinds of verification: **static**
 (syntax/lint-level checks with no execution), **local simulation** (Node.js
