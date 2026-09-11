@@ -50,7 +50,7 @@ function apiGetAppBootstrapData() {
 
 function apiGetInitialData() {
   return handleApiCall(function() {
-    var user = Auth.getCurrentUser();
+    var user = Auth.requireAuth();
     var lists = SheetRepository.getLists();
     var config = Config.getAllProperties();
     return {

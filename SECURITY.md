@@ -7,14 +7,21 @@
    `Code.gs` routes through a service function that calls
    `Auth.requireAuth()` (or `Auth.requireOwner()` for Settings/Setup) before
    any Sheet or Drive byte is read or written.
-2. **Fail-closed.** If the signed-in Google identity cannot be resolved, or
-   the email is not on the `Authorised_Users` allowlist (and the system is
+2. **Fail-closed.** Identity comes exclusively from
+   `Session.getActiveUser().getEmail()` (trimmed, lower-cased);
+   `Auth.gs` never substitutes `Session.getEffectiveUser()` as the
+   accessing-user identity — a blank active user fails closed immediately,
+   it is not retried against a different identity source. If the resolved
+   email is not on the `Authorised_Users` allowlist (and the system is
    already initialized), the request is rejected immediately with
    `UNAUTHORIZED` and the attempt is logged to `Audit_Log`.
-3. **Execute-as and Drive pre-conditions.** The web app runs as the
-   publishing owner. Files must be shared with that account as Editor before
-   they can be indexed; `DriveService` surfaces a specific, actionable error
-   (`"isn't shared with the app account yet"`) rather than a generic failure.
+3. **Execute-as and Drive pre-conditions.** The web app runs with
+   `webapp.executeAs = USER_ACCESSING` — each request executes as the
+   Google account currently accessing the app, not as a fixed owner
+   identity. A Drive file must be shared as Editor with that same accessing
+   account before it can be indexed by that user; `DriveService` surfaces a
+   specific, actionable error (`"isn't shared with the app account yet"`)
+   rather than a generic failure.
 4. **No secrets or OAuth material in the repository.** `.gitignore` excludes
    `.clasprc.json`, `.clasp.json`, `.env`, `credentials.json`, `token.json`,
    and binary media/customer exports. Configuration (Spreadsheet ID, Drive
@@ -32,22 +39,38 @@
 
 ## Required final sharing state (documented, not changed by this task)
 
-- **Spreadsheet General Access**: `Restricted`.
-- **Spreadsheet Owner**: `louyashra@gmail.com`.
-- **Named collaborators**: Viewer or Editor only where explicitly required;
-  no `Anyone with the link = Editor`.
-- **Drive folder access**: limited to intentionally approved accounts.
+Public reachability of the Web App URL (`webapp.access = ANYONE`) is not
+the same as public data access — the Sheet and Drive stay fully restricted,
+and the server-side allowlist is what actually gates every response.
+
+- **Spreadsheet General Access**: `Restricted`. No public Viewer or Editor
+  link.
+- **Spreadsheet Owner**: `louyashra@gmail.com` (unchanged).
+- **Named collaborators**: an authorised user who needs to add/edit content
+  gets named `Editor` access; a view-only user gets named `Viewer` access.
+  Named sharing is separate from, and in addition to, the
+  `Authorised_Users` allowlist row — both are required for a user to
+  actually operate the app (see below).
+- **Drive Root Folder access**: `Restricted`, same named Viewer/Editor
+  model as the Spreadsheet, owner unchanged. No anonymous access.
 - **OAuth scopes** (`appsscript.json`): `spreadsheets`, `drive`,
-  `userinfo.email`, `script.scriptapp` — no scope beyond what the app
-  genuinely uses.
+  `userinfo.email`, `script.scriptapp` — unchanged; no scope beyond what
+  the app genuinely uses.
 
 This task made **no** changes to live Google Sheet or Drive sharing
-settings. The owner is separately reviewing existing collaborator
-permissions; that review is outside this task's scope.
+settings.
 
-## Known limitation
+## Adding or removing an application user
 
-The `Authorised_Users` sheet schema exists for future multi-user access, but
-adding a row to it does not, by itself, grant a Gmail user access to the
-current owner-only deployment — see `README.md` and
-`LIVE-DEPLOYMENT-CHECKLIST.md`.
+Adding a working user requires **both**:
+1. An `Active` row for their email in the `Authorised_Users` Sheet tab
+   (Email, Active, Role, Added Date).
+2. Named Viewer/Editor sharing on the Spreadsheet and Drive root folder,
+   matching the access their role needs.
+
+Removing a user requires:
+1. Setting their `Authorised_Users` row's `Active` value to `No`.
+2. Removing their named Sheet/Drive sharing where appropriate.
+
+Neither of these was performed by this task — they are owner actions,
+documented here for reference.

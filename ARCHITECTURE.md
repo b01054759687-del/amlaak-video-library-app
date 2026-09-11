@@ -6,23 +6,34 @@ The Amlaak Video Library runs entirely inside Google Apps Script. There is
 no separate hosting tier, no container, and no custom identity provider.
 
 ```
-Owner's browser
+Any authorised signed-in Google user's browser
     |
     v
-Google Apps Script Web App (/exec)
+Google Apps Script Web App (/exec)  [webapp.access = ANYONE, executeAs = USER_ACCESSING]
     |
     v
 Apps Script server functions (Code.gs, Auth.gs, *Service.gs)
+    -> server-side check against the Authorised_Users Sheet tab
     |
     v
 Google Sheets metadata database   +   Google Drive video/PDF storage
 ```
 
 - **Host**: Google Apps Script HTML Service, served from the `/exec` URL.
-- **Identity**: `Session.getActiveUser()` / `Session.getEffectiveUser()` —
-  the Google account the owner is already signed into. No custom OAuth
-  client, no Google Identity Services JS, no bearer token ever touches the
-  browser.
+  Any signed-in Google user can open the URL (`webapp.access = ANYONE`);
+  whether they get anything back is decided entirely server-side.
+- **Identity**: `Session.getActiveUser().getEmail()` — the Google account
+  of whoever is currently accessing the app (`webapp.executeAs =
+  USER_ACCESSING`). `Auth.gs` never falls back to
+  `Session.getEffectiveUser()` for authorisation identity; a blank active
+  user fails closed. No custom OAuth client, no Google Identity Services
+  JS, no bearer token ever touches the browser.
+- **Authorisation**: every protected server call re-checks the accessing
+  email (trimmed, lower-cased) against the `Authorised_Users` Sheet tab.
+  Only an `Active` row grants access; unknown, inactive, or blank
+  identities are rejected with `UNAUTHORIZED`. The owner
+  (`louyashra@gmail.com`) is just another allowlist row with role
+  `System Owner` — required for owner-only actions (Setup, System Config).
 - **Client/server transport**: `google.script.run` only.
 - **Database**: Google Sheets (`1KLsNGiIGSyd2vTz95Qmfw0np6jayX-JJZWX3wmmgzZ4`).
 - **File storage**: Google Drive
@@ -37,7 +48,8 @@ Google Sheets metadata database   +   Google Drive video/PDF storage
   handler, failure handler, loading state, and safe error state (see
   `showFatalConnectionError` / `showToast` in `Index.html`).
 - A single bootstrap round trip (`apiGetAppBootstrapData`) loads the safe
-  owner summary, taxonomies, dashboard KPIs, and unit lookups on page load.
+  signed-in user summary, taxonomies, dashboard KPIs, and unit lookups on
+  page load.
   Video Library and Unit detail data are lazy-loaded on demand.
 - No `localStorage`/`sessionStorage`/cookie/IndexedDB token storage exists
   anywhere in the client — there is no token to store.
@@ -74,12 +86,15 @@ Google Sheets metadata database   +   Google Drive video/PDF storage
 
 ## 3. Request lifecycle & security perimeter
 
-1. The owner opens the `/exec` URL; Apps Script serves `Index.html` under
-   the owner's own Google identity (Session-based, not a custom login flow).
+1. Any signed-in Google user can open the `/exec` URL; Apps Script serves
+   `Index.html` under that person's own Google identity (Session-based,
+   not a custom login flow).
 2. Every `apiXxx` call re-resolves identity server-side via
-   `Auth.getCurrentUserEmail()` and checks the `Authorised_Users` allowlist
-   (or bootstrap-owner mode before first setup). No authorization decision
-   is based on hiding a button in the UI.
+   `Auth.getCurrentUserEmail()` (never `getEffectiveUser()`) and checks the
+   `Authorised_Users` allowlist (or bootstrap-owner mode before first
+   setup). An unlisted or inactive user gets a clean `UNAUTHORIZED`
+   response with no protected data — never a silently-hidden UI element.
+   No authorization decision is based on hiding a button in the UI.
 3. State-changing actions (`apiAddProjectVideo`, `apiCreateUnit`,
    `apiUploadPdf`, `apiUpdateUnit`, …) validate input, acquire a
    `LockService` lock where sequence generation or rename is involved, then

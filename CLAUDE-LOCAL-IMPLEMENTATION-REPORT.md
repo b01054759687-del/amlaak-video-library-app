@@ -1,5 +1,16 @@
 # Claude Local Implementation Report — Amlaak Video Library
 
+> **Superseded note (added after this report was originally written)**:
+> section 8 below correctly documents the Apps Script implementation as
+> multiuser via a server-side `Authorised_Users` allowlist. A separate,
+> later task briefly restricted `webapp.access` to `MYSELF` (owner-only)
+> based on a misreading of the business requirement — that change lived on
+> branch `fix/apps-script-owner-only-manifest`, was never merged, and is
+> superseded. The confirmed manifest is `webapp.access = ANYONE` /
+> `webapp.executeAs = USER_ACCESSING`, corrected on
+> `fix/apps-script-authorised-users-access`. See `SECURITY.md` and
+> `README.md` for the current access model.
+
 Date: 2026-09-11
 Repository path (this workspace): `C:\Users\l\code\amlaak-video-library-app`
 Branch: `fix/apps-script-owner-only-production`

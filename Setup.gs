@@ -9,7 +9,7 @@ var Setup = (function() {
    * Idempotently configures the entire system.
    */
   function setupSystem(optConfig) {
-    var userEmail = Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail();
+    var userEmail = Auth.getCurrentUserEmail();
     var results = {
       spreadsheetId: '',
       spreadsheetUrl: '',

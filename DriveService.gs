@@ -25,7 +25,8 @@ var DriveService = (function() {
    * Required by Section 6 and Section 13 step 7.
    */
   function verifyEditorAccess(file) {
-    var executeAsEmail = Session.getEffectiveUser().getEmail() || Session.getActiveUser().getEmail() || 'the application account';
+    // Diagnostic label only (for the error message below) — not an authorisation identity.
+    var executeAsEmail = Auth.getCurrentUserEmail() || Auth.getDiagnosticEffectiveEmail() || 'the application account';
     var hasEditorAccess = false;
 
     try {

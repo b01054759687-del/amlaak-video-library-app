@@ -673,24 +673,32 @@ var Auth = (function() {
   };
 
   /**
-   * Retrieves the currently active user email.
-   * Handles Google Workspace and personal Gmail sessions.
+   * Retrieves the accessing user's email — the sole source of truth for
+   * authorisation identity. Session.getEffectiveUser() is deliberately not
+   * used as a fallback here: with webapp.executeAs = USER_ACCESSING, the
+   * accessing identity must come only from getActiveUser(); a blank result
+   * fails closed rather than substituting a different identity.
    */
   function getCurrentUserEmail() {
     var email = '';
     try {
       email = Session.getActiveUser().getEmail();
     } catch (e) {
-      // ignore
-    }
-    if (!email) {
-      try {
-        email = Session.getEffectiveUser().getEmail();
-      } catch (e2) {
-        // ignore
-      }
+      // ignore — fails closed to '' below
     }
     return (email || '').trim().toLowerCase();
+  }
+
+  /**
+   * Diagnostic-only identity, safe to log internally (e.g. audit entries or
+   * error messages). Must never be used to grant or check authorisation.
+   */
+  function getDiagnosticEffectiveEmail() {
+    try {
+      return (Session.getEffectiveUser().getEmail() || '').trim().toLowerCase();
+    } catch (e) {
+      return '';
+    }
   }
 
   /**
@@ -809,6 +817,7 @@ var Auth = (function() {
   return {
     ROLES: ROLES,
     getCurrentUserEmail: getCurrentUserEmail,
+    getDiagnosticEffectiveEmail: getDiagnosticEffectiveEmail,
     getCurrentUser: getCurrentUser,
     requireAuth: requireAuth,
     requireOwner: requireOwner,
@@ -1509,7 +1518,8 @@ var DriveService = (function() {
    * Required by Section 6 and Section 13 step 7.
    */
   function verifyEditorAccess(file) {
-    var executeAsEmail = Session.getEffectiveUser().getEmail() || Session.getActiveUser().getEmail() || 'the application account';
+    // Diagnostic label only (for the error message below) — not an authorisation identity.
+    var executeAsEmail = Auth.getCurrentUserEmail() || Auth.getDiagnosticEffectiveEmail() || 'the application account';
     var hasEditorAccess = false;
 
     try {
@@ -3064,7 +3074,7 @@ var Setup = (function() {
    * Idempotently configures the entire system.
    */
   function setupSystem(optConfig) {
-    var userEmail = Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail();
+    var userEmail = Auth.getCurrentUserEmail();
     var results = {
       spreadsheetId: '',
       spreadsheetUrl: '',
@@ -3363,7 +3373,7 @@ function apiGetAppBootstrapData() {
 
 function apiGetInitialData() {
   return handleApiCall(function() {
-    var user = Auth.getCurrentUser();
+    var user = Auth.requireAuth();
     var lists = SheetRepository.getLists();
     var config = Config.getAllProperties();
     return {

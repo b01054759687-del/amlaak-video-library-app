@@ -7,13 +7,14 @@ Sheets as the metadata database and Google Drive as file storage.
 ## Production architecture (confirmed)
 
 ```
-Owner's browser
+Any authorised signed-in Google user's browser
     |
     v
 Google Apps Script Web App (/exec)
     |
     v
 Apps Script server functions (Code.gs + services)
+    -> server-side check against the Authorised_Users Sheet tab
     |
     v
 Google Sheets metadata database  +  Google Drive video/PDF storage
@@ -22,6 +23,10 @@ Google Sheets metadata database  +  Google Drive video/PDF storage
 - The operational application is the Apps Script `/exec` Web App. There is
   **no** Cloud Run backend, no Express server, no custom OAuth client, and no
   browser-stored access token in the production path.
+- The Web App itself is reachable by any signed-in Google account
+  (`webapp.access = ANYONE`, `webapp.executeAs = USER_ACCESSING`); every
+  protected server call independently checks the accessing account against
+  the `Authorised_Users` Sheet tab before returning any data.
 - The client (`Index.html` + `Client.html` + `Styles.html`) talks to the
   server exclusively through `google.script.run`.
 - GitHub is the source of truth for code, docs, builds, and tests. GitHub
@@ -42,12 +47,22 @@ are not meant to be surfaced unnecessarily in the client UI.
 
 ## Access model
 
-The current production phase is **owner-only**. `louyashra@gmail.com` is the
-System Owner. The `Authorised_Users` sheet schema exists for future
-multi-user access, but adding a row to it does not by itself grant access
-under the current owner-executed, owner-only deployment — that requires a
-deliberate, separately-approved deployment change. See
-`LIVE-DEPLOYMENT-CHECKLIST.md`.
+The application uses a **server-side allowlist model**, not a single-owner
+restriction. `louyashra@gmail.com` is the System Owner (required for Setup
+and System Config). Any other Google account is granted access by adding an
+`Active` row for it in the `Authorised_Users` Sheet tab — no code change or
+redeployment is required to add or deactivate a user, only:
+
+1. An active allowlist row (email, active, role).
+2. Named Viewer/Editor sharing on the Spreadsheet and Drive root folder for
+   that account, as appropriate to their role.
+
+An earlier revision of this project briefly restricted the Web App to
+`webapp.access = MYSELF` (owner-only). That was based on a misreading of
+the business requirement and has been superseded — see
+`CLAUDE-LOCAL-IMPLEMENTATION-REPORT.md` for the history. The confirmed
+manifest is `webapp.access = ANYONE` / `webapp.executeAs = USER_ACCESSING`,
+with authorization enforced entirely server-side by `Auth.gs`.
 
 ## Repository layout
 

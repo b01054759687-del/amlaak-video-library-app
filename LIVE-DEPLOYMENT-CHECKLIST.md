@@ -4,10 +4,15 @@ This is the exact sequence for a human (or Gemini/Antigravity acting under
 `GEMINI-DEPLOYMENT-HANDOFF.md`) to take the approved local commit live.
 Nothing in this checklist was performed by this task.
 
-Approved commit: `85b2743b02e854415dfeb2370fd948c512697f9f` on branch
-`fix/apps-script-owner-only-production`, delivered via the Git bundle at
-`D:\AntigravityExports\AMLAAK-CLAUDE-HANDOFF\amlaak-claude-approved.bundle`
-(never pushed to `origin`).
+**Superseded note**: an earlier revision of this checklist described an
+owner-only manifest (`webapp.access = MYSELF`) on branch
+`fix/apps-script-owner-only-manifest`. That branch was based on a
+misreading of the business requirement and must **not** be merged or
+deployed. The confirmed access model is multiuser, server-side allowlist
+enforced: `webapp.access = ANYONE`, `webapp.executeAs = USER_ACCESSING`,
+corrected on branch `fix/apps-script-authorised-users-access`. Deploy from
+that branch (once merged to `main` and approved), not from the owner-only
+one.
 
 ## 0. Prerequisites
 
@@ -33,9 +38,12 @@ Approved commit: `85b2743b02e854415dfeb2370fd948c512697f9f` on branch
 1. Open the Drive root folder (`172YFf4GteBT5x_WxQxr-ldo79f0XuRrh`).
 2. Confirm sharing is limited to intentionally approved accounts (no public
    or "anyone with the link" access).
-3. Confirm the account that will execute the Apps Script deployment (the
-   owner, since `appsscript.json` sets `"executeAs": "USER_DEPLOYING"`) has
-   Editor access to this folder and its subfolders.
+3. `appsscript.json` sets `"executeAs": "USER_ACCESSING"` — the script runs
+   as whichever authorised account is using it, not a fixed owner identity.
+   Confirm every authorised user who will register videos or upload PDFs
+   has named Editor access to this folder and its relevant subfolders
+   (not just the owner) — otherwise `DriveService` will correctly reject
+   their uploads with an actionable "share as Editor" error.
 
 ## 3. `clasp` authentication
 
@@ -69,10 +77,17 @@ Approved commit: `85b2743b02e854415dfeb2370fd948c512697f9f` on branch
 
 ## 6. Execute-as / access configuration
 
-1. Confirm deployment settings show **Execute as: Me (the owner)**.
-2. Confirm **Who has access: Only myself** (owner-only, per the current
-   access model) — not "Anyone" or "Anyone with a Google account," unless
-   the owner has explicitly decided to widen access.
+1. Confirm deployment settings show **Execute as: User accessing the web
+   app** (matches `webapp.executeAs = USER_ACCESSING`).
+2. Confirm **Who has access: Anyone with a Google account** (matches
+   `webapp.access = ANYONE`) — signed-in Google users can open the URL;
+   anonymous/unauthenticated access must remain disabled (Apps Script's
+   "Anyone" web-app option already requires Google sign-in — do not select
+   any variant offering anonymous access).
+3. This makes the URL reachable by any signed-in Google user, but the
+   server-side `Authorised_Users` allowlist is what actually decides
+   whether they get any data back — reachability is not the same as
+   access. See `SECURITY.md`.
 
 ## 7. Open the `/exec` URL
 
@@ -94,6 +109,10 @@ Approved commit: `85b2743b02e854415dfeb2370fd948c512697f9f` on branch
    during this smoke test unless the owner explicitly asks for one — if they
    do, use an obviously-labeled test unit and delete it manually afterward.
 6. Settings screen is reachable only as the owner; confirm no console errors.
+7. If a second Google account not on the `Authorised_Users` allowlist is
+   available, open the `/exec` URL as that account and confirm it gets a
+   clean English "Access Denied" state with no dashboard/unit/video data —
+   never a silent blank screen or a stack trace.
 
 ## 9. Rollback (if the smoke test fails)
 

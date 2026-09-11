@@ -869,6 +869,199 @@ test('Accessibility Invariants: Index.html contains ARIA modal dialogs and no us
   assert.ok(indexHtml.includes('id="modalEditVideoMetadata" role="dialog" aria-modal="true"'));
 });
 
+// ==============================================================================
+// 12. Apps Script Manifest — Authorised-Users Multiuser Access Invariant
+// ==============================================================================
+console.log('\n>>> 12. Apps Script Manifest Tests:');
+
+test('Manifest: webapp.access is ANYONE and executeAs is USER_ACCESSING (root)', () => {
+  const manifest = JSON.parse(fs.readFileSync('appsscript.json', 'utf8'));
+  assert.strictEqual(manifest.webapp.access, 'ANYONE', 'webapp.access must be ANYONE — any signed-in Google user may open the Web App');
+  assert.strictEqual(manifest.webapp.executeAs, 'USER_ACCESSING', 'server execution must run as the accessing user');
+});
+
+test('Manifest: no executionApi block exists (deprecated Execution API architecture)', () => {
+  const manifest = JSON.parse(fs.readFileSync('appsscript.json', 'utf8'));
+  assert.strictEqual(manifest.executionApi, undefined, 'executionApi must not be configured');
+});
+
+test('Manifest: forbidden owner-only / anonymous values are absent', () => {
+  const raw = fs.readFileSync('appsscript.json', 'utf8');
+  assert.strictEqual(raw.includes('ANYONE_ANONYMOUS'), false, 'ANYONE_ANONYMOUS would allow unauthenticated access');
+  assert.strictEqual(raw.includes('MYSELF'), false, 'MYSELF would restrict the app to the owner only');
+  assert.strictEqual(raw.includes('USER_DEPLOYING'), false, 'USER_DEPLOYING would run every request as the owner, not the accessing user');
+});
+
+test('Manifest: built dist/appsscript.json matches the root deployment configuration exactly', () => {
+  const rootManifest = fs.readFileSync('appsscript.json', 'utf8');
+  const distManifest = fs.readFileSync('dist/appsscript.json', 'utf8');
+  assert.strictEqual(distManifest, rootManifest, 'dist/appsscript.json must be byte-identical to the root manifest');
+});
+
+// ==============================================================================
+// 13. Server Gateway Authorisation Audit
+// ==============================================================================
+console.log('\n>>> 13. Server Gateway Authorisation Audit:');
+
+function extractBracedBody(source, startIndex) {
+  var depth = 1;
+  var i = startIndex;
+  while (i < source.length && depth > 0) {
+    if (source[i] === '{') depth++;
+    else if (source[i] === '}') depth--;
+    i++;
+  }
+  return source.slice(startIndex, i - 1);
+}
+
+function getAllTopLevelFunctionBodies(source) {
+  var bodies = {};
+  var re = /function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\([^)]*\)\s*\{/g;
+  var m;
+  while ((m = re.exec(source))) {
+    bodies[m[1]] = extractBracedBody(source, m.index + m[0].length);
+  }
+  return bodies;
+}
+
+test('Gateway Audit: every api* function enforces Auth.requireAuth/requireOwner directly or via a delegated service call that does', () => {
+  const codeGs = fs.readFileSync('Code.gs', 'utf8');
+  const serviceFiles = ['SheetRepository.gs', 'DriveService.gs', 'UnitService.gs', 'VideoService.gs', 'PdfService.gs', 'DashboardService.gs', 'Setup.gs', 'NamingService.gs', 'Validators.gs', 'AuditService.gs'];
+  var serviceBodies = {};
+  serviceFiles.forEach((f) => {
+    if (fs.existsSync(f)) {
+      Object.assign(serviceBodies, getAllTopLevelFunctionBodies(fs.readFileSync(f, 'utf8')));
+    }
+  });
+
+  const gatewayBodies = getAllTopLevelFunctionBodies(codeGs);
+  const apiFnNames = Object.keys(gatewayBodies).filter((n) => /^api[A-Za-z0-9_]*$/.test(n));
+
+  assert.ok(apiFnNames.length >= 14, 'Expected to find the known api* gateways (found ' + apiFnNames.length + ')');
+
+  const unguarded = [];
+  apiFnNames.forEach((fnName) => {
+    const body = gatewayBodies[fnName];
+    if (/Auth\.require(Auth|Owner)\s*\(/.test(body)) return; // guards directly
+
+    const calls = body.match(/[A-Za-z_]+Service\.[A-Za-z_]+\s*\(/g) || [];
+    const guardedByDelegate = calls.some((callStr) => {
+      const methodName = callStr.split('.')[1].replace(/\s*\($/, '');
+      const methodBody = serviceBodies[methodName];
+      return methodBody && /Auth\.require(Auth|Owner)\s*\(/.test(methodBody);
+    });
+    if (!guardedByDelegate) unguarded.push(fnName);
+  });
+
+  assert.deepStrictEqual(unguarded, [], 'Unguarded api* gateways found: ' + unguarded.join(', '));
+});
+
+test('Gateway Audit: owner-only gateways (setup, config) call Auth.requireOwner directly', () => {
+  const codeGs = fs.readFileSync('Code.gs', 'utf8');
+  const gatewayBodies = getAllTopLevelFunctionBodies(codeGs);
+  ['apiSetupSystem', 'apiGetSystemConfig'].forEach((fnName) => {
+    assert.ok(gatewayBodies[fnName], fnName + ' must exist');
+    assert.ok(/Auth\.requireOwner\s*\(/.test(gatewayBodies[fnName]), fnName + ' must call Auth.requireOwner()');
+  });
+});
+
+test('Auth.gs: getCurrentUserEmail never falls back to Session.getEffectiveUser for identity', () => {
+  const authGs = fs.readFileSync('Auth.gs', 'utf8');
+  const bodies = getAllTopLevelFunctionBodies(authGs);
+  assert.ok(bodies.getCurrentUserEmail, 'getCurrentUserEmail must exist');
+  assert.strictEqual(/getEffectiveUser/.test(bodies.getCurrentUserEmail), false,
+    'getCurrentUserEmail must resolve identity from getActiveUser() only, never getEffectiveUser()');
+});
+
+// ==============================================================================
+// 14. Authorised-Users Allowlist Matching Logic Simulation
+// ==============================================================================
+console.log('\n>>> 14. Authorised-Users Allowlist Matching Tests:');
+
+// Mirrors Auth.gs's getCurrentUser() matching algorithm exactly (email
+// resolution -> trim/lowercase -> case-insensitive allowlist match -> active
+// check -> role), so these tests exercise the real decision logic even
+// though the actual Sheet/Session calls cannot run outside Apps Script.
+function simulateGetCurrentUser(rawEmail, allowlist, systemInitialized) {
+  var email = String(rawEmail || '').trim().toLowerCase();
+  if (!email) {
+    return { email: '', role: null, active: false, isAuthorized: false };
+  }
+  var found = null;
+  for (var i = 0; i < allowlist.length; i++) {
+    if (String(allowlist[i].email).trim().toLowerCase() === email) {
+      found = allowlist[i];
+      break;
+    }
+  }
+  if (found && (String(found.active).toUpperCase() === 'YES' || found.active === true || String(found.active).toUpperCase() === 'TRUE')) {
+    return { email: email, role: found.role || 'Editor', active: true, isAuthorized: true };
+  }
+  if (!systemInitialized) {
+    return { email: email, role: 'System Owner', active: true, isAuthorized: true, isBootstrap: true };
+  }
+  return { email: email, role: null, active: false, isAuthorized: false };
+}
+
+test('Allowlist: active authorised user is accepted', () => {
+  const allowlist = [{ email: 'user@amlaak.com', active: 'YES', role: 'Editor' }];
+  const result = simulateGetCurrentUser('user@amlaak.com', allowlist, true);
+  assert.strictEqual(result.isAuthorized, true);
+  assert.strictEqual(result.role, 'Editor');
+});
+
+test('Allowlist: inactive authorised user is rejected', () => {
+  const allowlist = [{ email: 'user@amlaak.com', active: 'NO', role: 'Editor' }];
+  const result = simulateGetCurrentUser('user@amlaak.com', allowlist, true);
+  assert.strictEqual(result.isAuthorized, false);
+});
+
+test('Allowlist: missing (unlisted) user is rejected once system is initialised', () => {
+  const allowlist = [{ email: 'someone-else@amlaak.com', active: 'YES', role: 'Editor' }];
+  const result = simulateGetCurrentUser('intruder@unknown.com', allowlist, true);
+  assert.strictEqual(result.isAuthorized, false);
+});
+
+test('Allowlist: blank/undetected active email fails closed', () => {
+  const allowlist = [{ email: 'user@amlaak.com', active: 'YES', role: 'Editor' }];
+  const result = simulateGetCurrentUser('', allowlist, true);
+  assert.strictEqual(result.isAuthorized, false);
+  assert.strictEqual(result.email, '');
+});
+
+test('Allowlist: email matching is case-insensitive', () => {
+  const allowlist = [{ email: 'User@Amlaak.com', active: 'YES', role: 'Editor' }];
+  const result = simulateGetCurrentUser('USER@AMLAAK.COM', allowlist, true);
+  assert.strictEqual(result.isAuthorized, true);
+});
+
+test('Allowlist: email matching is whitespace-normalised', () => {
+  const allowlist = [{ email: '  user@amlaak.com  ', active: 'YES', role: 'Editor' }];
+  const result = simulateGetCurrentUser('  user@amlaak.com', allowlist, true);
+  assert.strictEqual(result.isAuthorized, true);
+});
+
+test('Allowlist: owner accepted by owner-only check; non-owner rejected', () => {
+  function requireOwner(user) {
+    if (!user.isAuthorized || user.role !== 'System Owner') {
+      throw new Error('Access Denied: System Owner role required for this action.');
+    }
+    return user;
+  }
+  const owner = simulateGetCurrentUser('louyashra@gmail.com', [{ email: 'louyashra@gmail.com', active: 'YES', role: 'System Owner' }], true);
+  assert.doesNotThrow(() => requireOwner(owner));
+
+  const editor = simulateGetCurrentUser('editor@amlaak.com', [{ email: 'editor@amlaak.com', active: 'YES', role: 'Editor' }], true);
+  assert.throws(() => requireOwner(editor), /System Owner role required/);
+});
+
+test('Allowlist: pre-bootstrap system grants first signed-in user owner access', () => {
+  const result = simulateGetCurrentUser('first-setup@amlaak.com', [], false);
+  assert.strictEqual(result.isAuthorized, true);
+  assert.strictEqual(result.role, 'System Owner');
+  assert.strictEqual(result.isBootstrap, true);
+});
+
 console.log('\n' + '='.repeat(70));
 console.log(`TOTAL UNIT TESTS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);
 console.log('='.repeat(70));

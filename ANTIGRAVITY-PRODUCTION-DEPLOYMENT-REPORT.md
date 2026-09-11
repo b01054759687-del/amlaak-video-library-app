@@ -1,5 +1,13 @@
 # Production Deployment Report — Amlaak Video Library
 
+> **Superseded note**: §13 below flags `appsscript.json` as
+> `access: ANYONE` differing from an intended "Only myself" setting. That
+> "Only myself" intention was itself later found to be a misreading of the
+> business requirement. The confirmed, corrected model is multiuser with a
+> server-side allowlist: `webapp.access = ANYONE`,
+> `webapp.executeAs = USER_ACCESSING` — see `SECURITY.md` and
+> `CLAUDE-LOCAL-IMPLEMENTATION-REPORT.md`.
+
 Date: 2026-09-11
 Executed by: Claude (Claude Code), in the local clone at
 `C:\Users\l\code\amlaak-video-library-app`

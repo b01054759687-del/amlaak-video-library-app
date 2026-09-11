@@ -1,5 +1,12 @@
 # Amlaak Video Library — Test Report
 
+> **Superseded note**: this report's manifest-related content reflects a
+> since-corrected owner-only decision (`webapp.access = MYSELF`). The
+> confirmed access model is multiuser with a server-side allowlist
+> (`webapp.access = ANYONE`, `webapp.executeAs = USER_ACCESSING`) — see
+> `CLAUDE-LOCAL-IMPLEMENTATION-REPORT.md` for the correction history and
+> the current test results below this notice.
+
 Date: 2026-09-11
 Repository path: `C:\Users\l\code\amlaak-video-library-app`
 Branch: `fix/apps-script-owner-only-production`

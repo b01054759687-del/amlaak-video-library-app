@@ -1342,10 +1342,10 @@
   </div>
 
   <div id="fatalErrorOverlay" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#070D18] px-6 text-center hidden">
-    <i class="fa-solid fa-plug-circle-exclamation text-3xl text-[#DFBF7A] mb-4"></i>
-    <div class="text-sm font-bold text-white mb-2">Database connection unavailable</div>
+    <i id="fatalErrorIcon" class="fa-solid fa-plug-circle-exclamation text-3xl text-[#DFBF7A] mb-4"></i>
+    <div id="fatalErrorTitle" class="text-sm font-bold text-white mb-2">Database connection unavailable</div>
     <div id="fatalErrorMessage" class="text-xs text-slate-400 max-w-md mb-5"></div>
-    <button type="button" onclick="location.reload()" class="btn-gold px-4 py-2 text-xs font-bold rounded-lg">Retry connection</button>
+    <button type="button" id="fatalErrorRetryBtn" onclick="location.reload()" class="btn-gold px-4 py-2 text-xs font-bold rounded-lg">Retry connection</button>
   </div>
 
   <script>
@@ -1477,7 +1477,7 @@ function initApp() {
     isBootstrapping = false;
 
     if (!response.ok) {
-      showFatalConnectionError(response.message || 'Could not load data from Google Sheets. Please retry the connection.');
+      showFatalConnectionError(response.message || 'Could not load data from Google Sheets. Please retry the connection.', response.errorCode);
       return;
     }
 
@@ -3252,11 +3252,19 @@ function hideGlobalLoading() {
   if (overlay) overlay.classList.add('hidden');
 }
 
-function showFatalConnectionError(message) {
+function showFatalConnectionError(message, errorCode) {
   hideGlobalLoading();
   var overlay = document.getElementById('fatalErrorOverlay');
   var text = document.getElementById('fatalErrorMessage');
-  if (text) text.textContent = message || 'Database connection unavailable.';
+  var title = document.getElementById('fatalErrorTitle');
+  var icon = document.getElementById('fatalErrorIcon');
+  var retryBtn = document.getElementById('fatalErrorRetryBtn');
+  var isAccessDenied = errorCode === 'UNAUTHORIZED';
+
+  if (title) title.textContent = isAccessDenied ? 'Access Denied' : 'Database connection unavailable';
+  if (icon) icon.className = isAccessDenied ? 'fa-solid fa-user-lock text-3xl text-[#DFBF7A] mb-4' : 'fa-solid fa-plug-circle-exclamation text-3xl text-[#DFBF7A] mb-4';
+  if (text) text.textContent = message || (isAccessDenied ? 'Your Google account is not authorized to use this application.' : 'Database connection unavailable.');
+  if (retryBtn) retryBtn.textContent = isAccessDenied ? 'Try again' : 'Retry connection';
   if (overlay) overlay.classList.remove('hidden');
 }
 

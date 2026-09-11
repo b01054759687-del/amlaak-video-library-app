@@ -1,124 +1,118 @@
 # Gemini / Antigravity Deployment Handoff — Amlaak Video Library
 
-This is a strict handoff. Read it fully before doing anything.
+This is a strict handoff. Read it fully before doing anything. This file
+supersedes all earlier versions of itself.
 
-**IMPORTANT — delivery mechanism**: this branch was produced in a separate
-local clone (`C:\Users\l\code\amlaak-video-library-app` on the machine
-where Claude Code ran) and was **never pushed to `origin`**. It cannot be
-fetched from GitHub. It is delivered to you as a **Git bundle**:
-`D:\AntigravityExports\AMLAAK-CLAUDE-HANDOFF\amlaak-claude-approved.bundle`
-(see `GIT-BUNDLE-EXPORT-MANIFEST.md` in that same folder for full details).
-Import from the bundle, not from `origin`.
+## 0. History (for context only — do not act on superseded items)
 
-## 1. What is approved
+1. `fix/apps-script-owner-only-production` was pushed to `origin` and
+   fast-forward-merged into `main` (now at `1bf3e474088a2bdc1e0807fd82a0306c3b43fe47`).
+2. A branch `fix/apps-script-owner-only-manifest` then set
+   `webapp.access = MYSELF` based on a misreading of the business
+   requirement. **That branch must never be merged or deployed.**
+3. The confirmed, corrected access model is multiuser with a server-side
+   allowlist: `webapp.access = ANYONE`, `webapp.executeAs = USER_ACCESSING`,
+   on branch `fix/apps-script-authorised-users-access`.
 
-- **Source branch**: `fix/apps-script-owner-only-production`.
-- **Approved commit SHA**: `85b2743b02e854415dfeb2370fd948c512697f9f`
-  — this is the exact, single commit approved for deployment. It is one
-  commit ahead of `main` (`b0a4031db3657011f6650491ab8b804cbcbafa4f`).
-- **Before doing anything else**, verify the bundle and import it into your
-  own working repository (`D:\AntigravityProjects\amlaak-video-library-app`
-  or wherever you are operating):
+## 1. What is approved for deployment
+
+- **Branch**: `fix/apps-script-authorised-users-access`, pushed to
+  `origin` (real GitHub push — no bundle needed; the earlier bundle-based
+  handoff at `D:\AntigravityExports\AMLAAK-CLAUDE-HANDOFF\` is obsolete now
+  that `origin` has everything).
+- Before doing anything else, verify:
   ```bash
-  git bundle verify "D:\AntigravityExports\AMLAAK-CLAUDE-HANDOFF\amlaak-claude-approved.bundle"
-  git fetch "D:\AntigravityExports\AMLAAK-CLAUDE-HANDOFF\amlaak-claude-approved.bundle" fix/apps-script-owner-only-production:claude-approved
-  git log -1 --format="%H %s" claude-approved
+  git fetch origin
+  git log origin/main..origin/fix/apps-script-authorised-users-access --oneline
   ```
-  This **must** print exactly `85b2743b02e854415dfeb2370fd948c512697f9f fix: restore secure Apps Script production workflows`.
-  **If the SHA differs, if the bundle fails verification, or if the branch
-  is missing, STOP and do not proceed.** Report the discrepancy back instead
-  of guessing which commit was intended. Do not merge `claude-approved` into
-  your own working branch's history beyond what is needed to read its
-  `dist/` files — do not rewrite or rebase it.
+  This must show exactly one commit,
+  `fix: enforce authorised-user Apps Script access`. **If it shows zero
+  commits, more than one, or a different message, STOP** and report the
+  discrepancy — do not guess which commit was intended.
+- Confirm `origin/main` is `1bf3e474088a2bdc1e0807fd82a0306c3b43fe47` before
+  merging the corrective branch into it. Do not merge
+  `fix/apps-script-owner-only-manifest` into anything.
 
 ## 2. What you may deploy
 
-Only the contents of `dist/` as committed in the approved commit:
-`dist/Code.gs`, `dist/Index.html`, `dist/appsscript.json`. These were built
-by `node build-dist.js` from the modular source files in the same commit,
-verified deterministic (two consecutive builds produced byte-identical
-SHA-256 hashes), and scanned for mock data, Cloud Run/OAuth remnants, and
-`localStorage`/token usage (all clean — see `TEST-REPORT.md` §1).
-
-**Verify your imported copy matches before deploying it** — after checking
-out `claude-approved` (or extracting its `dist/` tree), compute:
+Only `dist/Code.gs`, `dist/Index.html`, `dist/appsscript.json` from the
+approved commit on `fix/apps-script-authorised-users-access`, built by
+`node build-dist.js`. Verify the manifest before deploying:
 ```powershell
-Get-FileHash dist\Code.gs, dist\Index.html, dist\appsscript.json -Algorithm SHA256
+node -e "console.log(JSON.parse(require('fs').readFileSync('dist/appsscript.json','utf8')).webapp)"
 ```
-and confirm it matches exactly:
-```
-dist/Code.gs:         5F5DC1FE42BB90C74A70BBA3935D978FDF8D64F00996DCAD2A9E6D6CB037E496
-dist/Index.html:      358F959836C621E5CE1FFFAA85F4B1FB74B58105D0A3BDC40039A5989B53DF5F
-dist/appsscript.json: 2ED60112796EE9E7409B606E84AD384F70B8999BF0998BFD57AAD1022703DCBD
-```
-If any hash differs, STOP — you are not looking at the approved build.
+Must print `{ access: 'ANYONE', executeAs: 'USER_ACCESSING' }`. If it
+prints `MYSELF` or `USER_DEPLOYING`, **STOP** — you are looking at the
+wrong branch/commit.
 
 ## 3. What you must NOT do
 
-- **Do not rewrite, "improve," or refactor any application logic.** Your
-  role is to push the already-approved, already-tested `dist/` bundle and
-  update the existing Apps Script deployment — nothing else.
-- Do not merge `fix/apps-script-owner-only-production` into `main` yourself
-  unless the human owner explicitly asks you to, separately from this
-  deployment handoff.
-- Do not modify the `gh-pages` branch beyond publishing the single file at
-  `docs/landing-page/index.html` (see `docs/landing-page/README.md`), and
-  only if the owner has separately asked for the landing page to go live.
-- Do not create a new Apps Script deployment URL. Update the existing one:
+- Do not rewrite, "improve," or refactor any application logic.
+- Do not merge `fix/apps-script-owner-only-manifest` — it is superseded
+  and incorrect.
+- Do not merge the corrective branch into `main` yourself unless the human
+  owner explicitly asks, separately from this handoff.
+- Do not modify `gh-pages` beyond publishing `docs/landing-page/index.html`
+  as described in `docs/landing-page/README.md`, and only after the live
+  `/exec` smoke test passes.
+- Do not create a new Apps Script deployment URL — update the existing one:
   `AKfycbzfCQrVU-9gHJqBYHFIGWVwWcWXeNWnV1dRe7HiCtY65xldx0AvO8iRObhR8pBrPLAjXg`.
-- Do not touch Google Sheet or Drive sharing permissions.
+- Do not touch Google Sheet or Drive sharing permissions yourself.
 - Do not create a Google Cloud project, service account, or any billing
-  resource — none is required.
+  resource.
+- Do not configure custom OAuth or Google Identity Services.
 
-## 4. Tests already completed (do not re-litigate, but do verify)
+## 4. Tests already completed
 
-See `TEST-REPORT.md` for full detail:
-- Static: syntax-checked all 14 root `.gs` files; found and fixed a
-  production-breaking scope bug in `DashboardService.gs`.
-- Local simulation: 51/51 Node.js tests passing
-  (`tests/unit-tests.js` + `tests/integration-simulation.js`).
-- Browser QA: real production client code exercised in a local harness
-  against a mocked server (see `tests/build-preview.js`); found and fixed a
-  dead "View" button, undersized action buttons, and a misleading KPI label.
-- **Not performed** (blocked pending this deployment): any real Google
-  Sheets/Drive/Apps Script execution. That is exactly what you are being
-  asked to enable — do not claim it was already verified.
+See `TEST-REPORT.md` and `CLAUDE-LOCAL-IMPLEMENTATION-REPORT.md`. Includes
+a gateway-authorisation audit (every `api*` function statically verified
+to enforce `Auth.requireAuth`/`requireOwner`, directly or via a delegated
+service call) and an allowlist-matching logic simulation (active/inactive/
+missing/blank/case/whitespace). **Not performed**: any real Google
+Sheets/Drive/Apps Script execution — that is what this handoff enables.
 
 ## 5. Exact GitHub and Apps Script operations
 
-Follow `LIVE-DEPLOYMENT-CHECKLIST.md` step by step, in order:
-1. Sheet permission verification (read-only).
-2. Drive permission verification (read-only).
-3. `clasp login` as `louyashra@gmail.com`.
-4. `clasp push` — must push exactly `Code.gs`, `Index.html`,
-   `appsscript.json`, sourced from `dist/` in the approved commit.
+Follow `LIVE-DEPLOYMENT-CHECKLIST.md` step by step:
+1. Sheet permission verification (read-only) — General access stays
+   `Restricted`; named Editor/Viewer sharing per user, not public.
+2. Drive permission verification (read-only) — same model; remember every
+   authorised user (not just the owner) needs their own named Editor
+   access to upload/rename files, since execution now runs as the
+   accessing user.
+3. `clasp login` as the owner (`louyashra@gmail.com`) to push, but the
+   *deployed app* will run each request as whoever is accessing it.
+4. `clasp push` — exactly `Code.gs`, `Index.html`, `appsscript.json`.
 5. Update the existing deployment (new version, same deployment ID/URL).
-6. Confirm Execute as: Me: confirm access is owner-only.
+6. Confirm deployment settings: **Execute as: User accessing the web app**,
+   **Who has access: Anyone with a Google account** (not anonymous).
 
 ## 6. Exact smoke tests
 
-Perform `LIVE-DEPLOYMENT-CHECKLIST.md` §8 in full:
-- Dashboard loads with no fatal-error overlay.
-- KPI numbers match a manual spot-check against the real Sheet.
-- Video Library search/filter/pagination work against real rows.
-- One existing Unit's detail view shows real data, not a loading
-  placeholder and not "Ahmed Hassan"/"U-0001".
-- No unsolicited test data is added to the real Sheet or Drive.
+Per `LIVE-DEPLOYMENT-CHECKLIST.md` §8:
+- Dashboard loads with real data, no fatal-error overlay.
+- KPI numbers spot-checked against the real Sheet.
+- One existing Unit's detail view shows real data.
+- If a second Google account is available, confirm it gets a clean
+  "Access Denied" state (not a blank screen, not stale/fake data) if it is
+  not on the `Authorised_Users` allowlist.
+- No unsolicited test data added to the real Sheet or Drive.
 
 ## 7. Rollback process
 
-If any smoke test fails: `LIVE-DEPLOYMENT-CHECKLIST.md` §9 — in the Apps
-Script editor, **Deploy → Manage deployments**, select the previous version
-number (noted before you updated it in step 5.5), **Save**. No data
-migration is ever needed for a code-only rollback.
+`LIVE-DEPLOYMENT-CHECKLIST.md` §9 — **Deploy → Manage deployments** in the
+Apps Script editor, select the previous version, **Save**. No data
+migration is ever needed for a code-only rollback. For GitHub, `git revert`
+the merge commit on `main` — never rewrite history.
 
 ## 8. Evidence you must return
 
-- The exact deployment version number you created, and the previous
-  version number (for rollback reference).
+- The exact deployment version number created, and the previous version
+  number.
 - Confirmation `clasp push` reported exactly 3 files.
-- The smoke-test results from §6, including the spot-checked KPI number and
-  which Sheet row it corresponds to.
-- Confirmation that no Sheet/Drive permissions were changed.
-- If anything in §1's verification failed (wrong commit count/message),
-  report that immediately instead of proceeding.
+- The smoke-test results from §6, including the access-denied check if
+  performed.
+- Confirmation the manifest deployed shows `access: ANYONE`,
+  `executeAs: USER_ACCESSING` — not `MYSELF`/`USER_DEPLOYING`.
+- Confirmation no Sheet/Drive permissions were changed beyond what the
+  owner explicitly directed.
