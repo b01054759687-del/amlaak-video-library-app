@@ -869,6 +869,35 @@ test('Accessibility Invariants: Index.html contains ARIA modal dialogs and no us
   assert.ok(indexHtml.includes('id="modalEditVideoMetadata" role="dialog" aria-modal="true"'));
 });
 
+// ==============================================================================
+// 12. Apps Script Manifest — Owner-Only Access Invariant
+// ==============================================================================
+console.log('\n>>> 12. Apps Script Manifest Tests:');
+
+test('Manifest: webapp.access is MYSELF and executeAs is USER_DEPLOYING (root)', () => {
+  const manifest = JSON.parse(fs.readFileSync('appsscript.json', 'utf8'));
+  assert.strictEqual(manifest.webapp.access, 'MYSELF', 'webapp.access must be MYSELF for owner-only production');
+  assert.strictEqual(manifest.webapp.executeAs, 'USER_DEPLOYING');
+});
+
+test('Manifest: no executionApi block exists (deprecated Execution API architecture)', () => {
+  const manifest = JSON.parse(fs.readFileSync('appsscript.json', 'utf8'));
+  assert.strictEqual(manifest.executionApi, undefined, 'executionApi must not be configured');
+});
+
+test('Manifest: no deployment access value equals ANYONE or ANYONE_ANONYMOUS anywhere in the manifest', () => {
+  const raw = fs.readFileSync('appsscript.json', 'utf8');
+  assert.strictEqual(raw.includes('ANYONE_ANONYMOUS'), false);
+  assert.strictEqual(raw.includes('"ANYONE"'), false);
+  assert.strictEqual(raw.includes('USER_ACCESSING'), false, 'USER_ACCESSING is not a valid owner-only value');
+});
+
+test('Manifest: built dist/appsscript.json matches the root deployment configuration exactly', () => {
+  const rootManifest = fs.readFileSync('appsscript.json', 'utf8');
+  const distManifest = fs.readFileSync('dist/appsscript.json', 'utf8');
+  assert.strictEqual(distManifest, rootManifest, 'dist/appsscript.json must be byte-identical to the root manifest');
+});
+
 console.log('\n' + '='.repeat(70));
 console.log(`TOTAL UNIT TESTS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);
 console.log('='.repeat(70));
