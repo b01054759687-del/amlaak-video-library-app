@@ -107,32 +107,54 @@ export function handleTokenResponse(tokenResponse) {
       feedback.className = 'text-[11px] text-emerald-400 font-bold min-h-[18px]';
     }
 
-    // Fetch user profile info using the acquired access token
+    // Immediately hide auth modal so the user is not stuck looking at it
+    setTimeout(function() {
+      var modal = document.getElementById('authModal');
+      if (modal) modal.classList.add('hidden');
+    }, 350);
+
+    // Update session header buttons immediately
+    var btnIn = document.getElementById('btnHeaderSignIn');
+    if (btnIn) btnIn.classList.add('hidden');
+    var btnOut = document.getElementById('btnHeaderSignOut');
+    if (btnOut) btnOut.classList.remove('hidden');
+
+    currentUser = {
+      email: 'Authorised User',
+      name: 'Authorised User',
+      picture: null,
+      token: currentAccessToken
+    };
+
+    // Attempt profile fetch with a strict 3-second timeout so network never hangs
+    var fetchController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var fetchTimeout = setTimeout(function() {
+      if (fetchController) fetchController.abort();
+    }, 3000);
+
     fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: {
         'Authorization': 'Bearer ' + currentAccessToken
-      }
+      },
+      signal: fetchController ? fetchController.signal : undefined
     })
       .then(res => res.json())
       .then(userInfo => {
-        currentUser = {
-          email: userInfo.email || '',
-          name: userInfo.name || (userInfo.email ? userInfo.email.split('@')[0] : 'Authorised User'),
-          picture: userInfo.picture || null,
-          token: currentAccessToken
-        };
+        clearTimeout(fetchTimeout);
+        if (userInfo && userInfo.email) {
+          currentUser.email = userInfo.email;
+          currentUser.name = userInfo.name || (userInfo.email ? userInfo.email.split('@')[0] : 'Authorised User');
+          currentUser.picture = userInfo.picture || null;
+          var badge = document.getElementById('userEmailBadge');
+          if (badge) badge.textContent = currentUser.email;
+        }
         if (onAuthChangedCallback) {
           onAuthChangedCallback(currentUser);
         }
       })
       .catch(err => {
-        console.warn('Failed to fetch user profile info:', err);
-        currentUser = {
-          email: '',
-          name: 'Authorised User',
-          picture: null,
-          token: currentAccessToken
-        };
+        clearTimeout(fetchTimeout);
+        console.warn('User profile info fetch completed or timed out:', err.message);
         if (onAuthChangedCallback) {
           onAuthChangedCallback(currentUser);
         }
