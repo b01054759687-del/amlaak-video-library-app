@@ -11,9 +11,9 @@ Final local commit SHA: `85b2743b02e854415dfeb2370fd948c512697f9f`
 - `node tests/unit-tests.js` → **44/44 PASSED, 0 FAILED**
 - `node tests/integration-simulation.js` → **7/7 PASSED, 0 FAILED**
 - `node build-dist.js` run twice consecutively → `git status --short` empty both times (no diff)
-- `dist/Code.gs` SHA-256: `C6BB8A63A48A297300DA0868E16801749A53813F40DA87E1483CB7B733BE8709`
-- `dist/Index.html` SHA-256: `2A33FD396B6C385F9043E1DE6F2D18A7A1AABAC3154410CB9489683539C3DEC0`
-- `dist/appsscript.json` SHA-256: `EB0C40AA63123A43BC079DB09761C9B2F9A59FA002A3FF8EB023C0D94EE639F0`
+- `dist/Code.gs` SHA-256: `5F5DC1FE42BB90C74A70BBA3935D978FDF8D64F00996DCAD2A9E6D6CB037E496`
+- `dist/Index.html` SHA-256: `358F959836C621E5CE1FFFAA85F4B1FB74B58105D0A3BDC40039A5989B53DF5F`
+- `dist/appsscript.json` SHA-256: `2ED60112796EE9E7409B606E84AD384F70B8999BF0998BFD57AAD1022703DCBD`
 
 This report distinguishes four kinds of verification: **static**
 (syntax/lint-level checks with no execution), **local simulation** (Node.js
