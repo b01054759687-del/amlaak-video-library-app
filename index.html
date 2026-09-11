@@ -68,6 +68,12 @@
           <div id="userEmailBadge" class="text-xs font-mono-code font-bold text-slate-200">Not authenticated</div>
           <div id="userRoleBadge" class="text-[10px] text-[#DFBF7A] font-bold">Sign in required</div>
         </div>
+        <button id="btnHeaderSignIn" onclick="requestGoogleSignIn()" class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-[#DFBF7A] to-[#C49B45] text-[#070D18] hover:brightness-110 transition flex items-center gap-2 font-bold text-xs shadow-md cursor-pointer">
+          <i class="fa-brands fa-google"></i> <span>Sign In</span>
+        </button>
+        <button id="btnHeaderSignOut" onclick="handleSignOut()" class="hidden px-3.5 py-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 text-xs font-bold border border-slate-700 transition flex items-center gap-1.5 cursor-pointer">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i> <span>Sign Out</span>
+        </button>
         <button onclick="reloadCurrentView()" title="Refresh data" aria-label="Refresh data" class="w-9 h-9 rounded-lg bg-slate-800/70 border border-slate-700 text-slate-300 hover:text-[#DFBF7A] hover:border-amber-500/40 transition flex items-center justify-center">
           <i id="syncIcon" class="fa-solid fa-arrows-rotate text-xs"></i>
         </button>
@@ -1133,26 +1139,24 @@
   </div>
 
   <!-- Google Sign-In & Auth Modal -->
-  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md hidden" role="dialog" aria-modal="true">
-    <div class="gold-card p-6 sm:p-8 max-w-md w-full mx-4 border-amber-500/40 text-center">
-      <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#DFBF7A] to-[#9A7329] flex items-center justify-center text-[#070D18] shadow-lg shadow-amber-950/40 text-2xl mx-auto mb-4">
+  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center bg-[#070D18]/90 backdrop-blur-md hidden" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+    <div class="gold-card p-6 sm:p-8 max-w-md w-full mx-4 border-amber-500/40 text-center shadow-2xl shadow-black/80">
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#DFBF7A] via-[#C49B45] to-[#9A7329] flex items-center justify-center text-[#070D18] shadow-lg shadow-amber-950/50 text-2xl mx-auto mb-4 border border-amber-300/30">
         <i class="fa-solid fa-shield-halved"></i>
       </div>
-      <h2 class="text-xl font-bold text-white mb-2">Amlaak Video Library Authentication</h2>
-      <div id="gsiModalButtonContainer" class="flex justify-center mb-4 min-h-[44px]"></div>
-      <div id="clientSetupContainer" class="hidden text-left bg-slate-900/60 p-4 rounded-xl border border-slate-800 mt-2">
-        <label for="inputClientId" class="block text-[11px] font-bold text-slate-300 mb-1.5">Google OAuth Client ID</label>
-        <div class="flex gap-2">
-          <input type="text" id="inputClientId" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com" class="input-dark flex-1 text-xs px-3 py-2">
-          <button type="button" onclick="handleManualClientIdConnect()" class="btn-gold text-xs px-3 py-2 shrink-0">
-            Connect
-          </button>
-        </div>
-        <p class="text-[10px] text-slate-400 mt-1.5">Enter your Web Client ID from Google Cloud Console.</p>
-      </div>
+      <h2 id="authModalTitle" class="text-xl sm:text-2xl font-black text-white mb-2">Amlaak Video Library</h2>
+      <div class="text-xs text-[#DFBF7A] font-bold tracking-wider uppercase mb-3 font-mono-code">Authorised Google Authentication</div>
+      <p class="text-xs text-slate-300 leading-relaxed mb-6">Sign in with your authorised Amlaak Google Workspace account to access engineering video archives and architectural PDFs.</p>
+      
+      <div id="gsiModalButtonContainer" class="flex justify-center mb-3 min-h-[48px]"></div>
+      <div id="authStatusFeedback" class="text-[11px] text-slate-400 min-h-[18px]"></div>
     </div>
   </div>
 
+  <script>
+    window.ENV_GOOGLE_CLIENT_ID = '742218533519-6j44d9d2sscgq84p8akenma8ea8m85u8.apps.googleusercontent.com';
+    window.ENV_APPS_SCRIPT_ID = '1JrzD-iy_FnxXkQLBPiZ5AeZCa7HMIXrnTfxJLzqePGnygZmLCKcYkWjB';
+  </script>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

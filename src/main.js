@@ -7,7 +7,7 @@ import { setAuthToken, getAuthToken, getAppsScriptId, executeAppsScriptApi, uplo
 import { initGoogleAuth, signOut, getCurrentUser, renderSignInButton, requestGoogleSignIn } from './auth/google-auth.js';
 
 // Configuration: can be overridden via window.ENV_BACKEND_URL or window.ENV_GOOGLE_CLIENT_ID
-const GOOGLE_CLIENT_ID = window.ENV_GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_ID = window.ENV_GOOGLE_CLIENT_ID || '742218533519-6j44d9d2sscgq84p8akenma8ea8m85u8.apps.googleusercontent.com';
 
 /**
  * Amlaak Video Library — Client Application Engine.
@@ -2250,11 +2250,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (authModal) authModal.classList.add('hidden');
         var badge = document.getElementById('userEmailBadge');
         if (badge) badge.textContent = user.email;
+        var btnIn = document.getElementById('btnHeaderSignIn');
+        if (btnIn) btnIn.classList.add('hidden');
+        var btnOut = document.getElementById('btnHeaderSignOut');
+        if (btnOut) btnOut.classList.remove('hidden');
         initApp();
       }
     });
-  } else {
-    // Attempt connection directly to report true database status
-    initApp();
   }
+  initApp();
 });
