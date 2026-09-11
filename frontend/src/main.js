@@ -2242,14 +2242,14 @@ window.handleManualClientIdConnect = function() {
 };
 
 // Initialise Google Authentication Lifecycle (§8, §14)
-document.addEventListener('DOMContentLoaded', function() {
+function bootAmlaakApplication() {
   if (GOOGLE_CLIENT_ID) {
     initGoogleAuth(GOOGLE_CLIENT_ID, function(user) {
       if (user) {
         var authModal = document.getElementById('authModal');
         if (authModal) authModal.classList.add('hidden');
         var badge = document.getElementById('userEmailBadge');
-        if (badge) badge.textContent = user.email;
+        if (badge && user.email) badge.textContent = user.email;
         var btnIn = document.getElementById('btnHeaderSignIn');
         if (btnIn) btnIn.classList.add('hidden');
         var btnOut = document.getElementById('btnHeaderSignOut');
@@ -2259,4 +2259,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   initApp();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootAmlaakApplication);
+} else {
+  bootAmlaakApplication();
+}

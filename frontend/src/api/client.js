@@ -66,12 +66,19 @@ export async function executeAppsScriptApi(fnName, parameters = []) {
     devMode: false
   };
 
+  const fetchCtrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const fetchTimer = setTimeout(() => {
+    if (fetchCtrl) fetchCtrl.abort();
+  }, 25000);
+
   try {
     const res = await fetch(execUrl, {
       method: 'POST',
       headers,
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: fetchCtrl ? fetchCtrl.signal : undefined
     });
+    clearTimeout(fetchTimer);
 
     if (res.status === 401 || res.status === 403) {
       const errBody = await res.json().catch(() => ({}));
