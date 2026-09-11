@@ -180,7 +180,7 @@ var DashboardService = (function() {
     Auth.requireAuth();
 
     var user = Auth.getCurrentUser();
-    var lists = Config.getTaxonomies();
+    var lists = Config.TAXONOMIES;
     var isConfigured = Config.isSystemConfigured();
 
     var dashboard = getDashboardData();

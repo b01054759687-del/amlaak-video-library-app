@@ -1062,6 +1062,71 @@ test('Allowlist: pre-bootstrap system grants first signed-in user owner access',
   assert.strictEqual(result.isBootstrap, true);
 });
 
+// ==============================================================================
+// 15. Cross-Module Call Audit (catches calls to methods a module never exports —
+// e.g. Config.getTaxonomies(), which does not exist; Config.TAXONOMIES is a
+// plain property. This class of bug is invisible to mocked/reimplemented logic
+// tests and was only found by executing the real .gs files together.)
+// ==============================================================================
+console.log('\n>>> 15. Cross-Module Call Audit:');
+
+function extractModuleExportKeys(source) {
+  const idx = source.lastIndexOf('return {');
+  if (idx === -1) return null;
+  let i = idx + 'return {'.length;
+  let depth = 1;
+  let buf = '';
+  for (; i < source.length && depth > 0; i++) {
+    const ch = source[i];
+    if (ch === '{' || ch === '[' || ch === '(') {
+      depth++;
+      if (depth > 1) continue;
+    }
+    if (ch === '}' || ch === ']' || ch === ')') {
+      depth--;
+      if (depth === 0) break;
+      continue;
+    }
+    if (depth === 1) buf += ch;
+  }
+  const keys = [];
+  const re = /([A-Za-z_][A-Za-z0-9_]*)\s*:/g;
+  let m;
+  while ((m = re.exec(buf))) keys.push(m[1]);
+  return keys;
+}
+
+test('Cross-Module Call Audit: every Module.member usage exists on that module\'s exported object', () => {
+  const moduleFiles = ['Config.gs', 'Auth.gs', 'Utils.gs', 'Validators.gs', 'NamingService.gs', 'AuditService.gs', 'SheetRepository.gs', 'DriveService.gs', 'UnitService.gs', 'VideoService.gs', 'PdfService.gs', 'DashboardService.gs', 'Setup.gs'];
+  const exportsByModule = {};
+  moduleFiles.forEach((f) => {
+    const varName = f.replace('.gs', '');
+    if (fs.existsSync(f)) {
+      const keys = extractModuleExportKeys(fs.readFileSync(f, 'utf8'));
+      if (keys) exportsByModule[varName] = keys;
+    }
+  });
+
+  const allSourceFiles = moduleFiles.concat(['Code.gs']);
+  const missing = [];
+  allSourceFiles.forEach((f) => {
+    if (!fs.existsSync(f)) return;
+    const source = fs.readFileSync(f, 'utf8');
+    const callRe = /\b([A-Z][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\b/g;
+    let m;
+    while ((m = callRe.exec(source))) {
+      const moduleName = m[1];
+      const member = m[2];
+      if (!exportsByModule[moduleName]) continue; // not one of our tracked modules (e.g. SpreadsheetApp, DriveApp, Session, Utilities, Config.KEYS.X handled separately)
+      if (!exportsByModule[moduleName].includes(member)) {
+        missing.push(f + ': ' + moduleName + '.' + member + '()');
+      }
+    }
+  });
+
+  assert.deepStrictEqual(Array.from(new Set(missing)), [], 'Calls to non-existent module members found: ' + missing.join(', '));
+});
+
 console.log('\n' + '='.repeat(70));
 console.log(`TOTAL UNIT TESTS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);
 console.log('='.repeat(70));

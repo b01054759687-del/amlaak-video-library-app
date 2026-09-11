@@ -129,6 +129,10 @@ var Config = (function() {
     return props.getProperties();
   }
 
+  function isSystemConfigured() {
+    return !!(getProperty(PROPERTY_KEYS.SPREADSHEET_ID) && getProperty(PROPERTY_KEYS.ROOT_FOLDER_ID));
+  }
+
   return {
     KEYS: PROPERTY_KEYS,
     TABS: TABS,
@@ -138,6 +142,7 @@ var Config = (function() {
     setProperty: setProperty,
     setProperties: setProperties,
     getAllProperties: getAllProperties,
+    isSystemConfigured: isSystemConfigured,
     getTimezone: function() {
       return getProperty(PROPERTY_KEYS.TIMEZONE, 'Africa/Cairo');
     }
