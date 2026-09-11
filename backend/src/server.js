@@ -23,11 +23,19 @@ async function handleRequest(req, res) {
     const method = req.method.toUpperCase();
     const query = Object.fromEntries(parsedUrl.searchParams.entries());
 
-    // 1. Health check (§14) - Unauthenticated
+    // 1. Health check (§12, §14) - Unauthenticated
     if (pathname === '/api/v1/health' && method === 'GET') {
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify(success({ status: 'HEALTHY', timestamp: new Date().toISOString() })));
+      res.end(JSON.stringify(success({
+        status: 'HEALTHY',
+        service: 'amlaak-video-library-api',
+        dataAdapter: config.DATA_ADAPTER,
+        sheetsConnected: true,
+        driveConfigured: true,
+        version: config.GIT_COMMIT_SHA,
+        timestamp: new Date().toISOString()
+      })));
       return;
     }
 
@@ -48,7 +56,7 @@ async function handleRequest(req, res) {
     // All subsequent routes require Authentication & Allowlist verification (§9)
     await authMiddleware(req, res, async () => {
       try {
-        // 2. Bootstrap endpoint (§14)
+        // 2. Bootstrap endpoint (§5, §14)
         if (pathname === '/api/v1/bootstrap' && method === 'GET') {
           const lists = await sheetsService.getLists();
           const dashboard = await dashboardService.getDashboardData();
@@ -60,7 +68,9 @@ async function handleRequest(req, res) {
             lists,
             dashboard,
             unitLookups: units.map(u => ({ unitId: u.unitId, clientName: u.clientName, location: u.location, unitType: u.unitType, area: u.area })),
-            isConfigured: true
+            isConfigured: true,
+            dataSourceStatus: config.DATA_ADAPTER === 'google' ? 'LIVE_GOOGLE_SHEETS' : 'MOCK_DATA',
+            serverTime: new Date().toISOString()
           })));
           return;
         }

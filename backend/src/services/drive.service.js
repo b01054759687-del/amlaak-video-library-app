@@ -1,6 +1,5 @@
 ﻿/**
- * Amlaak Video Library — Sheets Service Dispatcher & Factory (§7)
- * Strictly enforces DATA_ADAPTER=google in production.
+ * Amlaak Video Library — Drive Service Factory (§9)
  */
 const config = require('../config');
 
@@ -10,15 +9,15 @@ if (config.NODE_ENV === 'production' && adapterType !== 'google') {
   throw new Error('FATAL CONFIGURATION ERROR: Production backend must use DATA_ADAPTER=google. In-memory adapters are strictly forbidden in production.');
 }
 
-console.log(`[SheetsService] Initialized with adapter: ${adapterType}`);
+console.log(`[DriveService] Initialized with adapter: ${adapterType}`);
 
 let instance;
 if (adapterType === 'google') {
-  const GoogleSheetsService = require('./sheets.google');
-  instance = new GoogleSheetsService();
+  const GoogleDriveService = require('./drive.google');
+  instance = new GoogleDriveService();
 } else {
-  const MockSheetsService = require('./sheets.mock');
-  instance = new MockSheetsService();
+  const MockDriveService = require('./drive.mock');
+  instance = new MockDriveService();
 }
 
 module.exports = instance;

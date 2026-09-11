@@ -17,11 +17,19 @@ export function getBackendBaseUrl() {
   if (typeof window !== 'undefined' && window.ENV_BACKEND_URL) {
     return window.ENV_BACKEND_URL;
   }
-  return 'https://amlaak-video-backend-preview.run.app/api/v1';
+  // Production default: Never hardcode a fake or speculative URL (§3)
+  return '';
 }
 
 export async function callRest(endpoint, method = 'GET', payload = null, queryParams = null) {
   const base = getBackendBaseUrl().replace(/\/+$/, '');
+  if (!base) {
+    return {
+      ok: false,
+      errorCode: 'ERR-CONN-UNAVAILABLE',
+      message: 'The application is currently unavailable because a secure database connection could not be established.'
+    };
+  }
   let fetchUrl = `${base}/${endpoint.replace(/^\//, '')}`;
 
   if (queryParams) {
@@ -68,26 +76,19 @@ export async function callRest(endpoint, method = 'GET', payload = null, queryPa
   } catch (err) {
     return {
       ok: false,
-      errorCode: 'NETWORK_ERROR',
-      message: 'Backend network communication failed: ' + err.message
+      errorCode: 'ERR-CONN-REFUSED',
+      message: 'The application is currently unavailable because a secure database connection could not be established: ' + err.message
     };
   }
 }
 
 /**
- * Universal Legacy Bridge (§14)
- * Allows existing UI handlers calling callApi(fnName, args, callback)
- * to seamlessly route through REST or Mock Dispatcher.
+ * Universal API Bridge (§14)
+ * Bridges UI actions with verified backend API endpoints.
  */
 export function callApi(fnName, args, callback) {
   if (typeof callback !== 'function') {
     callback = () => {};
-  }
-
-  // Standalone offline review fallback
-  if (typeof window !== 'undefined' && window._localMockDispatcher && (window.FORCE_LOCAL_MOCKS || !authToken)) {
-    window._localMockDispatcher(fnName, args, callback);
-    return;
   }
 
   const a = args || [];

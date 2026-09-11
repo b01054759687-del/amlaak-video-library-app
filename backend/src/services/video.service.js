@@ -2,6 +2,7 @@
  * Video Service — Library Filtering, Versions & Renaming (§2, §3, §4, §6, §12)
  */
 const sheetsService = require('./sheets.service');
+const driveService = require('./drive.service');
 const auditService = require('./audit.service');
 const namingService = require('../utils/naming');
 const { validateProjectVideo, validateMarketingContent } = require('../utils/validators');
@@ -134,6 +135,9 @@ async function addProjectVideo(payload, user) {
   const existing = await sheetsService.getVideoByDriveFileId(v.fileId);
   if (existing) throw new Error('Google Drive file is already registered in Video ' + existing.videoNumber);
 
+  // Verify Drive file exists and is accessible (§12)
+  await driveService.verifyFile(v.fileId);
+
   // Allocate next Video Number
   const allVids = await sheetsService.getVideos();
   let maxV = 0;
@@ -186,6 +190,9 @@ async function addMarketingContent(payload, user) {
   const existing = await sheetsService.getVideoByDriveFileId(v.fileId);
   if (existing) throw new Error('Google Drive file is already registered in Video ' + existing.videoNumber);
 
+  // Verify Drive file exists and is accessible (§12)
+  await driveService.verifyFile(v.fileId);
+
   const allVids = await sheetsService.getVideos();
   let maxV = 0;
   allVids.forEach(vid => {
@@ -235,6 +242,9 @@ async function addNewVersion(payload, user) {
 
   const dup = await sheetsService.getVideoByDriveFileId(fileId);
   if (dup) throw new Error('Drive file ID already in use: ' + fileId);
+
+  // Verify Drive file exists and is accessible (§12)
+  await driveService.verifyFile(fileId);
 
   const versions = await sheetsService.getVideoVersions(vNum);
   if (versions.length === 0) throw new Error('Base video not found: ' + vNum);
@@ -330,6 +340,10 @@ async function updateSingleVideoMetadata(driveFileId, updatedFields, optConfirmR
     ...updatedFields,
     videoName: proposedName
   };
+
+  if (nameChanged && optConfirmRename) {
+    await driveService.renameAndMoveFile(driveFileId, proposedName);
+  }
 
   await sheetsService.updateVideo(driveFileId, sheetUpdates);
   await auditService.logAction('UPDATE_METADATA', 'Video', existing.videoNumber, user, `Updated metadata to ${proposedName}`);
