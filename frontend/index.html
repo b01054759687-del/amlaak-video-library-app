@@ -1139,8 +1139,17 @@
         <i class="fa-solid fa-shield-halved"></i>
       </div>
       <h2 class="text-xl font-bold text-white mb-2">Amlaak Video Library Authentication</h2>
-      <p class="text-xs text-slate-300 leading-relaxed mb-6">Please sign in with your authorised Amlaak Google Workspace account to access production engineering archives.</p>
       <div id="gsiModalButtonContainer" class="flex justify-center mb-4 min-h-[44px]"></div>
+      <div id="clientSetupContainer" class="hidden text-left bg-slate-900/60 p-4 rounded-xl border border-slate-800 mt-2">
+        <label for="inputClientId" class="block text-[11px] font-bold text-slate-300 mb-1.5">Google OAuth Client ID</label>
+        <div class="flex gap-2">
+          <input type="text" id="inputClientId" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com" class="input-dark flex-1 text-xs px-3 py-2">
+          <button type="button" onclick="handleManualClientIdConnect()" class="btn-gold text-xs px-3 py-2 shrink-0">
+            Connect
+          </button>
+        </div>
+        <p class="text-[10px] text-slate-400 mt-1.5">Enter your Web Client ID from Google Cloud Console.</p>
+      </div>
     </div>
   </div>
 

@@ -250,11 +250,20 @@ function initApp() {
 
   showGlobalLoading('Connecting to Amlaak Video Library API…');
 
-  if (!getAuthToken() && GOOGLE_CLIENT_ID) {
-    console.info('Awaiting Google Identity authentication...');
+  if (!getAuthToken()) {
     var authModal = document.getElementById('authModal');
-    if (authModal) authModal.classList.remove('hidden');
-    renderSignInButton('gsiModalButtonContainer');
+    if (GOOGLE_CLIENT_ID) {
+      console.info('Awaiting Google Identity authentication...');
+      if (authModal) authModal.classList.remove('hidden');
+      renderSignInButton('gsiModalButtonContainer');
+    } else {
+      console.info('Awaiting Google Client ID configuration...');
+      if (authModal) {
+        authModal.classList.remove('hidden');
+        var setupBox = document.getElementById('clientSetupContainer');
+        if (setupBox) setupBox.classList.remove('hidden');
+      }
+    }
     isBootstrapping = false;
     hideGlobalLoading();
     return;
@@ -2208,7 +2217,29 @@ window.handleSignOut = function() {
 };
 window.requestGoogleSignIn = requestGoogleSignIn;
 window.executeAppsScriptApi = executeAppsScriptApi;
-window.uploadPdfDirectToDrive = uploadPdfDirectToDrive;
+window.handleManualClientIdConnect = function() {
+  var input = document.getElementById('inputClientId');
+  var enteredId = input ? input.value.trim() : '';
+  if (!enteredId) {
+    showToast('warning', 'Please paste your Google OAuth Client ID.');
+    return;
+  }
+
+  initGoogleAuth(enteredId, function(user) {
+    if (user) {
+      var authModal = document.getElementById('authModal');
+      if (authModal) authModal.classList.add('hidden');
+      var badge = document.getElementById('userEmailBadge');
+      if (badge) badge.textContent = user.email;
+      initApp();
+    }
+  });
+
+  var setupBox = document.getElementById('clientSetupContainer');
+  if (setupBox) setupBox.classList.add('hidden');
+  renderSignInButton('gsiModalButtonContainer');
+  requestGoogleSignIn();
+};
 
 // Initialise Google Authentication Lifecycle (§8, §14)
 document.addEventListener('DOMContentLoaded', function() {
