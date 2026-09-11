@@ -18,7 +18,7 @@ var PdfService = (function() {
     var unitId = String(payload.unitId).trim();
     var unit = SheetRepository.getUnitById(unitId);
     if (!unit) {
-      throw new Error('الوحدة المحددة غير موجودة: ' + unitId);
+      throw new Error('The specified unit does not exist: ' + unitId);
     }
 
     return Utils.withLock(20000, function() {
@@ -43,14 +43,14 @@ var PdfService = (function() {
         // Registered from existing Drive link
         driveFileId = Validators.extractDriveFileId(payload.driveLink);
         if (!driveFileId) {
-          throw new Error('رابط Drive غير صالح لملف الـ PDF.');
+          throw new Error('Invalid Drive link for the PDF file.');
         }
 
         // Duplicate check
         var allPdfs = SheetRepository.getAllPdfs();
         for (var i = 0; i < allPdfs.length; i++) {
           if (allPdfs[i]['Drive File ID'] === driveFileId) {
-            throw new Error('ملف الـ PDF هذا مسجل بالفعل في المنظومة.');
+            throw new Error('This PDF file is already registered in the system (duplicate).');
           }
         }
 
@@ -83,12 +83,12 @@ var PdfService = (function() {
         pdfNumber: pdfNumber,
         pdfVersionNumber: versionStr,
         isCurrentVersion: true,
-        versionNotes: payload.versionNotes || 'تصميم معماري معتمد'
+        versionNotes: payload.versionNotes || 'Approved architectural design'
       };
 
       SheetRepository.insertPdf(pdfRecord);
       AuditService.logSuccess('UPLOAD_UNIT_PDF', 'PDF', recordId, driveFileId,
-        'تم تسجيل مخطط تصميم هندسي (PDF) للوحدة ' + unitId + ' نسخة ' + versionStr);
+        'Registered architectural design PDF for unit ' + unitId + ' version ' + versionStr);
 
       return pdfRecord;
     });

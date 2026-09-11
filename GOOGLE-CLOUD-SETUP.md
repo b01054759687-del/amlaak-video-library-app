@@ -1,5 +1,11 @@
 # Google Cloud Setup & Configuration Guide
 
+> **⚠️ DEPRECATED — NOT PRODUCTION.** This guide describes provisioning a
+> Google Cloud project/Cloud Run service, which is not part of the
+> confirmed production architecture. No Google Cloud project, billing
+> account, or service account is created or required. See
+> `ARCHITECTURE.md`. Kept for audit history only.
+
 ## 1. Google Cloud Project Setup
 1. Create a dedicated project: `amlaak-video-prod` (or use existing).
 2. Set billing account (ensure zero-cost alert is enabled for free-tier monitoring).

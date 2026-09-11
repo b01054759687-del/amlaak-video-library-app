@@ -6,7 +6,7 @@
 function doGet(e) {
   var template = HtmlService.createTemplateFromFile('Index');
   return template.evaluate()
-    .setTitle('Amlaak Video Library | منظومة إدارة مكتبة الفيديوهات والتصاميم')
+    .setTitle('Amlaak Video Library')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
 }
@@ -25,11 +25,11 @@ function handleApiCall(serviceFn, actionName, entityType) {
   } catch (error) {
     var errMsg = error.message || error.toString();
     var errCode = 'EXECUTION_ERROR';
-    if (errMsg.indexOf('غير مصرح') !== -1 || errMsg.indexOf('Access Denied') !== -1) {
+    if (errMsg.indexOf('not authorized') !== -1 || errMsg.indexOf('Access Denied') !== -1) {
       errCode = 'UNAUTHORIZED';
     } else if (errMsg.indexOf("isn't shared with the app account") !== -1) {
       errCode = 'PERMISSION_DENIED';
-    } else if (errMsg.indexOf('مسجل بالفعل') !== -1 || errMsg.indexOf('duplicate') !== -1) {
+    } else if (errMsg.indexOf('already registered') !== -1 || errMsg.indexOf('duplicate') !== -1) {
       errCode = 'DUPLICATE_FILE';
     }
 

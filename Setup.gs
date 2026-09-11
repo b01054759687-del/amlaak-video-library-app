@@ -57,9 +57,9 @@ var Setup = (function() {
 
       // 4. Audit Log
       AuditService.logSuccess('SYSTEM_SETUP', 'System', ssId, results.rootFolderId,
-        'تمت تهيئة منظومة Amlaak Video Library بنجاح. المشرف: ' + userEmail);
+        'Amlaak Video Library system was set up successfully. Owner: ' + userEmail);
 
-      results.message = 'تمت تهيئة المنظومة بنجاح وربط قواعد البيانات ومجلدات Drive.';
+      results.message = 'System setup completed successfully and the database and Drive folders were linked.';
       return results;
     } catch (e) {
       results.status = 'ERROR';

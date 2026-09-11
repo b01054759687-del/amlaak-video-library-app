@@ -176,7 +176,7 @@ var Utils = (function() {
     return {
       ok: false,
       data: optData || null,
-      message: message || 'حدث خطأ أثناء معالجة الطلب',
+      message: message || 'An error occurred while processing the request.',
       errorCode: errorCode || 'UNKNOWN_ERROR',
       timestamp: new Date().toISOString()
     };
@@ -241,7 +241,7 @@ var Utils = (function() {
     try {
       acquired = lock.tryLock(ms);
       if (!acquired) {
-        throw new Error('تعذر حجز قفل المعالجة (Lock Timeout)، هناك عملية أخرى جارية حالياً.');
+        throw new Error('Could not acquire the processing lock (timeout) — another operation is currently in progress.');
       }
       return callback();
     } finally {
@@ -293,6 +293,20 @@ var Utils = (function() {
       .trim();
   }
 
+  /**
+   * Prevents formula/CSV injection when writing free-text values into Sheets.
+   * A leading =, +, -, @, tab, or CR causes Sheets to parse the value as a
+   * formula even via the API, so such values are prefixed with a leading
+   * apostrophe to force plain-text storage. Non-string values pass through.
+   */
+  function sanitizeForSheet(value) {
+    if (typeof value !== 'string') return value;
+    if (/^[=+\-@\t\r]/.test(value)) {
+      return "'" + value;
+    }
+    return value;
+  }
+
   return {
     successResponse: successResponse,
     errorResponse: errorResponse,
@@ -307,7 +321,8 @@ var Utils = (function() {
     formatUnitId: formatUnitId,
     formatPdfNumber: formatPdfNumber,
     formatPdfRecordId: formatPdfRecordId,
-    normalizeLocation: normalizeLocation
+    normalizeLocation: normalizeLocation,
+    sanitizeForSheet: sanitizeForSheet
   };
 })();
 
@@ -352,51 +367,51 @@ var Validators = (function() {
     var errors = [];
 
     if (!payload.videoLink || !extractDriveFileId(payload.videoLink)) {
-      errors.push({ field: 'videoLink', message: 'رابط Google Drive غير صالح أو لم يتم العثور على File ID صحيح.' });
+      errors.push({ field: 'videoLink', message: 'Invalid Google Drive link, or no valid File ID could be found.' });
     }
 
     if (!payload.clientName || !String(payload.clientName).trim()) {
-      errors.push({ field: 'clientName', message: 'اسم العميل مطلوب.' });
+      errors.push({ field: 'clientName', message: 'Client name is required.' });
     }
 
     if (!payload.location || !String(payload.location).trim()) {
-      errors.push({ field: 'location', message: 'الموقع/المنطقة الجغرافية مطلوبة.' });
+      errors.push({ field: 'location', message: 'Location is required.' });
     }
 
     if (!payload.unitType || !String(payload.unitType).trim()) {
-      errors.push({ field: 'unitType', message: 'نوع الوحدة مطلوب.' });
+      errors.push({ field: 'unitType', message: 'Unit type is required.' });
     } else if (Config.TAXONOMIES.unitType.indexOf(payload.unitType) === -1) {
-      errors.push({ field: 'unitType', message: 'نوع الوحدة المختار غير مدرج في القائمة المعتمدة.' });
+      errors.push({ field: 'unitType', message: 'The selected unit type is not in the approved list.' });
     }
 
     if (payload.area !== undefined && payload.area !== null && String(payload.area).trim() !== '') {
       var num = Number(payload.area);
       if (isNaN(num) || num <= 0) {
-        errors.push({ field: 'area', message: 'المساحة بالمتر المربع يجب أن تكون رقماً موجباً.' });
+        errors.push({ field: 'area', message: 'Area (sqm) must be a positive number.' });
       }
     }
 
     if (!payload.projectVideoType || !String(payload.projectVideoType).trim()) {
-      errors.push({ field: 'projectVideoType', message: 'مرحلة الفيديو (Project Video Type) مطلوبة.' });
+      errors.push({ field: 'projectVideoType', message: 'Project Video Type is required.' });
     } else if (Config.TAXONOMIES.projectVideoType.indexOf(payload.projectVideoType) === -1) {
-      errors.push({ field: 'projectVideoType', message: 'مرحلة الفيديو غير مدرجة في القائمة المعتمدة.' });
+      errors.push({ field: 'projectVideoType', message: 'The selected Project Video Type is not in the approved list.' });
     }
 
     if (!payload.spaceType || !String(payload.spaceType).trim()) {
-      errors.push({ field: 'spaceType', message: 'نوع الفراغ (Space Type) مطلوب.' });
+      errors.push({ field: 'spaceType', message: 'Space Type is required.' });
     } else if (Config.TAXONOMIES.spaceType.indexOf(payload.spaceType) === -1) {
-      errors.push({ field: 'spaceType', message: 'نوع الفراغ غير مدرج في القائمة المعتمدة.' });
+      errors.push({ field: 'spaceType', message: 'The selected Space Type is not in the approved list.' });
     }
 
     // Section 8.6 Work Category (Decision A - Confirmed)
     if (!payload.workCategory || !String(payload.workCategory).trim()) {
-      errors.push({ field: 'workCategory', message: 'تصنيف الأعمال (Work Category) مطلوب.' });
+      errors.push({ field: 'workCategory', message: 'Work Category is required.' });
     } else if (Config.TAXONOMIES.workCategory.indexOf(payload.workCategory) === -1) {
-      errors.push({ field: 'workCategory', message: 'تصنيف الأعمال غير مدرج في القائمة المعتمدة.' });
+      errors.push({ field: 'workCategory', message: 'The selected Work Category is not in the approved list.' });
     }
 
     if (!payload.shootingDate || !Utils.normalizeDateString(payload.shootingDate)) {
-      errors.push({ field: 'shootingDate', message: 'تاريخ التصوير (Shooting Date) مطلوب بصيغة صحيحة (YYYY-MM-DD).' });
+      errors.push({ field: 'shootingDate', message: 'Shooting Date is required in a valid format (YYYY-MM-DD).' });
     }
 
     return {
@@ -409,21 +424,21 @@ var Validators = (function() {
     var errors = [];
 
     if (!payload.videoLink || !extractDriveFileId(payload.videoLink)) {
-      errors.push({ field: 'videoLink', message: 'رابط Google Drive غير صالح أو لم يتم العثور على File ID صحيح.' });
+      errors.push({ field: 'videoLink', message: 'Invalid Google Drive link, or no valid File ID could be found.' });
     }
 
     if (!payload.contentType || !String(payload.contentType).trim()) {
-      errors.push({ field: 'contentType', message: 'نوع المحتوى التسويقي (Content Type) مطلوب.' });
+      errors.push({ field: 'contentType', message: 'Content Type is required.' });
     } else if (Config.TAXONOMIES.marketingContentType.indexOf(payload.contentType) === -1) {
-      errors.push({ field: 'contentType', message: 'نوع المحتوى التسويقي غير مدرج في القائمة المعتمدة.' });
+      errors.push({ field: 'contentType', message: 'The selected Content Type is not in the approved list.' });
     }
 
     if (!payload.topic || !String(payload.topic).trim()) {
-      errors.push({ field: 'topic', message: 'موضوع الفيديو (Topic) مطلوب.' });
+      errors.push({ field: 'topic', message: 'Topic is required.' });
     }
 
     if (!payload.shootingDate || !Utils.normalizeDateString(payload.shootingDate)) {
-      errors.push({ field: 'shootingDate', message: 'تاريخ التصوير (Shooting Date) مطلوب بصيغة صحيحة (YYYY-MM-DD).' });
+      errors.push({ field: 'shootingDate', message: 'Shooting Date is required in a valid format (YYYY-MM-DD).' });
     }
 
     // Educational content must not have Space Type
@@ -441,21 +456,21 @@ var Validators = (function() {
     var errors = [];
 
     if (!payload.clientName || !String(payload.clientName).trim()) {
-      errors.push({ field: 'clientName', message: 'اسم العميل مطلوب.' });
+      errors.push({ field: 'clientName', message: 'Client name is required.' });
     }
 
     if (!payload.location || !String(payload.location).trim()) {
-      errors.push({ field: 'location', message: 'الموقع/المنطقة الجغرافية مطلوبة.' });
+      errors.push({ field: 'location', message: 'Location is required.' });
     }
 
     if (!payload.unitType || !String(payload.unitType).trim()) {
-      errors.push({ field: 'unitType', message: 'نوع الوحدة مطلوب.' });
+      errors.push({ field: 'unitType', message: 'Unit type is required.' });
     }
 
     if (payload.area !== undefined && payload.area !== null && String(payload.area).trim() !== '') {
       var num = Number(payload.area);
       if (isNaN(num) || num <= 0) {
-        errors.push({ field: 'area', message: 'المساحة بالمتر المربع يجب أن تكون رقماً موجباً.' });
+        errors.push({ field: 'area', message: 'Area (sqm) must be a positive number.' });
       }
     }
 
@@ -471,29 +486,29 @@ var Validators = (function() {
     var errors = [];
 
     if (!payload.unitId || !String(payload.unitId).trim()) {
-      errors.push({ field: 'unitId', message: 'كود الوحدة (Unit ID) مطلوب لربط ملف التصميم.' });
+      errors.push({ field: 'unitId', message: 'Unit ID is required to link the design file.' });
     }
 
     if (!payload.base64Content && !payload.driveLink) {
-      errors.push({ field: 'file', message: 'ملف الـ PDF أو رابط الـ Drive مطلوب.' });
+      errors.push({ field: 'file', message: 'A PDF file or Drive link is required.' });
     }
 
     if (payload.fileName && !payload.fileName.toLowerCase().endsWith('.pdf')) {
-      errors.push({ field: 'fileName', message: 'الملف المرفوع يجب أن يكون بامتداد PDF فقط (.pdf).' });
+      errors.push({ field: 'fileName', message: 'The uploaded file must have a .pdf extension.' });
     }
 
     if (payload.mimeType && payload.mimeType !== 'application/pdf') {
-      errors.push({ field: 'mimeType', message: 'نوع ملف غير صالح (يجب أن يكون application/pdf).' });
+      errors.push({ field: 'mimeType', message: 'Invalid file type (must be application/pdf).' });
     }
 
     if (payload.fileSize && Number(payload.fileSize) > MAX_PDF_SIZE_BYTES) {
-      errors.push({ field: 'fileSize', message: 'حجم ملف الـ PDF يتجاوز الحد الأقصى المسموح به (25 ميجابايت).' });
+      errors.push({ field: 'fileSize', message: 'PDF file size exceeds the maximum allowed (25 MB).' });
     }
 
     if (payload.base64Content) {
       var approxRawBytes = Math.round(payload.base64Content.length * 0.75);
       if (approxRawBytes > MAX_PDF_SIZE_BYTES) {
-        errors.push({ field: 'fileSize', message: 'حجم ملف الـ PDF يتجاوز الحد الأقصى المسموح به (25 ميجابايت).' });
+        errors.push({ field: 'fileSize', message: 'PDF file size exceeds the maximum allowed (25 MB).' });
       }
     }
 
@@ -689,7 +704,7 @@ var Auth = (function() {
         role: null,
         active: false,
         isAuthorized: false,
-        message: 'لم يتم التعرف على حساب Google المسجل به (Google Session missing).'
+        message: 'No signed-in Google account could be detected (Google session missing).'
       };
     }
 
@@ -710,7 +725,7 @@ var Auth = (function() {
         role: found.role || ROLES.EDITOR,
         active: true,
         isAuthorized: true,
-        message: 'مصرّح له بالوصول'
+        message: 'Access authorized'
       };
     }
 
@@ -723,7 +738,7 @@ var Auth = (function() {
         active: true,
         isAuthorized: true,
         isBootstrap: true,
-        message: 'حساب التهيئة الأولي (Bootstrap Mode)'
+        message: 'Initial setup account (Bootstrap Mode)'
       };
     }
 
@@ -732,14 +747,14 @@ var Auth = (function() {
       role: null,
       active: false,
       isAuthorized: false,
-      message: 'الحساب غير مدرج في قائمة المستخدمين المصرح لهم (Access Denied).'
+      message: 'This account is not on the authorized users list (Access Denied).'
     };
   }
 
   function requireAuth() {
     var user = getCurrentUser();
     if (!user.isAuthorized) {
-      throw new Error('غير مصرح لك بتنفيذ هذه العملية. البريد الإلكتروني: ' + (user.email || 'مجهول'));
+      throw new Error('You are not authorized to perform this action. Email: ' + (user.email || 'unknown'));
     }
     return user;
   }
@@ -875,7 +890,7 @@ var SheetRepository = (function() {
     if (_cachedSpreadsheet) return _cachedSpreadsheet;
     var ssId = Config.getProperty(Config.KEYS.SPREADSHEET_ID);
     if (!ssId) {
-      throw new Error('لم يتم تكوين معرف جدول البيانات (SPREADSHEET_ID missing).');
+      throw new Error('The spreadsheet ID has not been configured (SPREADSHEET_ID missing).');
     }
     _cachedSpreadsheet = SpreadsheetApp.openById(ssId);
     return _cachedSpreadsheet;
@@ -885,7 +900,7 @@ var SheetRepository = (function() {
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName(tabName);
     if (!sheet) {
-      throw new Error('لم يتم العثور على ورقة العمل المطلوبة: ' + tabName);
+      throw new Error('The required sheet tab could not be found: ' + tabName);
     }
     return sheet;
   }
@@ -975,7 +990,7 @@ var SheetRepository = (function() {
 
     function setVal(hName, val) {
       var col = headerMap[hName] || headerMap[hName.toLowerCase()];
-      if (col) rowValues[col - 1] = val;
+      if (col) rowValues[col - 1] = Utils.sanitizeForSheet(val);
     }
 
     setVal('Unit ID', unitData.unitId);
@@ -1014,7 +1029,7 @@ var SheetRepository = (function() {
     for (var key in updatedFields) {
       var col = headerMap[key] || headerMap[key.toLowerCase()];
       if (col) {
-        sheet.getRange(targetRow, col).setValue(updatedFields[key]);
+        sheet.getRange(targetRow, col).setValue(Utils.sanitizeForSheet(updatedFields[key]));
       }
     }
 
@@ -1059,8 +1074,8 @@ var SheetRepository = (function() {
         for (var r = 0; r < vUnitIds.length; r++) {
           if (vUnitIds[r][0] === unitId) {
             var actualRow = r + 2;
-            if (clientCol && unitRecord.clientName !== undefined) videoSheet.getRange(actualRow, clientCol).setValue(unitRecord.clientName);
-            if (locCol && unitRecord.location !== undefined) videoSheet.getRange(actualRow, locCol).setValue(unitRecord.location);
+            if (clientCol && unitRecord.clientName !== undefined) videoSheet.getRange(actualRow, clientCol).setValue(Utils.sanitizeForSheet(unitRecord.clientName));
+            if (locCol && unitRecord.location !== undefined) videoSheet.getRange(actualRow, locCol).setValue(Utils.sanitizeForSheet(unitRecord.location));
             if (typeCol && unitRecord.unitType !== undefined) videoSheet.getRange(actualRow, typeCol).setValue(unitRecord.unitType);
             if (areaCol && unitRecord.area !== undefined) videoSheet.getRange(actualRow, areaCol).setValue(unitRecord.area);
             if (updDateCol) videoSheet.getRange(actualRow, updDateCol).setValue(Utils.formatDateTime(new Date()));
@@ -1178,7 +1193,7 @@ var SheetRepository = (function() {
 
     function setVal(hName, val) {
       var col = headerMap[hName] || headerMap[hName.toLowerCase()];
-      if (col) rowValues[col - 1] = (val !== undefined && val !== null) ? val : '';
+      if (col) rowValues[col - 1] = Utils.sanitizeForSheet((val !== undefined && val !== null) ? val : '');
     }
 
     setVal('Video Number', videoRecord.videoNumber);
@@ -1261,7 +1276,7 @@ var SheetRepository = (function() {
     for (var key in updatedFields) {
       var col = headerMap[key] || headerMap[key.toLowerCase()];
       if (col) {
-        sheet.getRange(targetRow, col).setValue(updatedFields[key]);
+        sheet.getRange(targetRow, col).setValue(Utils.sanitizeForSheet(updatedFields[key]));
       }
     }
 
@@ -1315,7 +1330,7 @@ var SheetRepository = (function() {
 
     function setVal(hName, val) {
       var col = headerMap[hName] || headerMap[hName.toLowerCase()];
-      if (col) rowValues[col - 1] = (val !== undefined && val !== null) ? val : '';
+      if (col) rowValues[col - 1] = Utils.sanitizeForSheet((val !== undefined && val !== null) ? val : '');
     }
 
     setVal('PDF Record ID', pdfRecord.pdfRecordId);
@@ -1477,7 +1492,7 @@ var DriveService = (function() {
     try {
       return DriveApp.getFolderById(folderId);
     } catch (e) {
-      throw new Error('تعذر الوصول إلى المجلد في Google Drive (Folder ID: ' + folderId + '). تأكد من صحة المعرف والصلاحيات.');
+      throw new Error('Could not access the Google Drive folder (Folder ID: ' + folderId + '). Verify the ID and permissions are correct.');
     }
   }
 
@@ -1485,7 +1500,7 @@ var DriveService = (function() {
     try {
       return DriveApp.getFileById(fileId);
     } catch (e) {
-      throw new Error('تعذر العثور على الملف في Google Drive (File ID: ' + fileId + '). تأكد من صحة الرابط.');
+      throw new Error('Could not find the file in Google Drive (File ID: ' + fileId + '). Verify the link is correct.');
     }
   }
 
@@ -1494,7 +1509,7 @@ var DriveService = (function() {
    * Required by Section 6 and Section 13 step 7.
    */
   function verifyEditorAccess(file) {
-    var executeAsEmail = Session.getEffectiveUser().getEmail() || Session.getActiveUser().getEmail() || 'حساب التطبيق';
+    var executeAsEmail = Session.getEffectiveUser().getEmail() || Session.getActiveUser().getEmail() || 'the application account';
     var hasEditorAccess = false;
 
     try {
@@ -1547,7 +1562,7 @@ var DriveService = (function() {
     var isVideoExt = validVideoExts.indexOf(ext) !== -1;
 
     if (!isVideoMime && !isVideoExt) {
-      throw new Error('الملف المحدد ليس ملف فيديو صالحاً. الصيغة الحالية: ' + mimeType + ' (' + fileName + ')');
+      throw new Error('The selected file is not a valid video file. Current type: ' + mimeType + ' (' + fileName + ')');
     }
 
     // Section 7.2: Duration & Orientation reliability
@@ -1640,7 +1655,7 @@ var DriveService = (function() {
   function uploadDesignPdf(unitId, fileName, base64Content) {
     var folderId = Config.getProperty(Config.KEYS.UNIT_DESIGN_PDFS_FOLDER_ID);
     if (!folderId) {
-      throw new Error('لم يتم تعيين مجلد ملفات الـ PDF (UNIT_DESIGN_PDFS_FOLDER_ID missing).');
+      throw new Error('The PDF files folder has not been configured (UNIT_DESIGN_PDFS_FOLDER_ID missing).');
     }
     var folder = getFolderById(folderId);
 
@@ -1771,7 +1786,7 @@ var UnitService = (function() {
     Auth.requireAuth();
     var unit = SheetRepository.getUnitById(unitId);
     if (!unit) {
-      throw new Error('الوحدة المطلوبة غير موجودة: ' + unitId);
+      throw new Error('The requested unit does not exist: ' + unitId);
     }
 
     var allVideos = SheetRepository.getVideosByUnitId(unitId);
@@ -1868,7 +1883,7 @@ var UnitService = (function() {
       };
 
       SheetRepository.insertUnit(unitRecord);
-      AuditService.logSuccess('CREATE_UNIT', 'Unit', unitId, '', 'تم إنشاء الوحدة ' + unitId + ' للعميل ' + unitRecord.clientName);
+      AuditService.logSuccess('CREATE_UNIT', 'Unit', unitId, '', 'Created unit ' + unitId + ' for client ' + unitRecord.clientName);
 
       return unitRecord;
     });
@@ -1883,7 +1898,7 @@ var UnitService = (function() {
     Auth.requireAuth();
     var existingUnit = SheetRepository.getUnitById(unitId);
     if (!existingUnit) {
-      throw new Error('الوحدة المراد تعديلها غير موجودة: ' + unitId);
+      throw new Error('The unit to be updated does not exist: ' + unitId);
     }
 
     var cleanFields = {};
@@ -1978,7 +1993,7 @@ var UnitService = (function() {
           metadataUpdated: true,
           requiresBatchRename: proposedRenames.length > 0,
           proposedRenames: proposedRenames,
-          message: 'تم تحديث بيانات الوحدة والنسخ المرتبطة بها في قاعدة البيانات بنجاح.'
+          message: 'Unit data and its related versions were updated successfully in the database.'
         };
       }
 
@@ -1992,14 +2007,14 @@ var UnitService = (function() {
           'Video Name': sItem.newName
         });
         AuditService.logSuccess('BATCH_RENAME_FILE', 'DriveFile', sItem.fileId, sItem.fileId,
-          'تمت إعادة التسمية من [' + sItem.oldName + '] إلى [' + sItem.newName + ']');
+          'Renamed from [' + sItem.oldName + '] to [' + sItem.newName + ']');
       }
 
       // Log any failures
       for (var f = 0; f < batchResult.failed.length; f++) {
         var fItem = batchResult.failed[f];
         AuditService.logFailure('BATCH_RENAME_FILE', 'DriveFile', fItem.fileId, fItem.fileId, 'RENAME_FAILED',
-          'فشلت إعادة تسمية الملف ' + fItem.currentName + ': ' + fItem.error);
+          'Failed to rename file ' + fItem.currentName + ': ' + fItem.error);
       }
 
       return {
@@ -2009,7 +2024,7 @@ var UnitService = (function() {
         renamedCount: batchResult.successful.length,
         failedCount: batchResult.failed.length,
         details: batchResult,
-        message: 'تم تحديث البيانات وإعادة تسمية ' + batchResult.successful.length + ' ملف بنجاح.'
+        message: 'Data updated and ' + batchResult.successful.length + ' file(s) renamed successfully.'
       };
     });
   }
@@ -2047,13 +2062,13 @@ var VideoService = (function() {
     // 2. Extract Drive File ID
     var fileId = Validators.extractDriveFileId(payload.videoLink);
     if (!fileId) {
-      throw new Error('تعذر استخراج معرف الملف (File ID) من الرابط.');
+      throw new Error('Could not extract a File ID from the link.');
     }
 
     // 3. Duplicate check
     var existingRecord = SheetRepository.getVideoByDriveFileId(fileId);
     if (existingRecord) {
-      throw new Error('هذا الملف مسجل بالفعل في المنظومة تحت الفيديو رقم: ' + existingRecord['Video Number'] + ' (' + existingRecord['Version Number'] + ')');
+      throw new Error('This file is already registered in the system under Video Number: ' + existingRecord['Video Number'] + ' (' + existingRecord['Version Number'] + ')');
     }
 
     // 4. Inspect Drive file and verify Editor access
@@ -2062,7 +2077,7 @@ var VideoService = (function() {
     // 5. Ensure destination folder
     var destFolderId = Config.getProperty(Config.KEYS.PROJECT_VIDEOS_FOLDER_ID);
     if (!destFolderId) {
-      throw new Error('لم يتم تعيين مجلد فيديوهات المشاريع (PROJECT_VIDEOS_FOLDER_ID missing).');
+      throw new Error('The project videos folder has not been configured (PROJECT_VIDEOS_FOLDER_ID missing).');
     }
 
     return Utils.withLock(30000, function() {
@@ -2106,7 +2121,7 @@ var VideoService = (function() {
         videoNumber: videoNumber,
         versionNumber: versionNumber,
         isCurrentVersion: true,
-        versionNotes: payload.versionNotes || 'النسخة الأصلية الأولى',
+        versionNotes: payload.versionNotes || 'Initial first version',
         videoName: organizedName,
         videoSource: 'Project Video',
         unitId: unitId,
@@ -2139,13 +2154,13 @@ var VideoService = (function() {
           documentTitle: payload.pdfDocumentTitle || 'Architectural Design - ' + payload.clientName,
           fileName: payload.pdfFileName,
           base64Content: payload.pdfFileBase64,
-          versionNotes: 'مرفق مع الفيديو رقم ' + videoNumber
+          versionNotes: 'Attached with video number ' + videoNumber
         });
       }
 
       // 13. Audit Log
       AuditService.logSuccess('ADD_PROJECT_VIDEO', 'Video', videoNumber + '-' + versionNumber, fileId,
-        'تم تسجيل فيديو مشروع جديد بنجاح: ' + organizedName);
+        'Successfully registered a new project video: ' + organizedName);
 
       return {
         video: record,
@@ -2169,13 +2184,13 @@ var VideoService = (function() {
     // 2. Extract Drive File ID
     var fileId = Validators.extractDriveFileId(payload.videoLink);
     if (!fileId) {
-      throw new Error('تعذر استخراج معرف الملف (File ID) من الرابط.');
+      throw new Error('Could not extract a File ID from the link.');
     }
 
     // 3. Duplicate check
     var existingRecord = SheetRepository.getVideoByDriveFileId(fileId);
     if (existingRecord) {
-      throw new Error('هذا الملف مسجل بالفعل في المنظومة تحت الفيديو رقم: ' + existingRecord['Video Number']);
+      throw new Error('This file is already registered in the system under Video Number: ' + existingRecord['Video Number']);
     }
 
     // 4. Inspect Drive file and verify Editor access
@@ -2184,7 +2199,7 @@ var VideoService = (function() {
     // 5. Destination folder
     var destFolderId = Config.getProperty(Config.KEYS.MARKETING_CONTENT_FOLDER_ID);
     if (!destFolderId) {
-      throw new Error('لم يتم تعيين مجلد المحتوى التسويقي (MARKETING_CONTENT_FOLDER_ID missing).');
+      throw new Error('The marketing content folder has not been configured (MARKETING_CONTENT_FOLDER_ID missing).');
     }
 
     return Utils.withLock(30000, function() {
@@ -2207,7 +2222,7 @@ var VideoService = (function() {
         videoNumber: videoNumber,
         versionNumber: versionNumber,
         isCurrentVersion: true,
-        versionNotes: payload.versionNotes || 'النسخة الأصلية الأولى',
+        versionNotes: payload.versionNotes || 'Initial first version',
         videoName: organizedName,
         videoSource: 'Marketing Content',
         unitId: '',
@@ -2232,7 +2247,7 @@ var VideoService = (function() {
 
       SheetRepository.insertVideoVersion(record);
       AuditService.logSuccess('ADD_MARKETING_CONTENT', 'Video', videoNumber + '-' + versionNumber, fileId,
-        'تم تسجيل محتوى تسويقي جديد: ' + organizedName);
+        'Registered new marketing content: ' + organizedName);
 
       return {
         video: record
@@ -2248,18 +2263,18 @@ var VideoService = (function() {
 
     var videoNumber = String(payload.videoNumber).trim();
     if (!videoNumber) {
-      throw new Error('رقم الفيديو (Video Number) مطلوب لإضافة نسخة جديدة.');
+      throw new Error('Video Number is required to add a new version.');
     }
 
     var fileId = Validators.extractDriveFileId(payload.videoLink);
     if (!fileId) {
-      throw new Error('رابط Google Drive غير صالح أو لم يتم العثور على File ID.');
+      throw new Error('Invalid Google Drive link, or no File ID could be found.');
     }
 
     // Duplicate check
     var existingRecord = SheetRepository.getVideoByDriveFileId(fileId);
     if (existingRecord) {
-      throw new Error('هذا الملف مستخدم بالفعل كنسخة أخرى في المنظومة (Drive File ID duplicate).');
+      throw new Error('This file is already used as another version in the system (Drive File ID duplicate).');
     }
 
     var fileInspection = DriveService.validateAndInspectVideoFile(fileId);
@@ -2275,7 +2290,7 @@ var VideoService = (function() {
       }
 
       if (matching.length === 0) {
-        throw new Error('الفيديو الأصلي غير موجود: ' + videoNumber);
+        throw new Error('The original video does not exist: ' + videoNumber);
       }
 
       // Base metadata on current or latest version
@@ -2328,7 +2343,7 @@ var VideoService = (function() {
         videoNumber: videoNumber,
         versionNumber: versionStr,
         isCurrentVersion: true,
-        versionNotes: payload.versionNotes || 'تعديل جديد',
+        versionNotes: payload.versionNotes || 'New edit',
         videoName: organizedName,
         videoSource: baseRecord['Video Source'],
         unitId: baseRecord['Unit ID'] || '',
@@ -2353,7 +2368,7 @@ var VideoService = (function() {
 
       SheetRepository.insertVideoVersion(newVersionRecord);
       AuditService.logSuccess('ADD_VIDEO_VERSION', 'Video', videoNumber + '-' + versionStr, fileId,
-        'تمت إضافة نسخة جديدة (' + versionStr + ') للفيديو ' + videoNumber + ': ' + organizedName);
+        'Added new version (' + versionStr + ') for video ' + videoNumber + ': ' + organizedName);
 
       return newVersionRecord;
     });
@@ -2519,7 +2534,7 @@ var VideoService = (function() {
 
     var existing = SheetRepository.getVideoByDriveFileId(driveFileId);
     if (!existing) {
-      throw new Error('ملف الفيديو غير موجود: ' + driveFileId);
+      throw new Error('The video file does not exist: ' + driveFileId);
     }
 
     return Utils.withLock(20000, function() {
@@ -2552,7 +2567,7 @@ var VideoService = (function() {
           requiresRenameConfirmation: true,
           currentName: currentName,
           proposedName: proposedName,
-          message: 'التعديل يغير اسم الملف المعتمد. يرجى تأكيد إعادة تسمية الملف على Google Drive.'
+          message: 'This edit changes the approved file name. Please confirm renaming the file on Google Drive.'
         };
       }
 
@@ -2565,17 +2580,17 @@ var VideoService = (function() {
         DriveService.renameFile(driveFileId, proposedName);
         sheetUpdates['Video Name'] = proposedName;
         AuditService.logSuccess('RENAME_SINGLE_VIDEO', 'Video', existing['Video Number'], driveFileId,
-          'تمت إعادة التسمية من ' + currentName + ' إلى ' + proposedName);
+          'Renamed from ' + currentName + ' to ' + proposedName);
       }
 
       SheetRepository.updateVideoMetadata(driveFileId, sheetUpdates);
       AuditService.logSuccess('UPDATE_VIDEO_METADATA', 'Video', existing['Video Number'], driveFileId,
-        'تم تحديث البيانات الوصفية للفيديو.');
+        'Updated video metadata.');
 
       return {
         success: true,
         newName: proposedName,
-        message: 'تم تحديث بيانات الفيديو بنجاح.'
+        message: 'Video data updated successfully.'
       };
     });
   }
@@ -2587,7 +2602,7 @@ var VideoService = (function() {
     Auth.requireAuth();
 
     if (!videoNumber || !String(videoNumber).trim()) {
-      throw new Error('رقم الفيديو (Video Number) مطلوب.');
+      throw new Error('Video Number is required.');
     }
 
     var cleanNum = Utils.formatVideoNumber(videoNumber);
@@ -2630,7 +2645,7 @@ var VideoService = (function() {
     }
 
     if (matching.length === 0) {
-      throw new Error('لم يتم العثور على أي نسخ للفيديو رقم: ' + videoNumber);
+      throw new Error('No versions were found for video number: ' + videoNumber);
     }
 
     // Sort versions descending by version number
@@ -2701,7 +2716,7 @@ var PdfService = (function() {
     var unitId = String(payload.unitId).trim();
     var unit = SheetRepository.getUnitById(unitId);
     if (!unit) {
-      throw new Error('الوحدة المحددة غير موجودة: ' + unitId);
+      throw new Error('The specified unit does not exist: ' + unitId);
     }
 
     return Utils.withLock(20000, function() {
@@ -2726,14 +2741,14 @@ var PdfService = (function() {
         // Registered from existing Drive link
         driveFileId = Validators.extractDriveFileId(payload.driveLink);
         if (!driveFileId) {
-          throw new Error('رابط Drive غير صالح لملف الـ PDF.');
+          throw new Error('Invalid Drive link for the PDF file.');
         }
 
         // Duplicate check
         var allPdfs = SheetRepository.getAllPdfs();
         for (var i = 0; i < allPdfs.length; i++) {
           if (allPdfs[i]['Drive File ID'] === driveFileId) {
-            throw new Error('ملف الـ PDF هذا مسجل بالفعل في المنظومة.');
+            throw new Error('This PDF file is already registered in the system (duplicate).');
           }
         }
 
@@ -2766,12 +2781,12 @@ var PdfService = (function() {
         pdfNumber: pdfNumber,
         pdfVersionNumber: versionStr,
         isCurrentVersion: true,
-        versionNotes: payload.versionNotes || 'تصميم معماري معتمد'
+        versionNotes: payload.versionNotes || 'Approved architectural design'
       };
 
       SheetRepository.insertPdf(pdfRecord);
       AuditService.logSuccess('UPLOAD_UNIT_PDF', 'PDF', recordId, driveFileId,
-        'تم تسجيل مخطط تصميم هندسي (PDF) للوحدة ' + unitId + ' نسخة ' + versionStr);
+        'Registered architectural design PDF for unit ' + unitId + ' version ' + versionStr);
 
       return pdfRecord;
     });
@@ -2983,6 +2998,8 @@ var DashboardService = (function() {
         endDate: endDate
       }
     };
+  }
+
   /**
    * Consolidated bootstrap endpoint to eliminate initial page load waterfall.
    * Returns user summary, controlled lists, dashboard summary, unit lookups, and safe config in ONE round trip.
@@ -3095,9 +3112,9 @@ var Setup = (function() {
 
       // 4. Audit Log
       AuditService.logSuccess('SYSTEM_SETUP', 'System', ssId, results.rootFolderId,
-        'تمت تهيئة منظومة Amlaak Video Library بنجاح. المشرف: ' + userEmail);
+        'Amlaak Video Library system was set up successfully. Owner: ' + userEmail);
 
-      results.message = 'تمت تهيئة المنظومة بنجاح وربط قواعد البيانات ومجلدات Drive.';
+      results.message = 'System setup completed successfully and the database and Drive folders were linked.';
       return results;
     } catch (e) {
       results.status = 'ERROR';
@@ -3302,7 +3319,7 @@ var Setup = (function() {
 function doGet(e) {
   var template = HtmlService.createTemplateFromFile('Index');
   return template.evaluate()
-    .setTitle('Amlaak Video Library | منظومة إدارة مكتبة الفيديوهات والتصاميم')
+    .setTitle('Amlaak Video Library')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
 }
@@ -3321,11 +3338,11 @@ function handleApiCall(serviceFn, actionName, entityType) {
   } catch (error) {
     var errMsg = error.message || error.toString();
     var errCode = 'EXECUTION_ERROR';
-    if (errMsg.indexOf('غير مصرح') !== -1 || errMsg.indexOf('Access Denied') !== -1) {
+    if (errMsg.indexOf('not authorized') !== -1 || errMsg.indexOf('Access Denied') !== -1) {
       errCode = 'UNAUTHORIZED';
     } else if (errMsg.indexOf("isn't shared with the app account") !== -1) {
       errCode = 'PERMISSION_DENIED';
-    } else if (errMsg.indexOf('مسجل بالفعل') !== -1 || errMsg.indexOf('duplicate') !== -1) {
+    } else if (errMsg.indexOf('already registered') !== -1 || errMsg.indexOf('duplicate') !== -1) {
       errCode = 'DUPLICATE_FILE';
     }
 

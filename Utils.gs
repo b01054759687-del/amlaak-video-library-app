@@ -18,7 +18,7 @@ var Utils = (function() {
     return {
       ok: false,
       data: optData || null,
-      message: message || 'حدث خطأ أثناء معالجة الطلب',
+      message: message || 'An error occurred while processing the request.',
       errorCode: errorCode || 'UNKNOWN_ERROR',
       timestamp: new Date().toISOString()
     };
@@ -83,7 +83,7 @@ var Utils = (function() {
     try {
       acquired = lock.tryLock(ms);
       if (!acquired) {
-        throw new Error('تعذر حجز قفل المعالجة (Lock Timeout)، هناك عملية أخرى جارية حالياً.');
+        throw new Error('Could not acquire the processing lock (timeout) — another operation is currently in progress.');
       }
       return callback();
     } finally {
@@ -135,6 +135,20 @@ var Utils = (function() {
       .trim();
   }
 
+  /**
+   * Prevents formula/CSV injection when writing free-text values into Sheets.
+   * A leading =, +, -, @, tab, or CR causes Sheets to parse the value as a
+   * formula even via the API, so such values are prefixed with a leading
+   * apostrophe to force plain-text storage. Non-string values pass through.
+   */
+  function sanitizeForSheet(value) {
+    if (typeof value !== 'string') return value;
+    if (/^[=+\-@\t\r]/.test(value)) {
+      return "'" + value;
+    }
+    return value;
+  }
+
   return {
     successResponse: successResponse,
     errorResponse: errorResponse,
@@ -149,6 +163,7 @@ var Utils = (function() {
     formatUnitId: formatUnitId,
     formatPdfNumber: formatPdfNumber,
     formatPdfRecordId: formatPdfRecordId,
-    normalizeLocation: normalizeLocation
+    normalizeLocation: normalizeLocation,
+    sanitizeForSheet: sanitizeForSheet
   };
 })();

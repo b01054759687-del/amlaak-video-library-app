@@ -1,5 +1,13 @@
 # GitHub Pages Deployment & Repository Plan Guide
 
+> **⚠️ DEPRECATED — NOT THE OPERATIONAL APPLICATION.** GitHub Pages is not
+> the data application (see `ARCHITECTURE.md`). The only sanctioned use of
+> GitHub Pages is the minimal static landing page described in
+> `docs/landing-page/` — English/LTR, no forms, no API calls, no OAuth, no
+> Sheet/Drive IDs, one button linking to the real Apps Script `/exec` URL.
+> Everything below this banner describes the earlier, abandoned
+> decoupled-frontend plan and is kept for audit history only.
+
 ## 1. GitHub Account & Repository Plan Gate
 GitHub Pages hosting behavior depends on repository visibility:
 - **Public Repositories**: Supported on GitHub Free.

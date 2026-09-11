@@ -58,7 +58,7 @@ var UnitService = (function() {
     Auth.requireAuth();
     var unit = SheetRepository.getUnitById(unitId);
     if (!unit) {
-      throw new Error('الوحدة المطلوبة غير موجودة: ' + unitId);
+      throw new Error('The requested unit does not exist: ' + unitId);
     }
 
     var allVideos = SheetRepository.getVideosByUnitId(unitId);
@@ -155,7 +155,7 @@ var UnitService = (function() {
       };
 
       SheetRepository.insertUnit(unitRecord);
-      AuditService.logSuccess('CREATE_UNIT', 'Unit', unitId, '', 'تم إنشاء الوحدة ' + unitId + ' للعميل ' + unitRecord.clientName);
+      AuditService.logSuccess('CREATE_UNIT', 'Unit', unitId, '', 'Created unit ' + unitId + ' for client ' + unitRecord.clientName);
 
       return unitRecord;
     });
@@ -170,7 +170,7 @@ var UnitService = (function() {
     Auth.requireAuth();
     var existingUnit = SheetRepository.getUnitById(unitId);
     if (!existingUnit) {
-      throw new Error('الوحدة المراد تعديلها غير موجودة: ' + unitId);
+      throw new Error('The unit to be updated does not exist: ' + unitId);
     }
 
     var cleanFields = {};
@@ -265,7 +265,7 @@ var UnitService = (function() {
           metadataUpdated: true,
           requiresBatchRename: proposedRenames.length > 0,
           proposedRenames: proposedRenames,
-          message: 'تم تحديث بيانات الوحدة والنسخ المرتبطة بها في قاعدة البيانات بنجاح.'
+          message: 'Unit data and its related versions were updated successfully in the database.'
         };
       }
 
@@ -279,14 +279,14 @@ var UnitService = (function() {
           'Video Name': sItem.newName
         });
         AuditService.logSuccess('BATCH_RENAME_FILE', 'DriveFile', sItem.fileId, sItem.fileId,
-          'تمت إعادة التسمية من [' + sItem.oldName + '] إلى [' + sItem.newName + ']');
+          'Renamed from [' + sItem.oldName + '] to [' + sItem.newName + ']');
       }
 
       // Log any failures
       for (var f = 0; f < batchResult.failed.length; f++) {
         var fItem = batchResult.failed[f];
         AuditService.logFailure('BATCH_RENAME_FILE', 'DriveFile', fItem.fileId, fItem.fileId, 'RENAME_FAILED',
-          'فشلت إعادة تسمية الملف ' + fItem.currentName + ': ' + fItem.error);
+          'Failed to rename file ' + fItem.currentName + ': ' + fItem.error);
       }
 
       return {
@@ -296,7 +296,7 @@ var UnitService = (function() {
         renamedCount: batchResult.successful.length,
         failedCount: batchResult.failed.length,
         details: batchResult,
-        message: 'تم تحديث البيانات وإعادة تسمية ' + batchResult.successful.length + ' ملف بنجاح.'
+        message: 'Data updated and ' + batchResult.successful.length + ' file(s) renamed successfully.'
       };
     });
   }

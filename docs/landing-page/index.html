@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amlaak Video Library</title>
+<style>
+  :root {
+    --navy: #070D18;
+    --navy-2: #0E1728;
+    --gold: #DFBF7A;
+    --text: #E7ECF5;
+    --muted: #8B96AC;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--navy);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    text-align: center;
+    padding: 24px;
+  }
+  .card {
+    max-width: 480px;
+    background: var(--navy-2);
+    border: 1px solid rgba(223, 191, 122, 0.25);
+    border-radius: 16px;
+    padding: 40px 32px;
+  }
+  h1 {
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0 0 8px;
+    color: #fff;
+  }
+  p {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin: 0 0 24px;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--gold);
+    border: 1px solid rgba(223, 191, 122, 0.4);
+    border-radius: 999px;
+    padding: 4px 12px;
+    margin-bottom: 16px;
+  }
+  .btn {
+    display: inline-block;
+    background: var(--gold);
+    color: #1A1400;
+    font-weight: 800;
+    font-size: 14px;
+    text-decoration: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+  }
+  .btn:hover { opacity: 0.9; }
+  .footer {
+    margin-top: 20px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">Private application</div>
+    <h1>Amlaak Video Library</h1>
+    <p>
+      This is a private, owner-only internal system for Amlaak Design.
+      It is not open to the public and contains no public content on this
+      page. Authorized users should open the application directly.
+    </p>
+    <a class="btn" href="https://script.google.com/macros/s/AKfycbzfCQrVU-9gHJqBYHFIGWVwWcWXeNWnV1dRe7HiCtY65xldx0AvO8iRObhR8pBrPLAjXg/exec">
+      Open Amlaak Video Library
+    </a>
+    <div class="footer">Amlaak Design</div>
+  </div>
+</body>
+</html>

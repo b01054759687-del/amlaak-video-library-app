@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "amlaak-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tests/preview-server.js"],
+      "port": 4173
+    }
+  ]
+}

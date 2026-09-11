@@ -10,7 +10,7 @@ var SheetRepository = (function() {
     if (_cachedSpreadsheet) return _cachedSpreadsheet;
     var ssId = Config.getProperty(Config.KEYS.SPREADSHEET_ID);
     if (!ssId) {
-      throw new Error('لم يتم تكوين معرف جدول البيانات (SPREADSHEET_ID missing).');
+      throw new Error('The spreadsheet ID has not been configured (SPREADSHEET_ID missing).');
     }
     _cachedSpreadsheet = SpreadsheetApp.openById(ssId);
     return _cachedSpreadsheet;
@@ -20,7 +20,7 @@ var SheetRepository = (function() {
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName(tabName);
     if (!sheet) {
-      throw new Error('لم يتم العثور على ورقة العمل المطلوبة: ' + tabName);
+      throw new Error('The required sheet tab could not be found: ' + tabName);
     }
     return sheet;
   }
@@ -110,7 +110,7 @@ var SheetRepository = (function() {
 
     function setVal(hName, val) {
       var col = headerMap[hName] || headerMap[hName.toLowerCase()];
-      if (col) rowValues[col - 1] = val;
+      if (col) rowValues[col - 1] = Utils.sanitizeForSheet(val);
     }
 
     setVal('Unit ID', unitData.unitId);
@@ -149,7 +149,7 @@ var SheetRepository = (function() {
     for (var key in updatedFields) {
       var col = headerMap[key] || headerMap[key.toLowerCase()];
       if (col) {
-        sheet.getRange(targetRow, col).setValue(updatedFields[key]);
+        sheet.getRange(targetRow, col).setValue(Utils.sanitizeForSheet(updatedFields[key]));
       }
     }
 
@@ -194,8 +194,8 @@ var SheetRepository = (function() {
         for (var r = 0; r < vUnitIds.length; r++) {
           if (vUnitIds[r][0] === unitId) {
             var actualRow = r + 2;
-            if (clientCol && unitRecord.clientName !== undefined) videoSheet.getRange(actualRow, clientCol).setValue(unitRecord.clientName);
-            if (locCol && unitRecord.location !== undefined) videoSheet.getRange(actualRow, locCol).setValue(unitRecord.location);
+            if (clientCol && unitRecord.clientName !== undefined) videoSheet.getRange(actualRow, clientCol).setValue(Utils.sanitizeForSheet(unitRecord.clientName));
+            if (locCol && unitRecord.location !== undefined) videoSheet.getRange(actualRow, locCol).setValue(Utils.sanitizeForSheet(unitRecord.location));
             if (typeCol && unitRecord.unitType !== undefined) videoSheet.getRange(actualRow, typeCol).setValue(unitRecord.unitType);
             if (areaCol && unitRecord.area !== undefined) videoSheet.getRange(actualRow, areaCol).setValue(unitRecord.area);
             if (updDateCol) videoSheet.getRange(actualRow, updDateCol).setValue(Utils.formatDateTime(new Date()));
@@ -313,7 +313,7 @@ var SheetRepository = (function() {
 
     function setVal(hName, val) {
       var col = headerMap[hName] || headerMap[hName.toLowerCase()];
-      if (col) rowValues[col - 1] = (val !== undefined && val !== null) ? val : '';
+      if (col) rowValues[col - 1] = Utils.sanitizeForSheet((val !== undefined && val !== null) ? val : '');
     }
 
     setVal('Video Number', videoRecord.videoNumber);
@@ -396,7 +396,7 @@ var SheetRepository = (function() {
     for (var key in updatedFields) {
       var col = headerMap[key] || headerMap[key.toLowerCase()];
       if (col) {
-        sheet.getRange(targetRow, col).setValue(updatedFields[key]);
+        sheet.getRange(targetRow, col).setValue(Utils.sanitizeForSheet(updatedFields[key]));
       }
     }
 
@@ -450,7 +450,7 @@ var SheetRepository = (function() {
 
     function setVal(hName, val) {
       var col = headerMap[hName] || headerMap[hName.toLowerCase()];
-      if (col) rowValues[col - 1] = (val !== undefined && val !== null) ? val : '';
+      if (col) rowValues[col - 1] = Utils.sanitizeForSheet((val !== undefined && val !== null) ? val : '');
     }
 
     setVal('PDF Record ID', pdfRecord.pdfRecordId);

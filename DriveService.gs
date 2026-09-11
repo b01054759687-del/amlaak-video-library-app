@@ -8,7 +8,7 @@ var DriveService = (function() {
     try {
       return DriveApp.getFolderById(folderId);
     } catch (e) {
-      throw new Error('تعذر الوصول إلى المجلد في Google Drive (Folder ID: ' + folderId + '). تأكد من صحة المعرف والصلاحيات.');
+      throw new Error('Could not access the Google Drive folder (Folder ID: ' + folderId + '). Verify the ID and permissions are correct.');
     }
   }
 
@@ -16,7 +16,7 @@ var DriveService = (function() {
     try {
       return DriveApp.getFileById(fileId);
     } catch (e) {
-      throw new Error('تعذر العثور على الملف في Google Drive (File ID: ' + fileId + '). تأكد من صحة الرابط.');
+      throw new Error('Could not find the file in Google Drive (File ID: ' + fileId + '). Verify the link is correct.');
     }
   }
 
@@ -25,7 +25,7 @@ var DriveService = (function() {
    * Required by Section 6 and Section 13 step 7.
    */
   function verifyEditorAccess(file) {
-    var executeAsEmail = Session.getEffectiveUser().getEmail() || Session.getActiveUser().getEmail() || 'حساب التطبيق';
+    var executeAsEmail = Session.getEffectiveUser().getEmail() || Session.getActiveUser().getEmail() || 'the application account';
     var hasEditorAccess = false;
 
     try {
@@ -78,7 +78,7 @@ var DriveService = (function() {
     var isVideoExt = validVideoExts.indexOf(ext) !== -1;
 
     if (!isVideoMime && !isVideoExt) {
-      throw new Error('الملف المحدد ليس ملف فيديو صالحاً. الصيغة الحالية: ' + mimeType + ' (' + fileName + ')');
+      throw new Error('The selected file is not a valid video file. Current type: ' + mimeType + ' (' + fileName + ')');
     }
 
     // Section 7.2: Duration & Orientation reliability
@@ -171,7 +171,7 @@ var DriveService = (function() {
   function uploadDesignPdf(unitId, fileName, base64Content) {
     var folderId = Config.getProperty(Config.KEYS.UNIT_DESIGN_PDFS_FOLDER_ID);
     if (!folderId) {
-      throw new Error('لم يتم تعيين مجلد ملفات الـ PDF (UNIT_DESIGN_PDFS_FOLDER_ID missing).');
+      throw new Error('The PDF files folder has not been configured (UNIT_DESIGN_PDFS_FOLDER_ID missing).');
     }
     var folder = getFolderById(folderId);
 

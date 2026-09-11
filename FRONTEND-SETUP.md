@@ -1,5 +1,12 @@
 # Frontend Setup & Deployment Guide
 
+> **⚠️ DEPRECATED — NOT PRODUCTION.** `frontend/` is an abandoned Vite/
+> Tailwind SPA using Google Identity Services custom sign-in and a REST
+> client. It is not referenced by `build-dist.js` and is not deployed
+> anywhere. Production's client is `Index.html`/`Client.html`/`Styles.html`,
+> served by Apps Script HTML Service. See `ARCHITECTURE.md`. Kept for audit
+> history only.
+
 ## 1. Directory Structure
 ```
 frontend/

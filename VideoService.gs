@@ -19,13 +19,13 @@ var VideoService = (function() {
     // 2. Extract Drive File ID
     var fileId = Validators.extractDriveFileId(payload.videoLink);
     if (!fileId) {
-      throw new Error('تعذر استخراج معرف الملف (File ID) من الرابط.');
+      throw new Error('Could not extract a File ID from the link.');
     }
 
     // 3. Duplicate check
     var existingRecord = SheetRepository.getVideoByDriveFileId(fileId);
     if (existingRecord) {
-      throw new Error('هذا الملف مسجل بالفعل في المنظومة تحت الفيديو رقم: ' + existingRecord['Video Number'] + ' (' + existingRecord['Version Number'] + ')');
+      throw new Error('This file is already registered in the system under Video Number: ' + existingRecord['Video Number'] + ' (' + existingRecord['Version Number'] + ')');
     }
 
     // 4. Inspect Drive file and verify Editor access
@@ -34,7 +34,7 @@ var VideoService = (function() {
     // 5. Ensure destination folder
     var destFolderId = Config.getProperty(Config.KEYS.PROJECT_VIDEOS_FOLDER_ID);
     if (!destFolderId) {
-      throw new Error('لم يتم تعيين مجلد فيديوهات المشاريع (PROJECT_VIDEOS_FOLDER_ID missing).');
+      throw new Error('The project videos folder has not been configured (PROJECT_VIDEOS_FOLDER_ID missing).');
     }
 
     return Utils.withLock(30000, function() {
@@ -78,7 +78,7 @@ var VideoService = (function() {
         videoNumber: videoNumber,
         versionNumber: versionNumber,
         isCurrentVersion: true,
-        versionNotes: payload.versionNotes || 'النسخة الأصلية الأولى',
+        versionNotes: payload.versionNotes || 'Initial first version',
         videoName: organizedName,
         videoSource: 'Project Video',
         unitId: unitId,
@@ -111,13 +111,13 @@ var VideoService = (function() {
           documentTitle: payload.pdfDocumentTitle || 'Architectural Design - ' + payload.clientName,
           fileName: payload.pdfFileName,
           base64Content: payload.pdfFileBase64,
-          versionNotes: 'مرفق مع الفيديو رقم ' + videoNumber
+          versionNotes: 'Attached with video number ' + videoNumber
         });
       }
 
       // 13. Audit Log
       AuditService.logSuccess('ADD_PROJECT_VIDEO', 'Video', videoNumber + '-' + versionNumber, fileId,
-        'تم تسجيل فيديو مشروع جديد بنجاح: ' + organizedName);
+        'Successfully registered a new project video: ' + organizedName);
 
       return {
         video: record,
@@ -141,13 +141,13 @@ var VideoService = (function() {
     // 2. Extract Drive File ID
     var fileId = Validators.extractDriveFileId(payload.videoLink);
     if (!fileId) {
-      throw new Error('تعذر استخراج معرف الملف (File ID) من الرابط.');
+      throw new Error('Could not extract a File ID from the link.');
     }
 
     // 3. Duplicate check
     var existingRecord = SheetRepository.getVideoByDriveFileId(fileId);
     if (existingRecord) {
-      throw new Error('هذا الملف مسجل بالفعل في المنظومة تحت الفيديو رقم: ' + existingRecord['Video Number']);
+      throw new Error('This file is already registered in the system under Video Number: ' + existingRecord['Video Number']);
     }
 
     // 4. Inspect Drive file and verify Editor access
@@ -156,7 +156,7 @@ var VideoService = (function() {
     // 5. Destination folder
     var destFolderId = Config.getProperty(Config.KEYS.MARKETING_CONTENT_FOLDER_ID);
     if (!destFolderId) {
-      throw new Error('لم يتم تعيين مجلد المحتوى التسويقي (MARKETING_CONTENT_FOLDER_ID missing).');
+      throw new Error('The marketing content folder has not been configured (MARKETING_CONTENT_FOLDER_ID missing).');
     }
 
     return Utils.withLock(30000, function() {
@@ -179,7 +179,7 @@ var VideoService = (function() {
         videoNumber: videoNumber,
         versionNumber: versionNumber,
         isCurrentVersion: true,
-        versionNotes: payload.versionNotes || 'النسخة الأصلية الأولى',
+        versionNotes: payload.versionNotes || 'Initial first version',
         videoName: organizedName,
         videoSource: 'Marketing Content',
         unitId: '',
@@ -204,7 +204,7 @@ var VideoService = (function() {
 
       SheetRepository.insertVideoVersion(record);
       AuditService.logSuccess('ADD_MARKETING_CONTENT', 'Video', videoNumber + '-' + versionNumber, fileId,
-        'تم تسجيل محتوى تسويقي جديد: ' + organizedName);
+        'Registered new marketing content: ' + organizedName);
 
       return {
         video: record
@@ -220,18 +220,18 @@ var VideoService = (function() {
 
     var videoNumber = String(payload.videoNumber).trim();
     if (!videoNumber) {
-      throw new Error('رقم الفيديو (Video Number) مطلوب لإضافة نسخة جديدة.');
+      throw new Error('Video Number is required to add a new version.');
     }
 
     var fileId = Validators.extractDriveFileId(payload.videoLink);
     if (!fileId) {
-      throw new Error('رابط Google Drive غير صالح أو لم يتم العثور على File ID.');
+      throw new Error('Invalid Google Drive link, or no File ID could be found.');
     }
 
     // Duplicate check
     var existingRecord = SheetRepository.getVideoByDriveFileId(fileId);
     if (existingRecord) {
-      throw new Error('هذا الملف مستخدم بالفعل كنسخة أخرى في المنظومة (Drive File ID duplicate).');
+      throw new Error('This file is already used as another version in the system (Drive File ID duplicate).');
     }
 
     var fileInspection = DriveService.validateAndInspectVideoFile(fileId);
@@ -247,7 +247,7 @@ var VideoService = (function() {
       }
 
       if (matching.length === 0) {
-        throw new Error('الفيديو الأصلي غير موجود: ' + videoNumber);
+        throw new Error('The original video does not exist: ' + videoNumber);
       }
 
       // Base metadata on current or latest version
@@ -300,7 +300,7 @@ var VideoService = (function() {
         videoNumber: videoNumber,
         versionNumber: versionStr,
         isCurrentVersion: true,
-        versionNotes: payload.versionNotes || 'تعديل جديد',
+        versionNotes: payload.versionNotes || 'New edit',
         videoName: organizedName,
         videoSource: baseRecord['Video Source'],
         unitId: baseRecord['Unit ID'] || '',
@@ -325,7 +325,7 @@ var VideoService = (function() {
 
       SheetRepository.insertVideoVersion(newVersionRecord);
       AuditService.logSuccess('ADD_VIDEO_VERSION', 'Video', videoNumber + '-' + versionStr, fileId,
-        'تمت إضافة نسخة جديدة (' + versionStr + ') للفيديو ' + videoNumber + ': ' + organizedName);
+        'Added new version (' + versionStr + ') for video ' + videoNumber + ': ' + organizedName);
 
       return newVersionRecord;
     });
@@ -491,7 +491,7 @@ var VideoService = (function() {
 
     var existing = SheetRepository.getVideoByDriveFileId(driveFileId);
     if (!existing) {
-      throw new Error('ملف الفيديو غير موجود: ' + driveFileId);
+      throw new Error('The video file does not exist: ' + driveFileId);
     }
 
     return Utils.withLock(20000, function() {
@@ -524,7 +524,7 @@ var VideoService = (function() {
           requiresRenameConfirmation: true,
           currentName: currentName,
           proposedName: proposedName,
-          message: 'التعديل يغير اسم الملف المعتمد. يرجى تأكيد إعادة تسمية الملف على Google Drive.'
+          message: 'This edit changes the approved file name. Please confirm renaming the file on Google Drive.'
         };
       }
 
@@ -537,17 +537,17 @@ var VideoService = (function() {
         DriveService.renameFile(driveFileId, proposedName);
         sheetUpdates['Video Name'] = proposedName;
         AuditService.logSuccess('RENAME_SINGLE_VIDEO', 'Video', existing['Video Number'], driveFileId,
-          'تمت إعادة التسمية من ' + currentName + ' إلى ' + proposedName);
+          'Renamed from ' + currentName + ' to ' + proposedName);
       }
 
       SheetRepository.updateVideoMetadata(driveFileId, sheetUpdates);
       AuditService.logSuccess('UPDATE_VIDEO_METADATA', 'Video', existing['Video Number'], driveFileId,
-        'تم تحديث البيانات الوصفية للفيديو.');
+        'Updated video metadata.');
 
       return {
         success: true,
         newName: proposedName,
-        message: 'تم تحديث بيانات الفيديو بنجاح.'
+        message: 'Video data updated successfully.'
       };
     });
   }
@@ -559,7 +559,7 @@ var VideoService = (function() {
     Auth.requireAuth();
 
     if (!videoNumber || !String(videoNumber).trim()) {
-      throw new Error('رقم الفيديو (Video Number) مطلوب.');
+      throw new Error('Video Number is required.');
     }
 
     var cleanNum = Utils.formatVideoNumber(videoNumber);
@@ -602,7 +602,7 @@ var VideoService = (function() {
     }
 
     if (matching.length === 0) {
-      throw new Error('لم يتم العثور على أي نسخ للفيديو رقم: ' + videoNumber);
+      throw new Error('No versions were found for video number: ' + videoNumber);
     }
 
     // Sort versions descending by version number

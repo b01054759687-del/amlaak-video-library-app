@@ -1,5 +1,11 @@
 # Authentication & Authorization Specification
 
+> **⚠️ DEPRECATED — NOT PRODUCTION.** This document describes the abandoned
+> Cloud Run + Google Identity Services custom sign-in architecture. It is
+> not built, deployed, or referenced by `build-dist.js`. Production identity
+> is the signed-in Google session inside Apps Script — see `ARCHITECTURE.md`
+> and `SECURITY.md`. Kept for audit history only.
+
 ## 1. Authentication Lifecycle
 1. User navigates to GitHub Pages application.
 2. Google Identity Services (GIS) loads asynchronously.

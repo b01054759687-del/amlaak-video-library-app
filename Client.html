@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initApp() {
-  showGlobalLoading('جاري الاتصال بالمنظومة والتحقق من الصلاحيات...');
+  showGlobalLoading('Connecting and verifying permissions...');
 
   // Fallback mock if running outside Apps Script container for local preview/tests
   if (typeof google === 'undefined' || !google.script || !google.script.run) {
@@ -47,7 +47,7 @@ function initApp() {
     .withSuccessHandler(function(response) {
       hideGlobalLoading();
       if (!response.ok) {
-        showToast('error', response.message || 'فشل تحميل بيانات التهيئة.');
+        showToast('error', response.message || 'Failed to load initial configuration.');
         return;
       }
 
@@ -61,11 +61,11 @@ function initApp() {
       var roleBadge = document.getElementById('userRoleBadge');
       if (data.user && data.user.email) {
         emailBadge.textContent = data.user.email;
-        roleBadge.textContent = data.user.role || 'مصرح له';
+        roleBadge.textContent = data.user.role || 'Authorized';
         document.getElementById('bannerExecuteEmail').textContent = data.user.email;
       } else {
-        emailBadge.textContent = 'غير مسجل';
-        roleBadge.textContent = 'غير مصرح';
+        emailBadge.textContent = 'Not signed in';
+        roleBadge.textContent = 'Not authorized';
       }
 
       // Populate Dropdowns
@@ -78,7 +78,7 @@ function initApp() {
     })
     .withFailureHandler(function(err) {
       hideGlobalLoading();
-      showToast('error', 'خطأ في الاتصال بالخادم: ' + (err.message || err));
+      showToast('error', 'Server connection error: ' + (err.message || err));
     })
     .apiGetInitialData();
 }
@@ -156,20 +156,20 @@ function populateTaxonomyDropdowns() {
   }
 
   // Project Video Form
-  fillSelect('pvUnitType', lists.unitType, '-- اختر نوع الوحدة --');
-  fillSelect('pvProjectVideoType', lists.projectVideoType, '-- اختر مرحلة الفيديو --');
-  fillSelect('pvSpaceType', lists.spaceType, '-- اختر نوع الفراغ --');
-  fillSelect('pvWorkCategory', lists.workCategory, '-- اختر تصنيف الأعمال --');
+  fillSelect('pvUnitType', lists.unitType, '-- Select unit type --');
+  fillSelect('pvProjectVideoType', lists.projectVideoType, '-- Select project video type --');
+  fillSelect('pvSpaceType', lists.spaceType, '-- Select space type --');
+  fillSelect('pvWorkCategory', lists.workCategory, '-- Select work category --');
 
   // Marketing Form
-  fillSelect('mcContentType', lists.marketingContentType, '-- اختر نوع المحتوى --');
-  fillSelect('mcSpaceType', lists.spaceType, '-- فراغ عام / بدون تحديد --');
+  fillSelect('mcContentType', lists.marketingContentType, '-- Select content type --');
+  fillSelect('mcSpaceType', lists.spaceType, '-- General space / unspecified --');
 
   // Filters
-  fillSelect('filterStage', lists.projectVideoType, 'كل المراحل');
-  fillSelect('filterSpace', lists.spaceType, 'كل الفراغات');
-  fillSelect('filterWorkCat', lists.workCategory, 'كل تصنيفات الأعمال');
-  fillSelect('filterLocation', lists.locations, 'كل المناطق');
+  fillSelect('filterStage', lists.projectVideoType, 'All stages');
+  fillSelect('filterSpace', lists.spaceType, 'All spaces');
+  fillSelect('filterWorkCat', lists.workCategory, 'All work categories');
+  fillSelect('filterLocation', lists.locations, 'All locations');
 
   // Modals
   fillSelect('ueUnitType', lists.unitType);
@@ -200,9 +200,9 @@ function loadDashboard(callback) {
     document.getElementById('kpiLogicalVideos').textContent = kpis.totalLogicalVideos;
     document.getElementById('kpiStoredVersions').textContent = kpis.totalStoredVersions;
     document.getElementById('kpiProjectVideos').textContent = kpis.totalProjectVideos;
-    document.getElementById('kpiProjectVersionsSub').textContent = kpis.projectVersionsCount + ' نسخة مسجلة';
+    document.getElementById('kpiProjectVersionsSub').textContent = kpis.projectVersionsCount + ' versions recorded';
     document.getElementById('kpiMarketingVideos').textContent = kpis.totalMarketingContent;
-    document.getElementById('kpiMarketingVersionsSub').textContent = kpis.marketingVersionsCount + ' نسخة مسجلة';
+    document.getElementById('kpiMarketingVersionsSub').textContent = kpis.marketingVersionsCount + ' versions recorded';
     document.getElementById('kpiTotalUnits').textContent = kpis.totalUnits;
     document.getElementById('kpiStoredPdfs').textContent = kpis.totalStoredPdfs;
 
@@ -216,7 +216,7 @@ function loadDashboard(callback) {
     var actContainer = document.getElementById('dashRecentActivityList');
     actContainer.innerHTML = '';
     if (!data.recentActivity || data.recentActivity.length === 0) {
-      actContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-3">لا توجد عمليات مسجلة حتى الآن.</div>';
+      actContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-3">No activity recorded yet.</div>';
     } else {
       data.recentActivity.forEach(function(act) {
         var row = document.createElement('div');
@@ -242,7 +242,7 @@ function renderBreakdownList(containerId, items, iconClass, colorClass) {
   container.innerHTML = '';
 
   if (!items || items.length === 0) {
-    container.innerHTML = '<div class="text-xs text-slate-500 text-center py-3">لا توجد بيانات متاحة.</div>';
+    container.innerHTML = '<div class="text-xs text-slate-500 text-center py-3">No data available.</div>';
     return;
   }
 
@@ -325,7 +325,7 @@ function filterUnitSearch(query) {
 
   resultsBox.innerHTML = '';
   if (matches.length === 0) {
-    resultsBox.innerHTML = '<div class="autocomplete-item text-slate-500 text-center text-xs">لا توجد وحدات مطابقة. اختر "تسجيل وحدة جديدة" للإضافة.</div>';
+    resultsBox.innerHTML = '<div class="autocomplete-item text-slate-500 text-center text-xs">No matching units. Choose "Register New Unit" to add one.</div>';
     resultsBox.classList.remove('hidden');
     return;
   }
@@ -443,7 +443,7 @@ function submitProjectVideo(e) {
   e.preventDefault();
   var btn = document.getElementById('btnSubmitProjectVideo');
   btn.disabled = true;
-  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري المعالجة والرفع...';
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> Processing and uploading...';
 
   var payload = {
     unitId: document.getElementById('pvSelectedUnitId').value || '',
@@ -480,14 +480,14 @@ function submitProjectVideo(e) {
 function executeSaveProjectVideo(payload, btn) {
   callApi('apiAddProjectVideo', [payload], function(res) {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>حفظ وتوثيق الفيديو</span>';
+    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>Save &amp; Document Video</span>';
 
     if (!res.ok) {
       showToast('error', res.message);
       return;
     }
 
-    showToast('success', 'تم حفظ وتوثيق فيديو المشروع بنجاح: ' + res.data.video.videoName);
+    showToast('success', 'Project video saved and documented successfully: ' + res.data.video.videoName);
     document.getElementById('formProjectVideo').reset();
     document.getElementById('pvSelectedUnitId').value = '';
     loadDashboard();
@@ -500,7 +500,7 @@ function submitMarketingContent(e) {
   e.preventDefault();
   var btn = document.getElementById('btnSubmitMarketingContent');
   btn.disabled = true;
-  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري الحفظ...';
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> Saving...';
 
   var payload = {
     videoLink: document.getElementById('mcVideoLink').value.trim(),
@@ -513,14 +513,14 @@ function submitMarketingContent(e) {
 
   callApi('apiAddMarketingContent', [payload], function(res) {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>حفظ وتوثيق المحتوى</span>';
+    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> <span>Save &amp; Document Content</span>';
 
     if (!res.ok) {
       showToast('error', res.message);
       return;
     }
 
-    showToast('success', 'تم حفظ وتوثيق المحتوى التسويقي بنجاح: ' + res.data.video.videoName);
+    showToast('success', 'Marketing content saved and documented successfully: ' + res.data.video.videoName);
     document.getElementById('formMarketingContent').reset();
     loadDashboard();
     switchTab('library');
@@ -552,7 +552,7 @@ function loadLibrary(callback) {
   };
 
   var tbody = document.getElementById('libraryTableBody');
-  tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-500">جاري تحميل الفيديوهات وتطبيق الفلاتر...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-500">Loading videos and applying filters...</td></tr>';
 
   callApi('apiGetVideos', [filters], function(res) {
     if (callback) callback();
@@ -566,7 +566,7 @@ function loadLibrary(callback) {
     document.getElementById('libraryResultsCount').textContent = videos.length;
 
     if (videos.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-500">لا توجد فيديوهات مطابقة لمعايير البحث الحالية.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="p-8 text-center text-slate-500">No videos match the current search criteria.</td></tr>';
       return;
     }
 
@@ -581,8 +581,8 @@ function loadLibrary(callback) {
         : '<span class="badge-previous text-[10px] px-2 py-0.5 rounded-full font-mono">' + escapeHtml(v.versionNumber) + ' [Previous]</span>';
 
       var srcBadge = v.videoSource === 'Project Video'
-        ? '<span class="badge-project text-[10px] px-2 py-0.5 rounded-full font-bold">مشروع</span>'
-        : '<span class="badge-marketing text-[10px] px-2 py-0.5 rounded-full font-bold">تسويقي</span>';
+        ? '<span class="badge-project text-[10px] px-2 py-0.5 rounded-full font-bold">Project</span>'
+        : '<span class="badge-marketing text-[10px] px-2 py-0.5 rounded-full font-bold">Marketing</span>';
 
       var driveLink = v.videoLink || ('https://drive.google.com/file/d/' + v.driveFileId + '/view');
 
@@ -600,13 +600,13 @@ function loadLibrary(callback) {
         '<td class="p-3.5 font-num text-slate-400 whitespace-nowrap">' + escapeHtml(v.shootingDate || '—') + '</td>' +
         '<td class="p-3.5 text-center whitespace-nowrap">' +
           '<div class="flex items-center justify-center gap-2">' +
-            '<a href="' + driveLink + '" target="_blank" title="فتح الملف على Google Drive" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition">' +
+            '<a href="' + driveLink + '" target="_blank" title="Open file on Google Drive" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition">' +
               '<i class="fa-solid fa-arrow-up-right-from-square"></i>' +
             '</a>' +
-            '<button onclick="openAddVersionModal(\'' + v.videoNumber + '\')" title="إضافة نسخة جديدة" class="p-1.5 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/30 transition">' +
+            '<button onclick="openAddVersionModal(\'' + v.videoNumber + '\')" title="Add new version" class="p-1.5 rounded-lg bg-blue-500/15 text-blue-400 hover:bg-blue-500/30 transition">' +
               '<i class="fa-solid fa-code-branch"></i>' +
             '</button>' +
-            '<button onclick="openVersionHistoryModal(\'' + v.videoNumber + '\')" title="سجل النسخ والتعديلات" class="p-1.5 rounded-lg bg-amber-500/15 text-[#DFBF7A] hover:bg-amber-500/30 transition">' +
+            '<button onclick="openVersionHistoryModal(\'' + v.videoNumber + '\')" title="Version &amp; edit history" class="p-1.5 rounded-lg bg-amber-500/15 text-[#DFBF7A] hover:bg-amber-500/30 transition">' +
               '<i class="fa-solid fa-clock-rotate-left"></i>' +
             '</button>' +
           '</div>' +
@@ -698,7 +698,7 @@ function submitAddVersion(e) {
   e.preventDefault();
   var btn = document.getElementById('btnSubmitAddVersion');
   btn.disabled = true;
-  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري اعتماد النسخة...';
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> Saving version...';
 
   var payload = {
     videoNumber: document.getElementById('mvVideoNumber').value,
@@ -708,14 +708,14 @@ function submitAddVersion(e) {
 
   callApi('apiAddNewVersion', [payload], function(res) {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-plus"></i> <span>اعتماد وحفظ النسخة</span>';
+    btn.innerHTML = '<i class="fa-solid fa-plus"></i> <span>Approve &amp; Save Version</span>';
 
     if (!res.ok) {
       showToast('error', res.message);
       return;
     }
 
-    showToast('success', 'تمت إضافة النسخة الجديدة بنجاح: ' + res.data.videoName);
+    showToast('success', 'New version added successfully: ' + res.data.videoName);
     closeAddVersionModal();
     loadDashboard();
     loadLibrary();
@@ -755,15 +755,15 @@ function openVersionHistoryModal(videoNumber) {
       '<div class="flex items-center justify-between">' +
         '<div class="flex items-center gap-2">' +
           '<span class="font-mono font-bold text-sm ' + (isCur ? 'text-emerald-400' : 'text-slate-300') + '">' + escapeHtml(ver.versionNumber) + '</span>' +
-          (isCur ? '<span class="badge-current text-[10px] px-2 py-0.5 rounded-full font-bold">النسخة الحالية (Current)</span>' : '<span class="badge-previous text-[10px] px-2 py-0.5 rounded-full">نسخة سابقة (Previous)</span>') +
+          (isCur ? '<span class="badge-current text-[10px] px-2 py-0.5 rounded-full font-bold">Current Version</span>' : '<span class="badge-previous text-[10px] px-2 py-0.5 rounded-full">Previous Version</span>') +
         '</div>' +
         '<a href="' + driveLink + '" target="_blank" class="text-xs text-[#DFBF7A] hover:underline font-bold flex items-center gap-1">' +
-          '<span>فتح في Drive</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>' +
+          '<span>Open in Drive</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>' +
         '</a>' +
       '</div>' +
       '<div class="text-xs font-mono-code text-white break-all">' + escapeHtml(ver.videoName) + '</div>' +
       '<div class="text-[11px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800/60">' +
-        '<span>ملاحظات: ' + escapeHtml(ver.versionNotes || 'لا توجد ملاحظات') + '</span>' +
+        '<span>Notes: ' + escapeHtml(ver.versionNotes || 'No notes') + '</span>' +
         '<span class="font-num">' + escapeHtml(ver.addedDate || '') + '</span>' +
       '</div>';
 
@@ -799,7 +799,7 @@ function renderUnitsCatalog(units) {
   grid.innerHTML = '';
 
   if (units.length === 0) {
-    grid.innerHTML = '<div class="col-span-full p-8 text-center text-slate-500">لا توجد وحدات مسجلة حتى الآن.</div>';
+    grid.innerHTML = '<div class="col-span-full p-8 text-center text-slate-500">No units registered yet.</div>';
     return;
   }
 
@@ -815,16 +815,16 @@ function renderUnitsCatalog(units) {
         '<h3 class="text-base font-bold text-white mb-1">' + escapeHtml(u.clientName) + '</h3>' +
         '<div class="text-xs text-slate-400 flex items-center gap-2">' +
           '<span><i class="fa-solid fa-location-dot text-[#DFBF7A] text-[10px]"></i> ' + escapeHtml(u.location) + '</span>' +
-          (u.area ? '<span>• ' + u.area + ' م²</span>' : '') +
+          (u.area ? '<span>• ' + u.area + ' sqm</span>' : '') +
         '</div>' +
       '</div>' +
       '<div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">' +
         '<div class="flex items-center gap-3 text-slate-300">' +
-          '<span title="الفيديوهات المرتبطة"><i class="fa-solid fa-film text-[#DFBF7A] ml-1"></i> ' + u.videoCount + '</span>' +
-          '<span title="مخططات الـ PDF"><i class="fa-solid fa-file-pdf text-rose-400 ml-1"></i> ' + u.pdfCount + '</span>' +
+          '<span title="Related videos"><i class="fa-solid fa-film text-[#DFBF7A] ml-1"></i> ' + u.videoCount + '</span>' +
+          '<span title="PDF plans"><i class="fa-solid fa-file-pdf text-rose-400 ml-1"></i> ' + u.pdfCount + '</span>' +
         '</div>' +
         '<button onclick="openUnitDetail(\'' + u.unitId + '\')" class="text-xs font-bold text-[#DFBF7A] hover:underline flex items-center gap-1">' +
-          '<span>التفاصيل</span> <i class="fa-solid fa-arrow-left text-[10px]"></i>' +
+          '<span>Details</span> <i class="fa-solid fa-arrow-left text-[10px]"></i>' +
         '</button>' +
       '</div>';
     grid.appendChild(card);
@@ -846,7 +846,7 @@ function filterUnitsCatalog(query) {
 }
 
 function openUnitDetail(unitId) {
-  showGlobalLoading('جاري جلب تفاصيل الوحدة...');
+  showGlobalLoading('Fetching unit details...');
   callApi('apiGetUnitDetail', [unitId], function(res) {
     hideGlobalLoading();
     if (!res.ok) {
@@ -859,7 +859,7 @@ function openUnitDetail(unitId) {
 
     document.getElementById('udClientName').textContent = detail.unit.clientName;
     document.getElementById('udUnitIdBadge').textContent = detail.unit.unitId;
-    document.getElementById('udLocationType').textContent = detail.unit.location + ' • ' + detail.unit.unitType + (detail.unit.area ? ' (' + detail.unit.area + ' م²)' : '');
+    document.getElementById('udLocationType').textContent = detail.unit.location + ' • ' + detail.unit.unitType + (detail.unit.area ? ' (' + detail.unit.area + ' sqm)' : '');
 
     // Reset edit mode
     document.getElementById('unitEditFormContainer').classList.add('hidden');
@@ -872,7 +872,7 @@ function openUnitDetail(unitId) {
     var vContainer = document.getElementById('udVideosList');
     vContainer.innerHTML = '';
     if (detail.videos.length === 0) {
-      vContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-2">لا توجد فيديوهات مرتبطة بهذه الوحدة بعد.</div>';
+      vContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-2">No videos linked to this unit yet.</div>';
     } else {
       detail.videos.forEach(function(v) {
         var vDiv = document.createElement('div');
@@ -888,8 +888,8 @@ function openUnitDetail(unitId) {
             '<div class="text-[10px] font-mono-code text-slate-400 mt-0.5 truncate max-w-sm">' + escapeHtml(curVer.videoName) + '</div>' +
           '</div>' +
           '<div class="flex items-center gap-2">' +
-            '<button onclick="openAddVersionModal(\'' + v.videoNumber + '\')" class="p-1 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-xs" title="إضافة نسخة"><i class="fa-solid fa-code-branch"></i></button>' +
-            '<button onclick="openVersionHistoryModal(\'' + v.videoNumber + '\')" class="p-1 rounded bg-amber-500/20 text-[#DFBF7A] hover:bg-amber-500/30 text-xs" title="سجل النسخ"><i class="fa-solid fa-clock-rotate-left"></i></button>' +
+            '<button onclick="openAddVersionModal(\'' + v.videoNumber + '\')" class="p-1 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 text-xs" title="Add version"><i class="fa-solid fa-code-branch"></i></button>' +
+            '<button onclick="openVersionHistoryModal(\'' + v.videoNumber + '\')" class="p-1 rounded bg-amber-500/20 text-[#DFBF7A] hover:bg-amber-500/30 text-xs" title="Version history"><i class="fa-solid fa-clock-rotate-left"></i></button>' +
           '</div>';
         vContainer.appendChild(vDiv);
       });
@@ -899,7 +899,7 @@ function openUnitDetail(unitId) {
     var pContainer = document.getElementById('udPdfsList');
     pContainer.innerHTML = '';
     if (detail.pdfs.length === 0) {
-      pContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-2">لا توجد مخططات PDF معمارية لهذه الوحدة.</div>';
+      pContainer.innerHTML = '<div class="text-xs text-slate-500 text-center py-2">No architectural PDF plans for this unit.</div>';
     } else {
       detail.pdfs.forEach(function(pdf) {
         var isCur = pdf.isCurrentVersion;
@@ -916,7 +916,7 @@ function openUnitDetail(unitId) {
             '<div class="text-[10px] text-slate-400 mt-0.5">' + escapeHtml(pdf.versionNotes || '') + ' • ' + escapeHtml(pdf.addedDate || '') + '</div>' +
           '</div>' +
           '<a href="' + pdfLink + '" target="_blank" class="text-xs text-rose-400 hover:underline font-bold flex items-center gap-1">' +
-            '<span>عرض PDF</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>' +
+            '<span>View PDF</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>' +
           '</a>';
         pContainer.appendChild(pDiv);
       });
@@ -950,7 +950,7 @@ function saveUnitMasterEdit() {
     area: document.getElementById('ueArea').value
   };
 
-  showGlobalLoading('جاري تحديث بيانات الوحدة ونشر التغييرات...');
+  showGlobalLoading('Updating unit data and propagating changes...');
   callApi('apiUpdateUnit', [unitId, updatedFields, false], function(res) {
     hideGlobalLoading();
     if (!res.ok) {
@@ -968,7 +968,7 @@ function saveUnitMasterEdit() {
       };
       showBatchRenameModal(data.proposedRenames);
     } else {
-      showToast('success', data.message || 'تم تحديث بيانات الوحدة بنجاح.');
+      showToast('success', data.message || 'Unit data updated successfully.');
       toggleUnitEditMode();
       openUnitDetail(unitId);
       loadUnitsCatalog();
@@ -992,8 +992,8 @@ function showBatchRenameModal(proposedList) {
         '<span class="font-bold text-[#DFBF7A]">' + escapeHtml(item.entityType) + ' (' + escapeHtml(item.entityId) + ')</span>' +
         '<span class="font-mono text-slate-500 text-[10px]">Drive File: ' + escapeHtml(item.fileId) + '</span>' +
       '</div>' +
-      '<div class="text-[11px] text-rose-400/90 font-mono-code truncate line-through">الاسم الحالي: ' + escapeHtml(item.currentName) + '</div>' +
-      '<div class="text-[11px] text-emerald-400 font-mono-code font-bold">الاسم المقترح: ' + escapeHtml(item.proposedName) + '</div>';
+      '<div class="text-[11px] text-rose-400/90 font-mono-code truncate line-through">Current name: ' + escapeHtml(item.currentName) + '</div>' +
+      '<div class="text-[11px] text-emerald-400 font-mono-code font-bold">Proposed name: ' + escapeHtml(item.proposedName) + '</div>';
     container.appendChild(div);
   });
 
@@ -1003,7 +1003,7 @@ function showBatchRenameModal(proposedList) {
 function cancelBatchRename() {
   document.getElementById('modalBatchRename').classList.add('hidden');
   AppState.pendingBatchRename = null;
-  showToast('info', 'تم الإبقاء على أسماء الملفات الحالية في Google Drive، مع تحديث بيانات الشيت.');
+  showToast('info', 'Kept the current file names on Google Drive; sheet data was updated.');
   if (AppState.activeUnitDetail) {
     openUnitDetail(AppState.activeUnitDetail.unit.unitId);
   }
@@ -1015,11 +1015,11 @@ function confirmBatchRename() {
 
   var btn = document.getElementById('btnConfirmBatchRename');
   btn.disabled = true;
-  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري إعادة تسمية الملفات في Drive...';
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> Renaming files in Drive...';
 
   callApi('apiUpdateUnit', [pending.unitId, pending.fields, true], function(res) {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-check"></i> <span>تأكيد وإعادة تسمية جميع الملفات</span>';
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> <span>Confirm &amp; Rename All Files</span>';
     document.getElementById('modalBatchRename').classList.add('hidden');
 
     if (!res.ok) {
@@ -1027,7 +1027,7 @@ function confirmBatchRename() {
       return;
     }
 
-    showToast('success', res.data.message || 'تمت إعادة تسمية الملفات وتوثيق العملية في سجل الأمان.');
+    showToast('success', res.data.message || 'Files renamed and the action was recorded in the audit log.');
     AppState.pendingBatchRename = null;
     if (AppState.activeUnitDetail) {
       openUnitDetail(AppState.activeUnitDetail.unit.unitId);
@@ -1045,7 +1045,7 @@ function openUploadPdfModalForCurrentUnit() {
   if (!detail) return;
 
   document.getElementById('upUnitId').value = detail.unit.unitId;
-  document.getElementById('upModalUnitHeader').textContent = 'الوحدة: ' + detail.unit.clientName + ' (' + detail.unit.unitId + ')';
+  document.getElementById('upModalUnitHeader').textContent = 'Unit: ' + detail.unit.clientName + ' (' + detail.unit.unitId + ')';
   document.getElementById('upDocumentTitle').value = '';
   document.getElementById('upVersionNotes').value = '';
   document.getElementById('upPdfFile').value = '';
@@ -1061,14 +1061,14 @@ function submitUploadPdf(e) {
   e.preventDefault();
   var fileInput = document.getElementById('upPdfFile');
   if (!fileInput.files || fileInput.files.length === 0) {
-    showToast('error', 'يرجى اختيار ملف PDF صالح.');
+    showToast('error', 'Please select a valid PDF file.');
     return;
   }
 
   var file = fileInput.files[0];
   var btn = document.getElementById('btnSubmitUploadPdf');
   btn.disabled = true;
-  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري رفع المخطط...';
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> Uploading plan...';
 
   var reader = new FileReader();
   reader.onload = function(evt) {
@@ -1083,14 +1083,14 @@ function submitUploadPdf(e) {
 
     callApi('apiUploadPdf', [payload], function(res) {
       btn.disabled = false;
-      btn.innerHTML = '<i class="fa-solid fa-upload"></i> <span>رفع وأرشفة المخطط</span>';
+      btn.innerHTML = '<i class="fa-solid fa-upload"></i> <span>Upload &amp; Archive Plan</span>';
 
       if (!res.ok) {
         showToast('error', res.message);
         return;
       }
 
-      showToast('success', 'تم رفع المخطط المعماري بنجاح.');
+      showToast('success', 'Architectural plan uploaded successfully.');
       closeUploadPdfModal();
       if (AppState.activeUnitDetail) {
         openUnitDetail(AppState.activeUnitDetail.unit.unitId);
@@ -1114,20 +1114,20 @@ function loadSettings(callback) {
     }
 
     var cfg = res.data;
-    document.getElementById('configSpreadsheetId').textContent = cfg.spreadsheetId || 'غير محدد';
-    document.getElementById('configRootFolderId').textContent = cfg.rootFolderId || 'غير محدد';
+    document.getElementById('configSpreadsheetId').textContent = cfg.spreadsheetId || 'Not set';
+    document.getElementById('configRootFolderId').textContent = cfg.rootFolderId || 'Not set';
 
     var tbody = document.getElementById('configUsersTableBody');
     tbody.innerHTML = '';
     if (!cfg.users || cfg.users.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center text-slate-500">لا يوجد مستخدمون مسجلون.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center text-slate-500">No registered users.</td></tr>';
     } else {
       cfg.users.forEach(function(u) {
         var tr = document.createElement('tr');
         tr.innerHTML = 
           '<td class="p-2.5 font-mono text-slate-200">' + escapeHtml(u.email) + '</td>' +
           '<td class="p-2.5 text-[#DFBF7A] font-bold">' + escapeHtml(u.role) + '</td>' +
-          '<td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 font-bold">نشط</span></td>';
+          '<td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 font-bold">Active</span></td>';
         tbody.appendChild(tr);
       });
     }
@@ -1135,24 +1135,24 @@ function loadSettings(callback) {
 }
 
 function triggerSystemSetup() {
-  if (!confirm('هل تريد تشغيل فحص وتهيئة المنظومة الآن؟ العملية آمنة ولا تقوم بحذف أو تكرار أي بيانات.')) {
+  if (!confirm('Run a system check and setup now? This operation is safe and does not delete or duplicate any data.')) {
     return;
   }
 
   var btn = document.getElementById('btnTriggerSetup');
   btn.disabled = true;
-  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> جاري فحص وتهيئة المنظومة...';
+  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block ml-2"></div> Checking and setting up the system...';
 
   callApi('apiSetupSystem', [{}], function(res) {
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-wrench"></i> <span>إعادة فحص / تهيئة المنظومة الآن</span>';
+    btn.innerHTML = '<i class="fa-solid fa-wrench"></i> <span>Re-check / Set Up System Now</span>';
 
     if (!res.ok) {
       showToast('error', res.message);
       return;
     }
 
-    showToast('success', res.data.message || 'تمت تهيئة المنظومة بنجاح.');
+    showToast('success', res.data.message || 'System set up successfully.');
     loadSettings();
     initApp();
   });

@@ -1,5 +1,11 @@
 # Backend Setup & Cloud Run Guide
 
+> **⚠️ DEPRECATED — NOT PRODUCTION.** `backend/` is an abandoned Express/
+> Cloud Run REST API. It is not referenced by `build-dist.js` and is not
+> deployed anywhere. Production has no backend server — Apps Script server
+> functions are the entire backend. See `ARCHITECTURE.md`. Kept for audit
+> history only.
+
 ## 1. Directory Structure
 ```
 backend/

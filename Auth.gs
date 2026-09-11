@@ -44,7 +44,7 @@ var Auth = (function() {
         role: null,
         active: false,
         isAuthorized: false,
-        message: 'لم يتم التعرف على حساب Google المسجل به (Google Session missing).'
+        message: 'No signed-in Google account could be detected (Google session missing).'
       };
     }
 
@@ -65,7 +65,7 @@ var Auth = (function() {
         role: found.role || ROLES.EDITOR,
         active: true,
         isAuthorized: true,
-        message: 'مصرّح له بالوصول'
+        message: 'Access authorized'
       };
     }
 
@@ -78,7 +78,7 @@ var Auth = (function() {
         active: true,
         isAuthorized: true,
         isBootstrap: true,
-        message: 'حساب التهيئة الأولي (Bootstrap Mode)'
+        message: 'Initial setup account (Bootstrap Mode)'
       };
     }
 
@@ -87,14 +87,14 @@ var Auth = (function() {
       role: null,
       active: false,
       isAuthorized: false,
-      message: 'الحساب غير مدرج في قائمة المستخدمين المصرح لهم (Access Denied).'
+      message: 'This account is not on the authorized users list (Access Denied).'
     };
   }
 
   function requireAuth() {
     var user = getCurrentUser();
     if (!user.isAuthorized) {
-      throw new Error('غير مصرح لك بتنفيذ هذه العملية. البريد الإلكتروني: ' + (user.email || 'مجهول'));
+      throw new Error('You are not authorized to perform this action. Email: ' + (user.email || 'unknown'));
     }
     return user;
   }

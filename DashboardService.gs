@@ -170,6 +170,8 @@ var DashboardService = (function() {
         endDate: endDate
       }
     };
+  }
+
   /**
    * Consolidated bootstrap endpoint to eliminate initial page load waterfall.
    * Returns user summary, controlled lists, dashboard summary, unit lookups, and safe config in ONE round trip.
