@@ -68,8 +68,30 @@ export function initGoogleAuth(clientId, onAuthChanged) {
 export function handleTokenResponse(tokenResponse) {
   if (!tokenResponse) return;
 
+  var btn = document.getElementById('btnGsiCustomSignIn');
+  if (btn) {
+    btn.classList.remove('opacity-75', 'pointer-events-none');
+    var btnText = btn.querySelector('.g-btn-text');
+    if (btnText) btnText.textContent = 'Sign in with Google';
+  }
+
   if (tokenResponse.error) {
-    console.warn('GIS Token acquisition error:', tokenResponse.error);
+    console.warn('GIS Token acquisition error:', tokenResponse.error, tokenResponse);
+    var feedback = document.getElementById('authStatusFeedback');
+    if (feedback) {
+      var msg = 'Sign-in error: ' + tokenResponse.error;
+      if (tokenResponse.error === 'popup_closed_by_user') {
+        msg = 'Sign-in window was closed. Please click below to try again.';
+      } else if (tokenResponse.error === 'popup_blocked_by_browser') {
+        msg = 'Popup blocked by browser. Please allow popups for this site and click below.';
+      } else if (tokenResponse.error === 'access_denied') {
+        msg = 'Permissions were not granted. Please approve access to connect to Google Sheets & Drive.';
+      } else if (tokenResponse.error === 'idpiframe_initialization_failed') {
+        msg = 'Origin configuration error in Google Cloud Console. Please ensure https://b01054759687-del.github.io is added to Authorized JavaScript origins.';
+      }
+      feedback.textContent = msg;
+      feedback.className = 'text-[11px] text-rose-400 font-semibold min-h-[18px]';
+    }
     return;
   }
 
@@ -78,6 +100,12 @@ export function handleTokenResponse(tokenResponse) {
     setAuthToken(currentAccessToken);
     const expiresInSec = parseInt(tokenResponse.expires_in, 10) || 3600;
     tokenExpiresAt = Date.now() + expiresInSec * 1000;
+
+    var feedback = document.getElementById('authStatusFeedback');
+    if (feedback) {
+      feedback.textContent = '✓ Authorised! Connecting to Amlaak database...';
+      feedback.className = 'text-[11px] text-emerald-400 font-bold min-h-[18px]';
+    }
 
     // Fetch user profile info using the acquired access token
     fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -118,18 +146,36 @@ export function requestGoogleSignIn(optPrompt) {
     initGoogleAuth(activeClientId, onAuthChangedCallback);
   }
 
+  var btn = document.getElementById('btnGsiCustomSignIn');
+  if (btn) {
+    btn.classList.add('opacity-75', 'pointer-events-none');
+    var btnText = btn.querySelector('.g-btn-text');
+    if (btnText) btnText.textContent = 'Opening Google Sign-In...';
+  }
+
+  var feedback = document.getElementById('authStatusFeedback');
+  if (feedback) {
+    feedback.textContent = 'Please choose your Google Account in the popup window...';
+    feedback.className = 'text-[11px] text-amber-300 font-medium min-h-[18px]';
+  }
+
   if (tokenClient) {
     try {
-      tokenClient.requestAccessToken({ prompt: optPrompt !== undefined ? optPrompt : '' });
+      tokenClient.requestAccessToken({ prompt: optPrompt !== undefined ? optPrompt : 'select_account' });
     } catch (e) {
-      console.warn('Silent token request failed, requesting consent:', e);
+      console.warn('requestAccessToken error:', e);
       tokenClient.requestAccessToken({ prompt: 'consent' });
     }
   } else {
     console.warn('Google Identity Services not ready yet.');
-    const feedback = document.getElementById('authStatusFeedback');
+    if (btn) {
+      btn.classList.remove('opacity-75', 'pointer-events-none');
+      var btnText = btn.querySelector('.g-btn-text');
+      if (btnText) btnText.textContent = 'Sign in with Google';
+    }
     if (feedback) {
-      feedback.textContent = 'Connecting to Google Services, please try again in a moment...';
+      feedback.textContent = 'Connecting to Google services, please try again in a moment...';
+      feedback.className = 'text-[11px] text-amber-300 min-h-[18px]';
     }
   }
 }
@@ -139,8 +185,8 @@ export function renderSignInButton(containerId) {
   if (!container) return;
 
   container.innerHTML = `
-    <button type="button" id="btnGsiCustomSignIn" class="w-full sm:w-auto px-7 py-3 rounded-xl bg-[#0F172A] hover:bg-[#1E293B] text-white border border-[#DFBF7A]/60 hover:border-[#DFBF7A] shadow-xl shadow-black/60 transition-all flex items-center justify-center gap-3 font-bold text-sm cursor-pointer group hover:scale-[1.02] active:scale-[0.98]">
-      <div class="w-6 h-6 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+    <button type="button" id="btnGsiCustomSignIn" class="google-signin-btn">
+      <div class="g-icon-circle">
         <svg class="w-4 h-4" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -148,7 +194,7 @@ export function renderSignInButton(containerId) {
           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
         </svg>
       </div>
-      <span class="text-white font-bold tracking-wide">Sign in with Google</span>
+      <span class="g-btn-text">Sign in with Google</span>
     </button>
   `;
 
