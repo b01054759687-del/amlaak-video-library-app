@@ -157,8 +157,8 @@ var Validators = (function() {
       errors.push({ field: 'unitId', message: 'كود الوحدة (Unit ID) مطلوب لربط ملف التصميم.' });
     }
 
-    if (!payload.base64Content && !payload.driveLink) {
-      errors.push({ field: 'file', message: 'ملف الـ PDF أو رابط الـ Drive مطلوب.' });
+    if (!payload.base64Content && !payload.driveLink && !payload.driveFileId) {
+      errors.push({ field: 'file', message: 'ملف الـ PDF أو رابط الـ Drive أو معرّف الملف مطلوب.' });
     }
 
     if (payload.fileName && !payload.fileName.toLowerCase().endsWith('.pdf')) {

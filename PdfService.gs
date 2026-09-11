@@ -39,11 +39,11 @@ var PdfService = (function() {
         originalFileName = uploadRes.fileName;
         fileSize = uploadRes.fileSize;
         pdfLink = uploadRes.url;
-      } else if (payload.driveLink) {
-        // Registered from existing Drive link
-        driveFileId = Validators.extractDriveFileId(payload.driveLink);
+      } else if (payload.driveFileId || payload.driveLink) {
+        // Registered directly from Drive upload or existing Drive link (§15)
+        driveFileId = payload.driveFileId ? String(payload.driveFileId).trim() : Validators.extractDriveFileId(payload.driveLink);
         if (!driveFileId) {
-          throw new Error('رابط Drive غير صالح لملف الـ PDF.');
+          throw new Error('معرف أو رابط Drive غير صالح لملف الـ PDF.');
         }
 
         // Duplicate check
@@ -56,11 +56,11 @@ var PdfService = (function() {
 
         var f = DriveService.getFileById(driveFileId);
         DriveService.verifyEditorAccess(f);
-        originalFileName = f.getName();
-        fileSize = f.getSize();
+        originalFileName = payload.fileName || f.getName();
+        fileSize = f.getSize() || payload.fileSize || 0;
         pdfLink = f.getUrl();
 
-        // Move to Unit Design PDFs folder
+        // Move to Unit Design PDFs folder if configured
         var pdfFolderId = Config.getProperty(Config.KEYS.UNIT_DESIGN_PDFS_FOLDER_ID);
         if (pdfFolderId) {
           DriveService.moveFile(driveFileId, pdfFolderId);

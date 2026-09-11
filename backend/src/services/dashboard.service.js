@@ -30,7 +30,9 @@ async function getDashboardData(filters = {}) {
 
   videos.forEach(v => {
     if (v.location) locationMap[v.location] = (locationMap[v.location] || 0) + 1;
-    if (v.projectVideoType) stageMap[v.projectVideoType] = (stageMap[v.projectVideoType] || 0) + 1;
+    if (v.videoSource === 'Project Video' && v.projectVideoType) {
+      stageMap[v.projectVideoType] = (stageMap[v.projectVideoType] || 0) + 1;
+    }
     if (v.spaceType) spaceMap[v.spaceType] = (spaceMap[v.spaceType] || 0) + 1;
     if (v.workCategory) workCatMap[v.workCategory] = (workCatMap[v.workCategory] || 0) + 1;
   });

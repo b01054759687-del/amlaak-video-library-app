@@ -474,8 +474,8 @@ var Validators = (function() {
       errors.push({ field: 'unitId', message: 'كود الوحدة (Unit ID) مطلوب لربط ملف التصميم.' });
     }
 
-    if (!payload.base64Content && !payload.driveLink) {
-      errors.push({ field: 'file', message: 'ملف الـ PDF أو رابط الـ Drive مطلوب.' });
+    if (!payload.base64Content && !payload.driveLink && !payload.driveFileId) {
+      errors.push({ field: 'file', message: 'ملف الـ PDF أو رابط الـ Drive أو معرّف الملف مطلوب.' });
     }
 
     if (payload.fileName && !payload.fileName.toLowerCase().endsWith('.pdf')) {
@@ -2722,11 +2722,11 @@ var PdfService = (function() {
         originalFileName = uploadRes.fileName;
         fileSize = uploadRes.fileSize;
         pdfLink = uploadRes.url;
-      } else if (payload.driveLink) {
-        // Registered from existing Drive link
-        driveFileId = Validators.extractDriveFileId(payload.driveLink);
+      } else if (payload.driveFileId || payload.driveLink) {
+        // Registered directly from Drive upload or existing Drive link (§15)
+        driveFileId = payload.driveFileId ? String(payload.driveFileId).trim() : Validators.extractDriveFileId(payload.driveLink);
         if (!driveFileId) {
-          throw new Error('رابط Drive غير صالح لملف الـ PDF.');
+          throw new Error('معرف أو رابط Drive غير صالح لملف الـ PDF.');
         }
 
         // Duplicate check
@@ -2739,11 +2739,11 @@ var PdfService = (function() {
 
         var f = DriveService.getFileById(driveFileId);
         DriveService.verifyEditorAccess(f);
-        originalFileName = f.getName();
-        fileSize = f.getSize();
+        originalFileName = payload.fileName || f.getName();
+        fileSize = f.getSize() || payload.fileSize || 0;
         pdfLink = f.getUrl();
 
-        // Move to Unit Design PDFs folder
+        // Move to Unit Design PDFs folder if configured
         var pdfFolderId = Config.getProperty(Config.KEYS.UNIT_DESIGN_PDFS_FOLDER_ID);
         if (pdfFolderId) {
           DriveService.moveFile(driveFileId, pdfFolderId);
@@ -2913,9 +2913,10 @@ var DashboardService = (function() {
         locationDist[loc] = (locationDist[loc] || 0) + 1;
       }
 
-      // Project Stage (Project Video Type)
+      // Project Stage (Project Video Type) - Project Videos ONLY (§17)
+      var isProjectVideo = (lItem['Category'] || '').trim() === 'Project Video';
       var stage = (lItem['Project Video Type'] || '').trim();
-      if (stage) {
+      if (isProjectVideo && stage) {
         stageDist[stage] = (stageDist[stage] || 0) + 1;
       }
 

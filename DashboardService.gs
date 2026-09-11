@@ -100,9 +100,10 @@ var DashboardService = (function() {
         locationDist[loc] = (locationDist[loc] || 0) + 1;
       }
 
-      // Project Stage (Project Video Type)
+      // Project Stage (Project Video Type) - Project Videos ONLY (§17)
+      var isProjectVideo = (lItem['Category'] || '').trim() === 'Project Video';
       var stage = (lItem['Project Video Type'] || '').trim();
-      if (stage) {
+      if (isProjectVideo && stage) {
         stageDist[stage] = (stageDist[stage] || 0) + 1;
       }
 

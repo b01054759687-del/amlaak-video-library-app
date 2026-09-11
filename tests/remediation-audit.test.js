@@ -1,6 +1,6 @@
 /**
  * AMLAAK VIDEO LIBRARY — INDEPENDENT REMEDIATION VERIFICATION AUDIT
- * Verifies all 10 remediation points from the critical review.
+ * Verifies all remediation points from the critical review and zero-cost architecture transition.
  */
 const fs = require('fs');
 const path = require('path');
@@ -26,11 +26,15 @@ console.log('AMLAAK VIDEO LIBRARY — CRITICAL REMEDIATION AUTOMATED AUDIT');
 console.log('======================================================================\n');
 
 const frontendDir = path.resolve(__dirname, '../frontend');
+const rootDir = path.resolve(__dirname, '..');
 const indexHtml = fs.readFileSync(path.join(frontendDir, 'index.html'), 'utf8');
 const mainJs = fs.readFileSync(path.join(frontendDir, 'src/main.js'), 'utf8');
 const clientJs = fs.readFileSync(path.join(frontendDir, 'src/api/client.js'), 'utf8');
 const authJs = fs.readFileSync(path.join(frontendDir, 'src/auth/google-auth.js'), 'utf8');
 const mainCss = fs.readFileSync(path.join(frontendDir, 'src/styles/main.css'), 'utf8');
+const appsscriptJson = fs.readFileSync(path.join(rootDir, 'appsscript.json'), 'utf8');
+const distAppsscriptJson = fs.readFileSync(path.join(rootDir, 'dist/appsscript.json'), 'utf8');
+const dashboardGs = fs.readFileSync(path.join(rootDir, 'DashboardService.gs'), 'utf8');
 
 // 1. Mock Data & Functions Elimination
 check('Zero client-side mock store or setupLocalPreviewMocks() in frontend', () => {
@@ -75,6 +79,8 @@ check('Clear unavailable state banner with correlation code and retry button exi
   assert(mainJs.includes('ERR-CONN-UNAVAILABLE') || mainJs.includes('ERR-CONN-REFUSED'), 'Correlation code missing');
   assert(mainJs.includes('Database Connection Unavailable'), 'Honest unavailable text missing');
   assert(mainJs.includes('Retry Connection'), 'Retry Connection button missing');
+  assert(mainJs.includes('<details'), 'Collapsible details tag missing from unavailable banner');
+  assert(mainJs.includes('No data available while the database is offline.'), 'Offline breakdown placeholder missing');
 });
 
 // 6. UI Repair: Secondary Buttons
@@ -95,12 +101,12 @@ check('Source toggle buttons have high-contrast active/inactive styles and ARIA 
   assert(mainCss.includes('.toggle-btn-inactive'), '.toggle-btn-inactive missing in main.css');
 });
 
-// 8. UI Repair: Standardized Action Buttons in Tables
-check('Action buttons in tables standardized to equal dimensions with ARIA and tooltips', () => {
+// 8. UI Repair: Standardized Action Buttons in Tables with WCAG Touch Targets
+check('Action buttons in tables standardized to equal dimensions (>=40px) with ARIA and tooltips', () => {
   assert(mainJs.includes('action-btn-icon'), 'action-btn-icon class missing in main.js table rows');
   assert(mainCss.includes('.action-btn-icon'), '.action-btn-icon class missing in main.css');
-  assert(mainCss.includes('width: 2rem'), 'width: 2rem missing in .action-btn-icon');
-  assert(mainCss.includes('height: 2rem'), 'height: 2rem missing in .action-btn-icon');
+  assert(mainCss.includes('min-width: 40px'), 'min-width: 40px missing in .action-btn-icon');
+  assert(mainCss.includes('min-height: 40px'), 'min-height: 40px missing in .action-btn-icon');
 });
 
 // 9. Accessibility: Skip Navigation Link & Semantics
@@ -121,6 +127,38 @@ check('Backend segregates Google APIs and Mock adapters via DATA_ADAPTER injecti
   assert(driveGoogle, 'drive.google.js missing');
   assert(sheetsMock, 'sheets.mock.js missing');
   assert(driveMock, 'drive.mock.js missing');
+});
+
+// 11. Zero-Cost Apps Script Execution API Architecture (§14)
+check('Frontend invokes Apps Script Execution API with hardcoded devMode: false', () => {
+  assert(clientJs.includes('script.googleapis.com/v1/scripts/'), 'Execution API endpoint missing in client.js');
+  assert(clientJs.includes('devMode: false'), 'devMode: false missing in client.js');
+  assert(!clientJs.includes('callRest'), 'Dead callRest found in client.js');
+  assert(clientJs.includes('executeAppsScriptApi'), 'executeAppsScriptApi function missing in client.js');
+});
+
+// 12. Direct Resumable Google Drive PDF Upload (§15)
+check('Direct Google Drive resumable upload client is implemented for large PDFs', () => {
+  assert(clientJs.includes('uploadPdfDirectToDrive'), 'uploadPdfDirectToDrive missing in client.js');
+  assert(clientJs.includes('uploadType=resumable'), 'Resumable upload type missing in client.js');
+  assert(mainJs.includes('uploadPdfDirectToDrive'), 'uploadPdfDirectToDrive not wired in main.js');
+});
+
+// 13. Apps Script Execution API Manifest Configuration
+check('appsscript.json and dist/appsscript.json contain executionApi block', () => {
+  assert(appsscriptJson.includes('"executionApi"'), 'executionApi missing from appsscript.json');
+  assert(distAppsscriptJson.includes('"executionApi"'), 'executionApi missing from dist/appsscript.json');
+});
+
+// 14. Finishing Stage Calculation Excludes Marketing Content (§17)
+check('DashboardService.gs restricts finishing stages strictly to Project Videos', () => {
+  assert(dashboardGs.includes("Category'] || '').trim() === 'Project Video'"), 'Project Video guard missing in stageDist calculation');
+});
+
+// 15. Dashboard Metric Precision Label
+check('Dashboard KPI displays Stored PDF versions instead of Archived design plans', () => {
+  assert(indexHtml.includes('Stored PDF versions'), 'Stored PDF versions missing in frontend/index.html');
+  assert(!indexHtml.includes('Archived design plans'), 'Outdated Archived design plans still in frontend/index.html');
 });
 
 console.log('\n======================================================================');
