@@ -3,8 +3,8 @@
  * Amlaak Video Library — Client Application Engine (Production Module)
  * Integrated with Secure REST API and Google Identity Services
  */
-import { setAuthToken, getAuthToken, getBackendBaseUrl, callRest } from './api/client.js';
-import { initGoogleAuth, signOut, getCurrentUser, renderSignInButton } from './auth/google-auth.js';
+import { setAuthToken, getAuthToken, getAppsScriptId, executeAppsScriptApi, uploadPdfDirectToDrive, callApi } from './api/client.js';
+import { initGoogleAuth, signOut, getCurrentUser, renderSignInButton, requestGoogleSignIn } from './auth/google-auth.js';
 
 // Configuration: can be overridden via window.ENV_BACKEND_URL or window.ENV_GOOGLE_CLIENT_ID
 const GOOGLE_CLIENT_ID = window.ENV_GOOGLE_CLIENT_ID || '';
@@ -141,10 +141,13 @@ function renderUnavailableDatabaseState(errorCode, message) {
         '<div class="text-xs text-rose-200/90 leading-relaxed font-medium">' +
           'The application is currently unavailable because a secure database connection could not be established.' +
         '</div>' +
-        '<div class="text-[11px] font-mono-code text-rose-300/80 mt-1">' +
-          'Correlation Code: <span class="font-bold text-white">' + escapeHtml(code) + '</span>' +
-          (message ? ' &bull; ' + escapeHtml(message) : '') +
-        '</div>' +
+        '<details class="text-[11px] font-mono-code text-rose-300/80 mt-1 cursor-pointer">' +
+          '<summary class="hover:underline font-bold text-rose-200">Database Connection Unavailable &bull; Technical details</summary>' +
+          '<div class="mt-1.5 p-2 bg-rose-950/60 rounded border border-rose-800/40">' +
+            'Correlation Code: <span class="font-bold text-white">' + escapeHtml(code) + '</span>' +
+            (message ? ' &bull; ' + escapeHtml(message) : '') +
+          '</div>' +
+        '</details>' +
       '</div>' +
     '</div>' +
     '<div class="shrink-0 flex items-center gap-2">' +
@@ -182,6 +185,15 @@ function renderUnavailableDatabaseState(errorCode, message) {
   if (unitsContainer) {
     unitsContainer.innerHTML = '<div class="col-span-full p-8 text-center text-xs text-slate-400 font-medium bg-slate-900/40 rounded-xl border border-slate-800">No records found. Secure database connection required.</div>';
   }
+
+  // Breakdown & chart containers offline state (§17)
+  var breakdownIds = ['chartLocationsList', 'chartStagesList', 'chartSpacesList', 'chartWorkCatList', 'dashRecentActivityList'];
+  breakdownIds.forEach(function(bId) {
+    var bEl = document.getElementById(bId);
+    if (bEl) {
+      bEl.innerHTML = '<div class="text-xs text-slate-500 text-center py-4">No data available while the database is offline.</div>';
+    }
+  });
 
   // Disable all creation & edit forms (§4)
   var buttonsToDisable = [
@@ -1861,50 +1873,82 @@ function submitUploadPdf(e) {
   btn.disabled = true;
   btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Uploading…';
 
-  var reader = new FileReader();
-  reader.onerror = function() {
-    showToast('error', 'Failed to read PDF file. Please try again.');
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-upload"></i> <span>Upload &amp; Archive</span>';
-  };
-  reader.onabort = function() {
-    showToast('error', 'PDF file reading was aborted.');
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-upload"></i> <span>Upload &amp; Archive</span>';
-  };
-  reader.onload = function(evt) {
-    var payload = {
-      unitId: document.getElementById('upUnitId').value,
-      fileName: file.name,
-      documentTitle: document.getElementById('upDocumentTitle').value.trim() || file.name,
-      versionNotes: document.getElementById('upVersionNotes').value.trim(),
-      base64Content: evt.target.result.split(',')[1]
-    };
+  var unitId = document.getElementById('upUnitId').value;
+  var docTitle = document.getElementById('upDocumentTitle').value.trim() || file.name;
+  var verNotes = document.getElementById('upVersionNotes').value.trim();
 
-    callApi('apiUploadPdf', [payload], function(res) {
+  function onPdfSuccess(res) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-upload"></i> <span>Upload &amp; Archive</span>';
+
+    if (!res.ok) {
+      showToast('error', res.message);
+      return;
+    }
+
+    var successMsg = (res.data && res.data.versionNumber)
+      ? ('Design PDF uploaded as ' + res.data.versionNumber + '.')
+      : 'Design PDF uploaded as next version.';
+    showToast('success', successMsg);
+
+    closeUploadPdfModal();
+    if (AppState.activeUnitDetail) {
+      openUnitDetail(AppState.activeUnitDetail.unit.unitId);
+    }
+    loadUnitsCatalog();
+    loadDashboard();
+  }
+
+  // Resumable direct Google Drive upload if OAuth access token is active (§15)
+  if (getAuthToken()) {
+    uploadPdfDirectToDrive(file)
+      .then(function(driveRes) {
+        if (driveRes && driveRes.ok && driveRes.driveFileId) {
+          var payload = {
+            unitId: unitId,
+            fileName: file.name,
+            documentTitle: docTitle,
+            versionNotes: verNotes,
+            driveFileId: driveRes.driveFileId,
+            fileSize: file.size
+          };
+          callApi('apiUploadPdf', [payload], onPdfSuccess);
+        } else {
+          fallbackBase64PdfUpload();
+        }
+      })
+      .catch(function() {
+        fallbackBase64PdfUpload();
+      });
+    return;
+  }
+
+  fallbackBase64PdfUpload();
+
+  function fallbackBase64PdfUpload() {
+    var reader = new FileReader();
+    reader.onerror = function() {
+      showToast('error', 'Failed to read PDF file. Please try again.');
       btn.disabled = false;
       btn.innerHTML = '<i class="fa-solid fa-upload"></i> <span>Upload &amp; Archive</span>';
-
-      if (!res.ok) {
-        showToast('error', res.message);
-        // Form preserved on failure (§8)
-        return;
-      }
-
-      var successMsg = (res.data && res.data.versionNumber)
-        ? ('Design PDF uploaded as ' + res.data.versionNumber + '.')
-        : 'Design PDF uploaded as next version.';
-      showToast('success', successMsg);
-
-      closeUploadPdfModal();
-      if (AppState.activeUnitDetail) {
-        openUnitDetail(AppState.activeUnitDetail.unit.unitId);
-      }
-      loadUnitsCatalog();
-      loadDashboard();
-    });
-  };
-  reader.readAsDataURL(file);
+    };
+    reader.onabort = function() {
+      showToast('error', 'PDF file reading was aborted.');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-upload"></i> <span>Upload &amp; Archive</span>';
+    };
+    reader.onload = function(evt) {
+      var payload = {
+        unitId: unitId,
+        fileName: file.name,
+        documentTitle: docTitle,
+        versionNotes: verNotes,
+        base64Content: evt.target.result.split(',')[1]
+      };
+      callApi('apiUploadPdf', [payload], onPdfSuccess);
+    };
+    reader.readAsDataURL(file);
+  }
 }
 
 // =============================================================
@@ -1976,76 +2020,8 @@ function triggerSystemSetup() {
 
 // =============================================================
 // UNIVERSAL API CALL & FEEDBACK HELPERS
+// (callApi is imported directly from ./api/client.js (§14))
 // =============================================================
-function callApi(fnName, args, callback) {
-  if (typeof callback !== 'function') callback = function() {};
-
-
-  var a = args || [];
-  (async function() {
-    var result = null;
-    try {
-      switch (fnName) {
-        case 'apiGetAppBootstrapData':
-          result = await callRest('bootstrap', 'GET');
-          break;
-        case 'apiGetDashboard':
-          result = await callRest('dashboard', 'GET', null, a[0]);
-          break;
-        case 'apiCreateUnit':
-          result = await callRest('units', 'POST', a[0]);
-          break;
-        case 'apiAddProjectVideo':
-          result = await callRest('videos/project', 'POST', a[0]);
-          break;
-        case 'apiAddMarketingContent':
-          result = await callRest('videos/marketing', 'POST', a[0]);
-          break;
-        case 'apiGetVideos':
-          result = await callRest('videos', 'GET', null, a[0]);
-          break;
-        case 'apiGetVideoVersionHistory':
-          result = await callRest('videos/' + encodeURIComponent(a[0]) + '/versions', 'GET');
-          break;
-        case 'apiUpdateSingleVideoMetadata':
-          result = await callRest('videos/' + encodeURIComponent(a[0]) + '/metadata', 'PATCH', {
-            fields: a[1],
-            confirmRename: a[2]
-          });
-          break;
-        case 'apiAddNewVersion':
-          result = await callRest('videos/version', 'POST', a[0]);
-          break;
-        case 'apiGetUnits':
-          result = await callRest('units', 'GET');
-          break;
-        case 'apiGetUnitDetail':
-          result = await callRest('units/' + encodeURIComponent(a[0]), 'GET');
-          break;
-        case 'apiUpdateUnit':
-          result = await callRest('units/' + encodeURIComponent(a[0]), 'PATCH', {
-            fields: a[1],
-            executeBatchRename: a[2]
-          });
-          break;
-        case 'apiUploadPdf':
-          result = await callRest('pdfs', 'POST', a[0]);
-          break;
-        case 'apiGetSystemConfig':
-          result = await callRest('config', 'GET');
-          break;
-        case 'apiSetupSystem':
-          result = await callRest('config/setup', 'POST', a[0]);
-          break;
-        default:
-          result = { ok: false, errorCode: 'UNKNOWN_ENDPOINT', message: 'Unknown API function: ' + fnName };
-      }
-    } catch (e) {
-      result = { ok: false, errorCode: 'REQUEST_FAILED', message: e.message };
-    }
-    callback(result);
-  })();
-}
 
 function showToast(type, message) {
   var container = document.getElementById('toastContainer');
@@ -2230,6 +2206,9 @@ window.handleSignOut = function() {
   signOut();
   window.location.reload();
 };
+window.requestGoogleSignIn = requestGoogleSignIn;
+window.executeAppsScriptApi = executeAppsScriptApi;
+window.uploadPdfDirectToDrive = uploadPdfDirectToDrive;
 
 // Initialise Google Authentication Lifecycle (§8, §14)
 document.addEventListener('DOMContentLoaded', function() {

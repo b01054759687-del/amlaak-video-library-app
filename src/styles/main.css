@@ -679,18 +679,28 @@ input[type="file"]::file-selector-button:hover {
   color: #FFFFFF !important;
 }
 
-/* Standardised Action Buttons in Tables (§13c) */
+/* Standardised Action Buttons in Tables (§13c, §17) */
 .action-btn-icon {
-  width: 2rem;
-  height: 2rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 40px;
+  min-height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 0.5rem;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   transition: all 0.15s ease-in-out;
   cursor: pointer;
   border: 1px solid transparent;
+}
+@media (min-width: 640px) {
+  .action-btn-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 .action-btn-icon:focus-visible {
   outline: 2px solid #DFBF7A;
