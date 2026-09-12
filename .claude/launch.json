@@ -12,6 +12,12 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["tests/transport-test-server.js"],
       "port": 4174
+    },
+    {
+      "name": "amlaak-web-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tests/web-preview-server.js"],
+      "port": 4175
     }
   ]
 }
