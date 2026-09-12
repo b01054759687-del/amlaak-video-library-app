@@ -292,7 +292,7 @@
       <!-- Session status -->
       <div class="flex items-center gap-3 w-full lg:w-auto justify-end">
         <div class="text-right hidden sm:block">
-          <div id="userEmailBadge" class="text-xs font-mono-code font-bold text-slate-200">louyashra@gmail.com</div>
+          <div id="userEmailBadge" class="text-xs font-mono-code font-bold text-slate-200">Signing in…</div>
           <div id="userRoleBadge" class="text-[10px] text-[#DFBF7A] font-bold">Checking role…</div>
         </div>
         <button onclick="reloadCurrentView()" title="Refresh data" aria-label="Refresh data" class="w-10 h-10 rounded-lg bg-slate-800/70 border border-slate-700 text-slate-300 hover:text-[#DFBF7A] hover:border-amber-500/40 transition flex items-center justify-center">
@@ -328,7 +328,7 @@
         </div>
         <button onclick="clearDashboardDates()" class="text-xs text-slate-400 hover:text-rose-400 transition underline">Clear dates</button>
       </div>
-      <div class="text-xs text-amber-300/80 font-semibold flex items-center gap-1.5">
+      <div id="liveDataIndicator" class="text-xs text-amber-300/80 font-semibold flex items-center gap-1.5 hidden">
         <i class="fa-solid fa-circle-check text-emerald-400"></i> Live data from Google Sheets
       </div>
     </div>
@@ -1482,52 +1482,56 @@ function initApp() {
       return;
     }
 
-    AppState.isBootstrapped = true;
-    var data = response.data;
-    AppState.currentUser = data.user;
-    AppState.lists = data.lists;
-    AppState.isConfigured = data.isConfigured;
-    AppState.unitLookups = data.unitLookups || [];
+    try {
+      AppState.isBootstrapped = true;
+      var data = response.data;
+      AppState.currentUser = data.user;
+      AppState.lists = data.lists;
+      AppState.isConfigured = data.isConfigured;
+      AppState.unitLookups = data.unitLookups || [];
 
-    var emailBadge = document.getElementById('userEmailBadge');
-    var roleBadge = document.getElementById('userRoleBadge');
-    if (data.user && data.user.email) {
-      emailBadge.textContent = data.user.email;
-      roleBadge.textContent = data.user.role || 'Authorised';
-      document.getElementById('bannerExecuteEmail').textContent = data.user.email;
+      var emailBadge = document.getElementById('userEmailBadge');
+      var roleBadge = document.getElementById('userRoleBadge');
+      if (data.user && data.user.email) {
+        emailBadge.textContent = data.user.email;
+        roleBadge.textContent = data.user.role || 'Authorised';
+        document.getElementById('bannerExecuteEmail').textContent = data.user.email;
 
-      // Settings protection (§11): strictly hide Settings nav for non-owner
-      var btnSettings = document.getElementById('btnTabSettings');
-      if (btnSettings) {
-        if (data.user.role !== 'System Owner') {
-          btnSettings.classList.add('hidden');
+        // Settings protection (§11): strictly hide Settings nav for non-owner
+        var btnSettings = document.getElementById('btnTabSettings');
+        if (btnSettings) {
+          if (data.user.role !== 'System Owner') {
+            btnSettings.classList.add('hidden');
+          } else {
+            btnSettings.classList.remove('hidden');
+          }
+        }
+      } else {
+        emailBadge.textContent = 'Not signed in';
+        roleBadge.textContent = 'Not authorised';
+      }
+
+      // Connection badge derived strictly from verified server response
+      var statusBadge = document.getElementById('configStatusBadge');
+      if (statusBadge) {
+        if (data.isConfigured) {
+          statusBadge.textContent = 'Connected';
+          statusBadge.className = 'font-bold text-emerald-400';
         } else {
-          btnSettings.classList.remove('hidden');
+          statusBadge.textContent = 'Configuration Needed';
+          statusBadge.className = 'font-bold text-amber-400';
         }
       }
-    } else {
-      emailBadge.textContent = 'Not signed in';
-      roleBadge.textContent = 'Not authorised';
-    }
 
-    // Connection badge derived strictly from verified server response
-    var statusBadge = document.getElementById('configStatusBadge');
-    if (statusBadge) {
-      if (data.isConfigured) {
-        statusBadge.textContent = 'Connected';
-        statusBadge.className = 'font-bold text-emerald-400';
-      } else {
-        statusBadge.textContent = 'Configuration Needed';
-        statusBadge.className = 'font-bold text-amber-400';
+      populateTaxonomyDropdowns();
+
+      // Render dashboard immediately with zero extra network round-trips
+      if (data.dashboard) {
+        renderDashboardData(data.dashboard);
+        AppState.dashboardLoaded = true;
       }
-    }
-
-    populateTaxonomyDropdowns();
-
-    // Render dashboard immediately with zero extra network round-trips
-    if (data.dashboard) {
-      renderDashboardData(data.dashboard);
-      AppState.dashboardLoaded = true;
+    } catch (renderError) {
+      showFatalConnectionError('The application loaded data successfully but failed to display it (' + (renderError && renderError.message ? renderError.message : renderError) + '). Please retry the connection.');
     }
   });
 }
@@ -1680,6 +1684,9 @@ function renderDashboardData(data) {
   if (!data) return;
   var kpis = data.kpis || {};
   var breakdowns = data.breakdowns || {};
+
+  var liveIndicator = document.getElementById('liveDataIndicator');
+  if (liveIndicator) liveIndicator.classList.remove('hidden');
 
   document.getElementById('kpiLogicalVideos').textContent = kpis.totalLogicalVideos || 0;
   document.getElementById('kpiStoredVersions').textContent = kpis.totalStoredVersions || 0;
@@ -3255,6 +3262,8 @@ function hideGlobalLoading() {
 
 function showFatalConnectionError(message, errorCode) {
   hideGlobalLoading();
+  var liveIndicator = document.getElementById('liveDataIndicator');
+  if (liveIndicator) liveIndicator.classList.add('hidden');
   var overlay = document.getElementById('fatalErrorOverlay');
   var text = document.getElementById('fatalErrorMessage');
   var title = document.getElementById('fatalErrorTitle');
