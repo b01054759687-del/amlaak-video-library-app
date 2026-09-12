@@ -9,8 +9,22 @@ var Auth = (function() {
     USER_1: 'Authorised User 1',
     USER_2: 'Authorised User 2',
     EDITOR: 'Editor',
-    VIEWER: 'Viewer'
+    VIEWER: 'Viewer',
+    SHARED_SESSION: 'Shared Access Session'
   };
+
+  // Set only by Gateway.gs, once per request, after it has independently
+  // validated a shared-code session token. Under the GitHub Pages gateway's
+  // access model (ANYONE_ANONYMOUS / USER_DEPLOYING) there is no accessing
+  // Google identity to check — Session.getActiveUser() returns nothing
+  // meaningful — so requireAuth()/getCurrentUser() below defer to this flag
+  // instead when it has been set. The original Apps Script HTML UI deployment
+  // never sets it, so its Google-identity + allowlist behaviour is unchanged.
+  var gatewaySessionAuthenticated = false;
+
+  function markGatewaySessionAuthenticated() {
+    gatewaySessionAuthenticated = true;
+  }
 
   /**
    * Retrieves the accessing user's email — the sole source of truth for
@@ -45,6 +59,16 @@ var Auth = (function() {
    * Checks whether the given or current user is on the active allowlist.
    */
   function getCurrentUser() {
+    if (gatewaySessionAuthenticated) {
+      return {
+        email: '',
+        role: ROLES.SHARED_SESSION,
+        active: true,
+        isAuthorized: true,
+        message: 'Access authorized via shared-code session'
+      };
+    }
+
     var email = getCurrentUserEmail();
     if (!email) {
       return {
@@ -156,6 +180,7 @@ var Auth = (function() {
 
   return {
     ROLES: ROLES,
+    markGatewaySessionAuthenticated: markGatewaySessionAuthenticated,
     getCurrentUserEmail: getCurrentUserEmail,
     getDiagnosticEffectiveEmail: getDiagnosticEffectiveEmail,
     getCurrentUser: getCurrentUser,

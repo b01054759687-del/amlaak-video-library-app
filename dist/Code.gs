@@ -19,7 +19,12 @@ var Config = (function() {
     MARKETING_CONTENT_FOLDER_ID: 'MARKETING_CONTENT_FOLDER_ID',
     UNIT_DESIGN_PDFS_FOLDER_ID: 'UNIT_DESIGN_PDFS_FOLDER_ID',
     TIMEZONE: 'TIMEZONE',
-    SYSTEM_INITIALIZED: 'SYSTEM_INITIALIZED'
+    SYSTEM_INITIALIZED: 'SYSTEM_INITIALIZED',
+    // Shared-code gateway (GitHub Pages frontend) — see GatewaySession.gs.
+    // Only the salted hash is ever stored, never the raw access code.
+    APP_ACCESS_CODE_SALT: 'APP_ACCESS_CODE_SALT',
+    APP_ACCESS_CODE_HASH: 'APP_ACCESS_CODE_HASH',
+    APP_SESSION_EPOCH: 'APP_SESSION_EPOCH'
   };
 
   var TABS = {
@@ -674,8 +679,22 @@ var Auth = (function() {
     USER_1: 'Authorised User 1',
     USER_2: 'Authorised User 2',
     EDITOR: 'Editor',
-    VIEWER: 'Viewer'
+    VIEWER: 'Viewer',
+    SHARED_SESSION: 'Shared Access Session'
   };
+
+  // Set only by Gateway.gs, once per request, after it has independently
+  // validated a shared-code session token. Under the GitHub Pages gateway's
+  // access model (ANYONE_ANONYMOUS / USER_DEPLOYING) there is no accessing
+  // Google identity to check — Session.getActiveUser() returns nothing
+  // meaningful — so requireAuth()/getCurrentUser() below defer to this flag
+  // instead when it has been set. The original Apps Script HTML UI deployment
+  // never sets it, so its Google-identity + allowlist behaviour is unchanged.
+  var gatewaySessionAuthenticated = false;
+
+  function markGatewaySessionAuthenticated() {
+    gatewaySessionAuthenticated = true;
+  }
 
   /**
    * Retrieves the accessing user's email — the sole source of truth for
@@ -710,6 +729,16 @@ var Auth = (function() {
    * Checks whether the given or current user is on the active allowlist.
    */
   function getCurrentUser() {
+    if (gatewaySessionAuthenticated) {
+      return {
+        email: '',
+        role: ROLES.SHARED_SESSION,
+        active: true,
+        isAuthorized: true,
+        message: 'Access authorized via shared-code session'
+      };
+    }
+
     var email = getCurrentUserEmail();
     if (!email) {
       return {
@@ -821,6 +850,7 @@ var Auth = (function() {
 
   return {
     ROLES: ROLES,
+    markGatewaySessionAuthenticated: markGatewaySessionAuthenticated,
     getCurrentUserEmail: getCurrentUserEmail,
     getDiagnosticEffectiveEmail: getDiagnosticEffectiveEmail,
     getCurrentUser: getCurrentUser,
@@ -829,6 +859,145 @@ var Auth = (function() {
     getAllowlistFromSheet: getAllowlistFromSheet
   };
 })();
+
+
+// ==========================================
+// FILE: GatewaySession.gs
+// ==========================================
+/**
+ * Amlaak Video Library — Shared-Code Gateway Session Management
+ * Used only by the GitHub Pages frontend transport (see Gateway.gs). The
+ * existing Google-identity model (Auth.gs) is untouched and still used by
+ * the original Apps Script HTML UI deployment, which stays available as a
+ * rollback.
+ */
+
+var GatewaySession = (function() {
+  var SESSION_TTL_SECONDS = 6 * 60 * 60; // CacheService's own maximum TTL
+
+  function sha256Hex(str) {
+    var rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, str, Utilities.Charset.UTF_8);
+    return rawHash.map(function(b) {
+      var v = (b < 0) ? b + 256 : b;
+      var hex = v.toString(16);
+      return hex.length === 1 ? '0' + hex : hex;
+    }).join('');
+  }
+
+  function constantTimeEquals(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+    var diff = 0;
+    for (var i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return diff === 0;
+  }
+
+  function generateSalt() {
+    return Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+  }
+
+  /**
+   * Stores only a salted SHA-256 hash of the access code — never the raw
+   * value. Intended to be called only from ONE_TIME_setAccessCode(), run
+   * manually by the owner in the Apps Script editor.
+   */
+  function setAccessCode(rawCode) {
+    if (!rawCode || String(rawCode).length < 8) {
+      throw new Error('Access code must be at least 8 characters.');
+    }
+    var salt = generateSalt();
+    var hash = sha256Hex(salt + String(rawCode));
+    Config.setProperties({
+      APP_ACCESS_CODE_SALT: salt,
+      APP_ACCESS_CODE_HASH: hash,
+      APP_SESSION_EPOCH: String(Date.now())
+    });
+    return 'Access code configured. Salt and hash stored in Script Properties; the raw code was not logged or saved anywhere.';
+  }
+
+  function verifyAccessCode(rawCode) {
+    var salt = Config.getProperty(Config.KEYS.APP_ACCESS_CODE_SALT);
+    var storedHash = Config.getProperty(Config.KEYS.APP_ACCESS_CODE_HASH);
+    if (!salt || !storedHash) return false;
+    if (!rawCode || typeof rawCode !== 'string') return false;
+    return constantTimeEquals(sha256Hex(salt + rawCode), storedHash);
+  }
+
+  function isAccessCodeConfigured() {
+    return !!(Config.getProperty(Config.KEYS.APP_ACCESS_CODE_SALT) && Config.getProperty(Config.KEYS.APP_ACCESS_CODE_HASH));
+  }
+
+  function createSession() {
+    var token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+    var tokenHash = sha256Hex(token);
+    var epoch = Config.getProperty(Config.KEYS.APP_SESSION_EPOCH, '0');
+    CacheService.getScriptCache().put('gwsession_' + tokenHash, JSON.stringify({ epoch: epoch }), SESSION_TTL_SECONDS);
+    return { token: token, expiresInSeconds: SESSION_TTL_SECONDS };
+  }
+
+  function validateSession(token) {
+    if (!token || typeof token !== 'string') return false;
+    var raw = CacheService.getScriptCache().get('gwsession_' + sha256Hex(token));
+    if (!raw) return false;
+    try {
+      var record = JSON.parse(raw);
+      return record.epoch === Config.getProperty(Config.KEYS.APP_SESSION_EPOCH, '0');
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function invalidateSession(token) {
+    if (!token || typeof token !== 'string') return;
+    CacheService.getScriptCache().remove('gwsession_' + sha256Hex(token));
+  }
+
+  function bumpSessionEpoch() {
+    Config.setProperty(Config.KEYS.APP_SESSION_EPOCH, String(Date.now()));
+  }
+
+  return {
+    sha256Hex: sha256Hex,
+    constantTimeEquals: constantTimeEquals,
+    setAccessCode: setAccessCode,
+    verifyAccessCode: verifyAccessCode,
+    isAccessCodeConfigured: isAccessCodeConfigured,
+    createSession: createSession,
+    validateSession: validateSession,
+    invalidateSession: invalidateSession,
+    bumpSessionEpoch: bumpSessionEpoch
+  };
+})();
+
+/**
+ * ONE-TIME SETUP — run this yourself from the Apps Script editor (Run menu
+ * -> select ONE_TIME_setAccessCode -> Run). Never call this through the
+ * gateway, and never commit a real access code to git.
+ *
+ * 1. Replace 'CHANGE_ME' below with your chosen access code (8+ characters
+ *    — something you can share securely with staff, not a password you
+ *    reuse elsewhere).
+ * 2. Save (Ctrl+S) and Run this function once, here in the editor.
+ * 3. Confirm success in the execution log (it will not show the raw code).
+ * 4. Immediately change the line back to 'CHANGE_ME' and save again — the
+ *    raw value must not remain in source once it has been applied.
+ */
+function ONE_TIME_setAccessCode() {
+  var rawCode = 'CHANGE_ME';
+  if (rawCode === 'CHANGE_ME') {
+    throw new Error('Edit ONE_TIME_setAccessCode() in the Apps Script editor and replace CHANGE_ME with your chosen access code before running it.');
+  }
+  Logger.log(GatewaySession.setAccessCode(rawCode));
+}
+
+/**
+ * Emergency revocation — run from the editor to instantly invalidate every
+ * currently-issued session (e.g. if the access code may have leaked),
+ * without needing to change the code itself.
+ */
+function ONE_TIME_revokeAllSessions() {
+  GatewaySession.bumpSessionEpoch();
+  Logger.log('All existing sessions invalidated. Users must log in again with the current access code.');
+}
 
 
 // ==========================================
@@ -3327,6 +3496,190 @@ var Setup = (function() {
 
 
 // ==========================================
+// FILE: Gateway.gs
+// ==========================================
+/**
+ * Amlaak Video Library — GitHub Pages JSON Gateway
+ * Single entry point (doPost, wired in Code.gs) for the GitHub Pages
+ * frontend. Explicit action allowlist only — no eval, no arbitrary function
+ * dispatch. Every action except 'health' and 'login' requires a valid
+ * shared-code session token, validated here before any service call runs.
+ * Deliberately excludes setupSystem/getSystemConfig — owner-only
+ * provisioning stays off this public gateway entirely, not just role-gated.
+ */
+
+function GatewayError(code, message) {
+  this.code = code;
+  this.message = message;
+}
+GatewayError.prototype = Object.create(Error.prototype);
+
+var Gateway = (function() {
+  var MAX_REQUEST_BYTES = 2 * 1024 * 1024; // generous for JSON; PDF bytes are separately size-checked in PdfService
+
+  var PUBLIC_ACTIONS = { health: true, login: true };
+
+  var ACTIONS = {
+    health: function() {
+      return { status: 'ok', time: new Date().toISOString() };
+    },
+    login: function(payload) {
+      var code = payload && payload.accessCode;
+      if (!GatewaySession.isAccessCodeConfigured()) {
+        throw new GatewayError('CONFIGURATION_ERROR', 'The access code has not been configured yet. Ask the system owner to complete setup.');
+      }
+      if (!GatewaySession.verifyAccessCode(code)) {
+        throw new GatewayError('INVALID_CODE', 'Incorrect access code.');
+      }
+      var session = GatewaySession.createSession();
+      return { sessionToken: session.token, expiresInSeconds: session.expiresInSeconds };
+    },
+    sessionCheck: function() {
+      return { valid: true };
+    },
+    getBootstrapData: function() {
+      return DashboardService.getBootstrapData();
+    },
+    getDashboard: function(payload) {
+      return DashboardService.getDashboardData(payload && payload.filters);
+    },
+    getVideos: function(payload) {
+      return VideoService.getLibraryVideos(payload && payload.filters);
+    },
+    addProjectVideo: function(payload) {
+      return VideoService.addProjectVideo(payload);
+    },
+    addMarketingContent: function(payload) {
+      return VideoService.addMarketingContent(payload);
+    },
+    addNewVersion: function(payload) {
+      return VideoService.addNewVersion(payload);
+    },
+    getVideoVersionHistory: function(payload) {
+      return VideoService.getVideoVersionHistory(payload && payload.videoNumber);
+    },
+    updateSingleVideoMetadata: function(payload) {
+      return VideoService.updateSingleVideoMetadata(
+        payload && payload.driveFileId,
+        payload && payload.fields,
+        payload && payload.confirmRename
+      );
+    },
+    getUnits: function() {
+      return UnitService.getUnits();
+    },
+    getUnitDetail: function(payload) {
+      return UnitService.getUnitDetail(payload && payload.unitId);
+    },
+    createUnit: function(payload) {
+      return UnitService.createUnit(payload);
+    },
+    updateUnit: function(payload) {
+      return UnitService.updateUnit(
+        payload && payload.unitId,
+        payload && payload.fields,
+        payload && payload.executeBatchRename
+      );
+    },
+    uploadPdf: function(payload) {
+      return PdfService.uploadUnitDesignPdf(payload);
+    }
+  };
+
+  function isPlainObject(v) {
+    return v !== null && typeof v === 'object' && !Array.isArray(v);
+  }
+
+  function withRequestId(response, requestId) {
+    response.requestId = requestId;
+    return response;
+  }
+
+  function classifyActionError(error) {
+    if (error instanceof GatewayError) {
+      return Utils.errorResponse(error.code, error.message);
+    }
+    var errMsg = (error && error.message) || String(error);
+    var errCode = 'EXECUTION_ERROR';
+    if (errMsg.indexOf('not authorized') !== -1 || errMsg.indexOf('Access Denied') !== -1) {
+      errCode = 'UNAUTHORIZED';
+    } else if (errMsg.indexOf("isn't editable by your Google account") !== -1) {
+      errCode = 'PERMISSION_DENIED';
+    } else if (errMsg.indexOf('already registered') !== -1 || errMsg.indexOf('duplicate') !== -1) {
+      errCode = 'DUPLICATE_FILE';
+    } else if (errMsg.indexOf('lock') !== -1) {
+      errCode = 'LOCKED';
+    }
+    AuditService.logFailure('GATEWAY_' + errCode, 'Gateway', '', '', errCode, errMsg);
+    return Utils.errorResponse(errCode, errMsg);
+  }
+
+  /**
+   * @param {string} rawBody - raw POST body text, expected to be JSON:
+   *   { requestId, action, sessionToken, payload }
+   * @return {Object} plain response object — never a raw thrown error.
+   */
+  function handleRequest(rawBody) {
+    var requestId = '';
+    try {
+      if (typeof rawBody !== 'string' || rawBody.length === 0) {
+        return Utils.errorResponse('BAD_REQUEST', 'Empty request body.');
+      }
+      if (rawBody.length > MAX_REQUEST_BYTES) {
+        return Utils.errorResponse('PAYLOAD_TOO_LARGE', 'Request body exceeds the maximum allowed size.');
+      }
+
+      var request;
+      try {
+        request = JSON.parse(rawBody);
+      } catch (parseErr) {
+        return Utils.errorResponse('BAD_REQUEST', 'Request body is not valid JSON.');
+      }
+
+      if (!isPlainObject(request)) {
+        return Utils.errorResponse('BAD_REQUEST', 'Request body must be a JSON object.');
+      }
+
+      requestId = (typeof request.requestId === 'string' && request.requestId) ? request.requestId.slice(0, 100) : '';
+      var action = request.action;
+
+      if (typeof action !== 'string' || !Object.prototype.hasOwnProperty.call(ACTIONS, action)) {
+        return withRequestId(Utils.errorResponse('UNKNOWN_ACTION', 'Unknown or unsupported action.'), requestId);
+      }
+
+      var payload = isPlainObject(request.payload) ? request.payload : {};
+
+      if (!PUBLIC_ACTIONS[action]) {
+        var sessionToken = typeof request.sessionToken === 'string' ? request.sessionToken : '';
+        if (!GatewaySession.validateSession(sessionToken)) {
+          return withRequestId(Utils.errorResponse('SESSION_INVALID', 'Your session has expired or is invalid. Please log in again.'), requestId);
+        }
+        Auth.markGatewaySessionAuthenticated();
+      }
+
+      var data;
+      try {
+        data = ACTIONS[action](payload);
+      } catch (actionErr) {
+        return withRequestId(classifyActionError(actionErr), requestId);
+      }
+
+      return withRequestId(Utils.successResponse(data), requestId);
+    } catch (fatalErr) {
+      // Never leak a stack trace or raw error object to the client.
+      return withRequestId(Utils.errorResponse('EXECUTION_ERROR', 'An unexpected server error occurred.'), requestId);
+    }
+  }
+
+  return {
+    handleRequest: handleRequest,
+    PUBLIC_ACTIONS: PUBLIC_ACTIONS,
+    ACTIONS: ACTIONS
+  };
+})();
+
+
+// ==========================================
 // FILE: Code.gs
 // ==========================================
 /**
@@ -3344,6 +3697,18 @@ function doGet(e) {
 
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+/**
+ * JSON gateway entry point for the GitHub Pages frontend. See Gateway.gs for
+ * the action allowlist and session validation — this function only wires
+ * the raw POST body in and a JSON ContentService response out.
+ */
+function doPost(e) {
+  var rawBody = (e && e.postData && e.postData.contents) ? e.postData.contents : '';
+  var response = Gateway.handleRequest(rawBody);
+  return ContentService.createTextOutput(JSON.stringify(response))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 /**

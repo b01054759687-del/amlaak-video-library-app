@@ -16,6 +16,18 @@ function include(filename) {
 }
 
 /**
+ * JSON gateway entry point for the GitHub Pages frontend. See Gateway.gs for
+ * the action allowlist and session validation — this function only wires
+ * the raw POST body in and a JSON ContentService response out.
+ */
+function doPost(e) {
+  var rawBody = (e && e.postData && e.postData.contents) ? e.postData.contents : '';
+  var response = Gateway.handleRequest(rawBody);
+  return ContentService.createTextOutput(JSON.stringify(response))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
  * Universal safe API wrapper.
  */
 function handleApiCall(serviceFn, actionName, entityType) {

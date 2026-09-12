@@ -11,7 +11,12 @@ var Config = (function() {
     MARKETING_CONTENT_FOLDER_ID: 'MARKETING_CONTENT_FOLDER_ID',
     UNIT_DESIGN_PDFS_FOLDER_ID: 'UNIT_DESIGN_PDFS_FOLDER_ID',
     TIMEZONE: 'TIMEZONE',
-    SYSTEM_INITIALIZED: 'SYSTEM_INITIALIZED'
+    SYSTEM_INITIALIZED: 'SYSTEM_INITIALIZED',
+    // Shared-code gateway (GitHub Pages frontend) — see GatewaySession.gs.
+    // Only the salted hash is ever stored, never the raw access code.
+    APP_ACCESS_CODE_SALT: 'APP_ACCESS_CODE_SALT',
+    APP_ACCESS_CODE_HASH: 'APP_ACCESS_CODE_HASH',
+    APP_SESSION_EPOCH: 'APP_SESSION_EPOCH'
   };
 
   var TABS = {

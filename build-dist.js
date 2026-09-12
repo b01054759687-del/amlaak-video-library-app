@@ -17,6 +17,7 @@ const serverFiles = [
   'Validators.gs',
   'NamingService.gs',
   'Auth.gs',
+  'GatewaySession.gs',
   'AuditService.gs',
   'SheetRepository.gs',
   'DriveService.gs',
@@ -25,6 +26,7 @@ const serverFiles = [
   'PdfService.gs',
   'DashboardService.gs',
   'Setup.gs',
+  'Gateway.gs',
   'Code.gs'
 ];
 

@@ -5,6 +5,7 @@
 
 const assert = require('assert');
 const fs = require('fs');
+const crypto = require('crypto');
 
 // Simple test harness
 let passed = 0;
@@ -870,26 +871,28 @@ test('Accessibility Invariants: Index.html contains ARIA modal dialogs and no us
 });
 
 // ==============================================================================
-// 12. Apps Script Manifest — Authorised-Users Multiuser Access Invariant
+// 12. Apps Script Manifest — GitHub Pages Shared-Code Gateway Access Model
 // ==============================================================================
+// This branch (feat/github-pages-shared-code-production) deliberately runs a
+// DIFFERENT access model than the original Apps Script HTML UI: the GitHub
+// Pages frontend cannot carry a Google session with it, so the backend must
+// accept anonymous requests (ANYONE_ANONYMOUS / USER_DEPLOYING) and enforce
+// authorisation itself via the shared-code session gateway (Gateway.gs +
+// GatewaySession.gs) instead of Google identity. This is an intentional,
+// reviewed architecture decision, not the same regression the manifest tests
+// previously guarded against — see Section 18 for the compensating tests
+// that verify the gateway itself cannot be bypassed.
 console.log('\n>>> 12. Apps Script Manifest Tests:');
 
-test('Manifest: webapp.access is ANYONE and executeAs is USER_ACCESSING (root)', () => {
+test('Manifest: webapp.access is ANYONE_ANONYMOUS and executeAs is USER_DEPLOYING (shared-code gateway model)', () => {
   const manifest = JSON.parse(fs.readFileSync('appsscript.json', 'utf8'));
-  assert.strictEqual(manifest.webapp.access, 'ANYONE', 'webapp.access must be ANYONE — any signed-in Google user may open the Web App');
-  assert.strictEqual(manifest.webapp.executeAs, 'USER_ACCESSING', 'server execution must run as the accessing user');
+  assert.strictEqual(manifest.webapp.access, 'ANYONE_ANONYMOUS', 'the GitHub Pages frontend cannot carry a Google session, so the backend must accept anonymous requests and gate them itself');
+  assert.strictEqual(manifest.webapp.executeAs, 'USER_DEPLOYING', 'with no accessing identity, the script must run as the deploying owner for every request');
 });
 
 test('Manifest: no executionApi block exists (deprecated Execution API architecture)', () => {
   const manifest = JSON.parse(fs.readFileSync('appsscript.json', 'utf8'));
   assert.strictEqual(manifest.executionApi, undefined, 'executionApi must not be configured');
-});
-
-test('Manifest: forbidden owner-only / anonymous values are absent', () => {
-  const raw = fs.readFileSync('appsscript.json', 'utf8');
-  assert.strictEqual(raw.includes('ANYONE_ANONYMOUS'), false, 'ANYONE_ANONYMOUS would allow unauthenticated access');
-  assert.strictEqual(raw.includes('MYSELF'), false, 'MYSELF would restrict the app to the owner only');
-  assert.strictEqual(raw.includes('USER_DEPLOYING'), false, 'USER_DEPLOYING would run every request as the owner, not the accessing user');
 });
 
 test('Manifest: built dist/appsscript.json matches the root deployment configuration exactly', () => {
@@ -1374,6 +1377,321 @@ test('dist/Index.html stays in sync with the timeout fix (built output matches s
     assert.ok(src.includes(needle), 'source Index.html must contain: ' + needle);
     assert.ok(dist.includes(needle), 'dist/Index.html must contain: ' + needle);
   });
+});
+
+// ==============================================================================
+// 18. GitHub Pages Shared-Code Gateway Security Tests
+// ==============================================================================
+console.log('\n>>> 18. GitHub Pages Shared-Code Gateway Security Tests:');
+
+test('Gateway: action allowlist contains exactly the intended actions, and never exposes owner-only setup/config actions', () => {
+  const gatewaySrc = fs.readFileSync('Gateway.gs', 'utf8');
+  const actionsMatch = gatewaySrc.match(/var ACTIONS = \{([\s\S]*?)\n  \};/);
+  assert.ok(actionsMatch, 'ACTIONS object must be found in Gateway.gs');
+  const actionNames = Array.from(actionsMatch[1].matchAll(/^\s{4}(\w+):\s*function/gm)).map((m) => m[1]);
+
+  const expected = [
+    'health', 'login', 'sessionCheck', 'getBootstrapData', 'getDashboard',
+    'getVideos', 'addProjectVideo', 'addMarketingContent', 'addNewVersion',
+    'getVideoVersionHistory', 'updateSingleVideoMetadata', 'getUnits',
+    'getUnitDetail', 'createUnit', 'updateUnit', 'uploadPdf'
+  ].sort();
+  assert.deepStrictEqual(actionNames.sort(), expected, 'Gateway ACTIONS must match the exact intended allowlist');
+
+  ['setupSystem', 'getSystemConfig', 'setAccessCode', 'revokeAllSessions'].forEach((forbidden) => {
+    assert.strictEqual(actionNames.includes(forbidden), false, forbidden + ' must never be exposed on the public gateway');
+  });
+});
+
+test('Gateway: PUBLIC_ACTIONS contains exactly health and login', () => {
+  const gatewaySrc = fs.readFileSync('Gateway.gs', 'utf8');
+  const match = gatewaySrc.match(/var PUBLIC_ACTIONS = \{([\s\S]*?)\};/);
+  assert.ok(match, 'PUBLIC_ACTIONS object must be found');
+  const names = Array.from(match[1].matchAll(/(\w+):\s*true/g)).map((m) => m[1]);
+  assert.deepStrictEqual(names.sort(), ['health', 'login']);
+});
+
+test('Gateway: every protected action requires GatewaySession.validateSession before dispatch', () => {
+  const gatewaySrc = fs.readFileSync('Gateway.gs', 'utf8');
+  const bodies = getAllTopLevelFunctionBodies(gatewaySrc);
+  assert.ok(bodies.handleRequest, 'handleRequest function must exist');
+  const body = bodies.handleRequest;
+
+  const ifIdx = body.indexOf('if (!PUBLIC_ACTIONS[action])');
+  const validateIdx = body.indexOf('GatewaySession.validateSession(');
+  const markIdx = body.indexOf('Auth.markGatewaySessionAuthenticated()');
+  const dispatchIdx = body.indexOf('ACTIONS[action](payload)');
+
+  assert.ok(ifIdx !== -1 && validateIdx !== -1 && markIdx !== -1 && dispatchIdx !== -1,
+    'handleRequest must gate protected actions with validateSession and markGatewaySessionAuthenticated before dispatch');
+  assert.ok(ifIdx < validateIdx && validateIdx < markIdx && markIdx < dispatchIdx,
+    'session validation and gateway-session marking must happen strictly before the action is dispatched');
+});
+
+test('GatewaySession: ONE_TIME_setAccessCode still has the placeholder, not a real committed code', () => {
+  const src = fs.readFileSync('GatewaySession.gs', 'utf8');
+  assert.ok(src.includes("var rawCode = 'CHANGE_ME';"), 'the raw access code must never be committed — only the CHANGE_ME placeholder');
+});
+
+test('GatewaySession: setAccessCode/revokeAllSessions are owner-editor-only, never referenced from Gateway.gs', () => {
+  const gatewaySrc = fs.readFileSync('Gateway.gs', 'utf8');
+  assert.strictEqual(/ONE_TIME_setAccessCode|ONE_TIME_revokeAllSessions/.test(gatewaySrc), false,
+    'these must only be run manually by the owner from the Apps Script editor, never reachable through the public gateway');
+});
+
+test('Gateway/GatewaySession never rely on a Google identity — authorisation is entirely via the shared-code session', () => {
+  const src = fs.readFileSync('Gateway.gs', 'utf8') + fs.readFileSync('GatewaySession.gs', 'utf8');
+  assert.strictEqual(/getActiveUser|getEffectiveUser/.test(src), false);
+});
+
+// --- Behavioural simulation of the exact hashing/session algorithm ---
+// Mirrors GatewaySession.gs using Node's crypto instead of Apps Script's
+// Utilities.computeDigest (same SHA-256 algorithm), since CacheService/
+// PropertiesService/Utilities cannot run outside Apps Script.
+
+function sha256Hex(str) {
+  return crypto.createHash('sha256').update(str, 'utf8').digest('hex');
+}
+
+function gwConstantTimeEquals(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+function makeGatewaySessionSimulator() {
+  const scriptProps = {};
+  const cache = new Map();
+
+  function getProperty(key, dflt) {
+    return scriptProps[key] !== undefined ? scriptProps[key] : (dflt || '');
+  }
+  function setProperties(obj) { Object.assign(scriptProps, obj); }
+  function setProperty(key, val) { scriptProps[key] = val; }
+  function generateSalt() { return crypto.randomBytes(16).toString('hex') + crypto.randomBytes(16).toString('hex'); }
+
+  function setAccessCode(rawCode) {
+    if (!rawCode || String(rawCode).length < 8) throw new Error('Access code must be at least 8 characters.');
+    const salt = generateSalt();
+    const hash = sha256Hex(salt + String(rawCode));
+    setProperties({ APP_ACCESS_CODE_SALT: salt, APP_ACCESS_CODE_HASH: hash, APP_SESSION_EPOCH: String(Date.now()) });
+  }
+
+  function verifyAccessCode(rawCode) {
+    const salt = getProperty('APP_ACCESS_CODE_SALT');
+    const storedHash = getProperty('APP_ACCESS_CODE_HASH');
+    if (!salt || !storedHash || !rawCode) return false;
+    return gwConstantTimeEquals(sha256Hex(salt + rawCode), storedHash);
+  }
+
+  function isAccessCodeConfigured() { return !!(getProperty('APP_ACCESS_CODE_SALT') && getProperty('APP_ACCESS_CODE_HASH')); }
+
+  function createSession() {
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = sha256Hex(token);
+    const epoch = getProperty('APP_SESSION_EPOCH', '0');
+    cache.set('gwsession_' + tokenHash, { epoch });
+    return { token, expiresInSeconds: 21600 };
+  }
+
+  function validateSession(token) {
+    if (!token) return false;
+    const record = cache.get('gwsession_' + sha256Hex(token));
+    if (!record) return false;
+    return record.epoch === getProperty('APP_SESSION_EPOCH', '0');
+  }
+
+  function invalidateSession(token) {
+    if (!token) return;
+    cache.delete('gwsession_' + sha256Hex(token));
+  }
+
+  function bumpSessionEpoch() { setProperty('APP_SESSION_EPOCH', String(Date.now()) + Math.random()); }
+
+  return {
+    setAccessCode, verifyAccessCode, isAccessCodeConfigured, createSession,
+    validateSession, invalidateSession, bumpSessionEpoch,
+    _scriptProps: () => scriptProps
+  };
+}
+
+test('GatewaySession simulation: raw access code is never stored, only a salted hash', () => {
+  const gw = makeGatewaySessionSimulator();
+  gw.setAccessCode('correct-horse-battery-staple');
+  const props = gw._scriptProps();
+  assert.ok(props.APP_ACCESS_CODE_HASH && props.APP_ACCESS_CODE_HASH.length === 64, 'must store a 64-char hex SHA-256 hash');
+  assert.ok(props.APP_ACCESS_CODE_SALT, 'must store a random salt');
+  Object.values(props).forEach((v) => {
+    assert.strictEqual(String(v).includes('correct-horse-battery-staple'), false, 'the raw access code must never appear in any stored property');
+  });
+});
+
+test('GatewaySession simulation: same code hashed twice produces different salts and different hashes', () => {
+  const gw1 = makeGatewaySessionSimulator();
+  const gw2 = makeGatewaySessionSimulator();
+  gw1.setAccessCode('same-code-12345');
+  gw2.setAccessCode('same-code-12345');
+  assert.notStrictEqual(gw1._scriptProps().APP_ACCESS_CODE_SALT, gw2._scriptProps().APP_ACCESS_CODE_SALT);
+  assert.notStrictEqual(gw1._scriptProps().APP_ACCESS_CODE_HASH, gw2._scriptProps().APP_ACCESS_CODE_HASH);
+});
+
+test('GatewaySession simulation: verifyAccessCode accepts the correct code and rejects everything else', () => {
+  const gw = makeGatewaySessionSimulator();
+  gw.setAccessCode('amlaak-2026-secure');
+  assert.strictEqual(gw.verifyAccessCode('amlaak-2026-secure'), true);
+  assert.strictEqual(gw.verifyAccessCode('amlaak-2026-Secure'), false, 'must be case-sensitive');
+  assert.strictEqual(gw.verifyAccessCode('wrong-code'), false);
+  assert.strictEqual(gw.verifyAccessCode(''), false);
+  assert.strictEqual(gw.verifyAccessCode(null), false);
+  assert.strictEqual(gw.verifyAccessCode(undefined), false);
+});
+
+test('GatewaySession simulation: login before setAccessCode is configured always fails closed', () => {
+  const gw = makeGatewaySessionSimulator();
+  assert.strictEqual(gw.isAccessCodeConfigured(), false);
+  assert.strictEqual(gw.verifyAccessCode('anything'), false);
+});
+
+test('GatewaySession simulation: a created session validates until invalidated', () => {
+  const gw = makeGatewaySessionSimulator();
+  gw.setAccessCode('unit-test-code-123');
+  const { token } = gw.createSession();
+  assert.strictEqual(gw.validateSession(token), true);
+  assert.strictEqual(gw.validateSession('not-a-real-token'), false);
+
+  gw.invalidateSession(token);
+  assert.strictEqual(gw.validateSession(token), false, 'logout must invalidate the session immediately');
+});
+
+test('GatewaySession simulation: bumping the session epoch invalidates every previously-issued session', () => {
+  const gw = makeGatewaySessionSimulator();
+  gw.setAccessCode('unit-test-code-456');
+  const sessionA = gw.createSession();
+  const sessionB = gw.createSession();
+  assert.strictEqual(gw.validateSession(sessionA.token), true);
+  assert.strictEqual(gw.validateSession(sessionB.token), true);
+
+  gw.bumpSessionEpoch();
+
+  assert.strictEqual(gw.validateSession(sessionA.token), false, 'epoch bump must invalidate sessions issued under the old epoch');
+  assert.strictEqual(gw.validateSession(sessionB.token), false);
+
+  const sessionC = gw.createSession();
+  assert.strictEqual(gw.validateSession(sessionC.token), true, 'a freshly-issued session under the new epoch must still work');
+});
+
+// --- Behavioural simulation of Gateway.handleRequest's routing/validation control flow ---
+
+function simulateGatewayHandleRequest(rawBody, deps) {
+  const PUBLIC_ACTIONS = { health: true, login: true };
+  try {
+    if (typeof rawBody !== 'string' || rawBody.length === 0) {
+      return { ok: false, errorCode: 'BAD_REQUEST', message: 'Empty request body.' };
+    }
+    let request;
+    try {
+      request = JSON.parse(rawBody);
+    } catch (e) {
+      return { ok: false, errorCode: 'BAD_REQUEST', message: 'Request body is not valid JSON.' };
+    }
+    if (request === null || typeof request !== 'object' || Array.isArray(request)) {
+      return { ok: false, errorCode: 'BAD_REQUEST', message: 'Request body must be a JSON object.' };
+    }
+    const requestId = typeof request.requestId === 'string' ? request.requestId.slice(0, 100) : '';
+    const action = request.action;
+    if (typeof action !== 'string' || !Object.prototype.hasOwnProperty.call(deps.ACTIONS, action)) {
+      return { ok: false, errorCode: 'UNKNOWN_ACTION', message: 'Unknown or unsupported action.', requestId };
+    }
+    const payload = (request.payload && typeof request.payload === 'object' && !Array.isArray(request.payload)) ? request.payload : {};
+
+    if (!PUBLIC_ACTIONS[action]) {
+      const sessionToken = typeof request.sessionToken === 'string' ? request.sessionToken : '';
+      if (!deps.validateSession(sessionToken)) {
+        return { ok: false, errorCode: 'SESSION_INVALID', message: 'Your session has expired or is invalid. Please log in again.', requestId };
+      }
+    }
+
+    let data;
+    try {
+      data = deps.ACTIONS[action](payload);
+    } catch (actionErr) {
+      if (actionErr && actionErr.code) {
+        return { ok: false, errorCode: actionErr.code, message: actionErr.message, requestId };
+      }
+      return { ok: false, errorCode: 'EXECUTION_ERROR', message: (actionErr && actionErr.message) || String(actionErr), requestId };
+    }
+    return { ok: true, data, errorCode: null, requestId };
+  } catch (fatal) {
+    return { ok: false, errorCode: 'EXECUTION_ERROR', message: 'An unexpected server error occurred.' };
+  }
+}
+
+test('Gateway simulation: unknown action is rejected without touching session validation', () => {
+  let validateCalled = false;
+  const res = simulateGatewayHandleRequest(JSON.stringify({ action: 'deleteEverything', requestId: 'r1' }), {
+    ACTIONS: { health: () => ({}) },
+    validateSession: () => { validateCalled = true; return true; }
+  });
+  assert.strictEqual(res.ok, false);
+  assert.strictEqual(res.errorCode, 'UNKNOWN_ACTION');
+  assert.strictEqual(validateCalled, false, 'an unknown action must be rejected before any session check runs');
+});
+
+test('Gateway simulation: protected action without a session token is rejected', () => {
+  const res = simulateGatewayHandleRequest(JSON.stringify({ action: 'getBootstrapData', requestId: 'r2' }), {
+    ACTIONS: { getBootstrapData: () => ({ secret: 'data' }) },
+    validateSession: () => false
+  });
+  assert.strictEqual(res.ok, false);
+  assert.strictEqual(res.errorCode, 'SESSION_INVALID');
+  assert.strictEqual(res.data, undefined, 'no data may be returned when the session is invalid');
+});
+
+test('Gateway simulation: protected action with a valid session token dispatches and returns data', () => {
+  const res = simulateGatewayHandleRequest(JSON.stringify({ action: 'getBootstrapData', sessionToken: 'valid-token', requestId: 'r3' }), {
+    ACTIONS: { getBootstrapData: () => ({ lists: { unitType: ['Apartment'] } }) },
+    validateSession: (t) => t === 'valid-token'
+  });
+  assert.strictEqual(res.ok, true);
+  assert.deepStrictEqual(res.data, { lists: { unitType: ['Apartment'] } });
+  assert.strictEqual(res.requestId, 'r3', 'the same requestId must be echoed back');
+});
+
+test('Gateway simulation: public actions (health, login) dispatch without any session token', () => {
+  const res = simulateGatewayHandleRequest(JSON.stringify({ action: 'health', requestId: 'r4' }), {
+    ACTIONS: { health: () => ({ status: 'ok' }) },
+    validateSession: () => false // must not even be consulted for a public action
+  });
+  assert.strictEqual(res.ok, true);
+  assert.deepStrictEqual(res.data, { status: 'ok' });
+});
+
+test('Gateway simulation: malformed JSON body is rejected safely, not thrown', () => {
+  const res = simulateGatewayHandleRequest('{not valid json', { ACTIONS: {}, validateSession: () => true });
+  assert.strictEqual(res.ok, false);
+  assert.strictEqual(res.errorCode, 'BAD_REQUEST');
+});
+
+test('Gateway simulation: a specific error code thrown inside an action is preserved; a plain Error maps to EXECUTION_ERROR', () => {
+  const resSpecific = simulateGatewayHandleRequest(JSON.stringify({ action: 'login', requestId: 'r5' }), {
+    ACTIONS: { login: () => { const e = new Error('Incorrect access code.'); e.code = 'INVALID_CODE'; throw e; } },
+    validateSession: () => true
+  });
+  assert.strictEqual(resSpecific.errorCode, 'INVALID_CODE');
+
+  const resGeneric = simulateGatewayHandleRequest(JSON.stringify({ action: 'health', requestId: 'r6' }), {
+    ACTIONS: { health: () => { throw new Error('Sheet is temporarily locked.'); } },
+    validateSession: () => true
+  });
+  assert.strictEqual(resGeneric.errorCode, 'EXECUTION_ERROR');
+  assert.strictEqual(resGeneric.message, 'Sheet is temporarily locked.');
+});
+
+test('Gateway simulation: array or non-object request bodies are rejected, not treated as objects', () => {
+  const res = simulateGatewayHandleRequest(JSON.stringify(['health']), { ACTIONS: { health: () => ({}) }, validateSession: () => true });
+  assert.strictEqual(res.ok, false);
+  assert.strictEqual(res.errorCode, 'BAD_REQUEST');
 });
 
 console.log('\n' + '='.repeat(70));
