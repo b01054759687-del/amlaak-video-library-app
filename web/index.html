@@ -525,15 +525,15 @@
           </label>
           <div class="flex items-center gap-4 text-xs">
             <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
-              <input type="radio" name="unitMode" id="unitModeExisting" value="existing" checked onchange="toggleUnitMode()"> Existing unit
+              <input type="radio" name="unitMode" id="unitModeExisting" value="existing" onchange="toggleUnitMode()"> Existing unit
             </label>
             <label class="flex items-center gap-1.5 cursor-pointer text-slate-300">
-              <input type="radio" name="unitMode" id="unitModeNew" value="new" onchange="toggleUnitMode()"> New unit
+              <input type="radio" name="unitMode" id="unitModeNew" value="new" checked onchange="toggleUnitMode()"> New unit
             </label>
           </div>
         </div>
 
-        <div id="unitSelectContainer" class="relative">
+        <div id="unitSelectContainer" class="relative hidden">
           <input type="text" id="pvUnitSearch" placeholder="Search by unit ID, client name or location…" class="w-full input-dark px-4 py-2.5 text-xs sm:text-sm" oninput="filterUnitSearch(this.value)" autocomplete="off">
           <input type="hidden" id="pvSelectedUnitId">
           <div id="pvUnitSearchResults" class="autocomplete-items hidden"></div>
@@ -574,7 +574,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <div>
           <label for="pvProjectVideoType" class="field-label">Project video type <span class="field-required">*</span></label>
           <select id="pvProjectVideoType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
@@ -582,10 +582,6 @@
         <div>
           <label for="pvSpaceType" class="field-label">Space type <span class="field-required">*</span></label>
           <select id="pvSpaceType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateProjectVideoPreview()"></select>
-        </div>
-        <div>
-          <label for="pvWorkCategory" class="field-label text-[#DFBF7A]">Work category <span class="field-required">*</span></label>
-          <select id="pvWorkCategory" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm border-amber-500/35" onchange="updateProjectVideoPreview()"></select>
         </div>
         <div>
           <label for="pvShootingDate" class="field-label">Shooting date <span class="field-required">*</span></label>
@@ -619,7 +615,7 @@
           Client Name - Location - Project Video Type - Space Type - Shooting Date - V01.mp4
         </div>
         <div class="text-[10px] text-slate-500 mt-1">
-          Empty optional fields are omitted automatically. Work Category is not added to the filename by default.
+          Empty optional fields are omitted automatically.
         </div>
       </div>
 
@@ -640,7 +636,7 @@
         <input type="url" id="mcVideoLink" required placeholder="https://drive.google.com/file/d/…/view" class="w-full input-dark px-4 py-3 text-xs sm:text-sm font-mono-code" oninput="updateMarketingContentPreview()">
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div>
           <label class="field-label">Content type <span class="field-required">*</span></label>
           <select id="mcContentType" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="handleMarketingContentTypeChange()"></select>
@@ -652,6 +648,10 @@
         <div id="mcSpaceTypeContainer">
           <label class="field-label">Space type (optional)</label>
           <select id="mcSpaceType" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateMarketingContentPreview()"></select>
+        </div>
+        <div>
+          <label for="mcWorkCategory" class="field-label text-[#DFBF7A]">Work category <span class="field-required">*</span></label>
+          <select id="mcWorkCategory" required class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm border-amber-500/35" onchange="updateMarketingContentPreview()"></select>
         </div>
       </div>
 
@@ -964,15 +964,9 @@
 
         <!-- Project Video fields -->
         <div id="emProjectFieldsContainer" class="space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label for="emSpaceType" class="field-label">Space Type <span class="field-required">*</span></label>
-              <select id="emSpaceType" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateEditMetaPreview()"></select>
-            </div>
-            <div>
-              <label for="emWorkCategory" class="field-label text-[#DFBF7A]">Work Category <span class="field-required">*</span></label>
-              <select id="emWorkCategory" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm border-amber-500/35" onchange="updateEditMetaPreview()"></select>
-            </div>
+          <div>
+            <label for="emSpaceType" class="field-label">Space Type <span class="field-required">*</span></label>
+            <select id="emSpaceType" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateEditMetaPreview()"></select>
           </div>
           <div>
             <label for="emShootingDate" class="field-label">Shooting Date <span class="field-required">*</span></label>
@@ -982,9 +976,15 @@
 
         <!-- Marketing Content fields -->
         <div id="emMarketingFieldsContainer" class="space-y-4 hidden">
-          <div>
-            <label for="emContentType" class="field-label">Marketing Content Type <span class="field-required">*</span></label>
-            <select id="emContentType" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateEditMetaPreview()"></select>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label for="emContentType" class="field-label">Marketing Content Type <span class="field-required">*</span></label>
+              <select id="emContentType" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm" onchange="updateEditMetaPreview()"></select>
+            </div>
+            <div>
+              <label for="emWorkCategory" class="field-label text-[#DFBF7A]">Work Category <span class="field-required">*</span></label>
+              <select id="emWorkCategory" class="w-full input-dark px-3.5 py-2.5 text-xs sm:text-sm border-amber-500/35" onchange="updateEditMetaPreview()"></select>
+            </div>
           </div>
           <div>
             <label for="emTopic" class="field-label">Topic <span class="field-required">*</span></label>
@@ -1231,7 +1231,7 @@
           </p>
           <div class="flex items-center justify-end gap-2">
             <button onclick="toggleUnitEditMode()" class="ghost-btn px-3 py-1.5 text-xs">Cancel</button>
-            <button onclick="saveUnitMasterEdit()" class="gold-btn px-4 py-1.5 text-xs font-bold">Save &amp; Propagate</button>
+            <button onclick="saveUnitMasterEdit()" id="btnSaveUnitEdit" class="gold-btn px-4 py-1.5 text-xs font-bold">Save &amp; Propagate</button>
           </div>
         </div>
       </div>
@@ -1637,8 +1637,8 @@ function populateTaxonomyDropdowns() {
     fillSelect('pvUnitType', lists.unitType, '— Select unit type —'),
     fillSelect('pvProjectVideoType', lists.projectVideoType, '— Select video type —'),
     fillSelect('pvSpaceType', lists.spaceType, '— Select space type —'),
-    fillSelect('pvWorkCategory', lists.workCategory, '— Select work category —'),
-    fillSelect('mcContentType', lists.marketingContentType, '— Select content type —')
+    fillSelect('mcContentType', lists.marketingContentType, '— Select content type —'),
+    fillSelect('mcWorkCategory', lists.workCategory, '— Select work category —')
   ];
 
   fillSelect('mcSpaceType', lists.spaceType, '— General / not specified —');
@@ -1842,8 +1842,6 @@ function setAddSource(source) {
     btnProj.className = inactiveClass;
     formMkt.classList.remove('hidden');
     formProj.classList.add('hidden');
-    var wCat = document.getElementById('pvWorkCategory');
-    if (wCat) wCat.value = '';
   }
 }
 
@@ -2118,7 +2116,6 @@ function submitProjectVideo(e) {
     area: document.getElementById('pvArea').value,
     projectVideoType: document.getElementById('pvProjectVideoType').value,
     spaceType: document.getElementById('pvSpaceType').value,
-    workCategory: document.getElementById('pvWorkCategory').value,
     shootingDate: document.getElementById('pvShootingDate').value,
     versionNotes: document.getElementById('pvVersionNotes').value.trim()
   };
@@ -2180,6 +2177,7 @@ function executeSaveProjectVideo(payload, btn) {
     showToast('success', 'Project video saved: ' + res.data.video.videoName);
     document.getElementById('formProjectVideo').reset();
     document.getElementById('pvSelectedUnitId').value = '';
+    toggleUnitMode();
     updateProjectVideoPreview();
     loadDashboard();
     switchTab('library');
@@ -2201,6 +2199,7 @@ function submitMarketingContent(e) {
     contentType: document.getElementById('mcContentType').value,
     topic: document.getElementById('mcTopic').value.trim(),
     spaceType: document.getElementById('mcSpaceType').value,
+    workCategory: document.getElementById('mcWorkCategory').value,
     shootingDate: document.getElementById('mcShootingDate').value,
     versionNotes: document.getElementById('mcVersionNotes').value.trim()
   };
@@ -2475,8 +2474,6 @@ function openEditVideoMetadataModal(videoNumber, optDriveFileId) {
       if (mktContainer) mktContainer.classList.add('hidden');
       var st = document.getElementById('emSpaceType');
       if (st) st.value = video.spaceType || '';
-      var wc = document.getElementById('emWorkCategory');
-      if (wc) wc.value = video.workCategory || '';
       var sd = document.getElementById('emShootingDate');
       if (sd) sd.value = video.shootingDate || '';
     } else {
@@ -2484,6 +2481,8 @@ function openEditVideoMetadataModal(videoNumber, optDriveFileId) {
       if (mktContainer) mktContainer.classList.remove('hidden');
       var ct = document.getElementById('emContentType');
       if (ct) ct.value = video.contentType || '';
+      var wc = document.getElementById('emWorkCategory');
+      if (wc) wc.value = video.workCategory || '';
       var tp = document.getElementById('emTopic');
       if (tp) tp.value = video.topic || '';
       var mst = document.getElementById('emMarketingSpaceType');
@@ -2606,10 +2605,10 @@ function submitEditVideoMetadata(e) {
   var updatedFields = {};
   if (isProject) {
     updatedFields.spaceType = document.getElementById('emSpaceType').value;
-    updatedFields.workCategory = document.getElementById('emWorkCategory').value;
     updatedFields.shootingDate = document.getElementById('emShootingDate').value;
   } else {
     updatedFields.contentType = document.getElementById('emContentType').value;
+    updatedFields.workCategory = document.getElementById('emWorkCategory').value;
     updatedFields.topic = document.getElementById('emTopic').value.trim();
     updatedFields.spaceType = document.getElementById('emMarketingSpaceType').value;
     updatedFields.shootingDate = document.getElementById('emMarketingShootingDate').value;
@@ -3011,8 +3010,7 @@ function toggleUnitEditMode() {
   document.getElementById('unitEditFormContainer').classList.toggle('hidden');
 }
 
-function saveUnitMasterEdit(e) {
-  e.preventDefault();
+function saveUnitMasterEdit() {
   var detail = AppState.activeUnitDetail;
   if (!detail) return;
 
@@ -3040,13 +3038,20 @@ function saveUnitMasterEdit(e) {
 }
 
 function executeSaveUnitEdit(unitId, fields, executeBatchRename) {
+  // Called both while the unit-edit form is still open (direct save, button
+  // present) and after the batch-rename modal has already been closed
+  // (confirmBatchRename) - the button may legitimately not exist in the DOM.
   var btn = document.getElementById('btnSaveUnitEdit');
-  btn.disabled = true;
-  btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Saving…';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<div class="loader-spinner !w-4 !h-4 inline-block mr-2"></div> Saving…';
+  }
 
   callApi('apiUpdateUnit', [unitId, fields, executeBatchRename], function(res) {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span>Save Changes</span>';
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> <span>Save Changes</span>';
+    }
 
     if (!res.ok) {
       showToast('error', res.message);
@@ -3067,8 +3072,8 @@ function showBatchRenameModal(currentUnit, updatedFields, videos) {
     fields: updatedFields
   };
 
-  var tableBody = document.getElementById('brVideosTableBody');
-  tableBody.innerHTML = '';
+  var container = document.getElementById('batchRenameItemsList');
+  container.innerHTML = '';
 
   videos.forEach(function(v) {
     var curVer = v.currentVersion || (v.versions && v.versions[0]) || {};
@@ -3077,12 +3082,13 @@ function showBatchRenameModal(currentUnit, updatedFields, videos) {
       .replace(currentUnit.clientName, updatedFields.clientName)
       .replace(currentUnit.location, updatedFields.location);
 
-    var tr = document.createElement('tr');
-    tr.innerHTML =
-      '<td class="p-2 font-mono-code text-[#DFBF7A]">' + escapeHtml(v.videoNumber) + '</td>' +
-      '<td class="p-2 font-mono-code text-slate-400 line-through">' + escapeHtml(oldName) + '</td>' +
-      '<td class="p-2 font-mono-code text-emerald-400 font-bold">' + escapeHtml(newName) + '</td>';
-    tableBody.appendChild(tr);
+    var item = document.createElement('div');
+    item.className = 'p-2.5 rounded-lg bg-[#0D1626] border border-slate-800 space-y-1';
+    item.innerHTML =
+      '<div class="font-mono-code text-[#DFBF7A] font-bold">Video ' + escapeHtml(v.videoNumber) + '</div>' +
+      '<div class="font-mono-code text-slate-500 line-through break-all">' + escapeHtml(oldName) + '</div>' +
+      '<div class="font-mono-code text-emerald-400 font-bold break-all">' + escapeHtml(newName) + '</div>';
+    container.appendChild(item);
   });
 
   openModal('modalBatchRename');
@@ -3369,6 +3375,13 @@ function escapeHtml(str) {
 // DOM EVENT DELEGATION FOR ACTIONS (§10)
 // =============================================================
 document.addEventListener('DOMContentLoaded', function() {
+  // Native form reset only restores field values, not the unit-mode UI state —
+  // re-sync it so "New unit" mode's hidden/unlocked fields render correctly.
+  var pvForm = document.getElementById('formProjectVideo');
+  if (pvForm) {
+    pvForm.addEventListener('reset', function() { setTimeout(toggleUnitMode, 0); });
+  }
+
   // Video Library table body delegated actions
   var libBody = document.getElementById('libraryTableBody');
   if (libBody) {

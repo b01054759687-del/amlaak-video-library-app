@@ -164,7 +164,7 @@ async function addProjectVideo(payload, user) {
     area: payload.area || '',
     projectVideoType: payload.projectVideoType,
     spaceType: payload.spaceType,
-    workCategory: payload.workCategory || '',
+    workCategory: '', // Work Category is a Marketing Content field, not Project Video
     shootingDate: payload.shootingDate,
     videoName: videoName,
     driveFileId: v.fileId,
@@ -211,7 +211,7 @@ async function addMarketingContent(payload, user) {
     contentType: payload.contentType,
     topic: payload.topic.trim(),
     spaceType: payload.spaceType || '',
-    workCategory: '', // Strictly cleared for marketing
+    workCategory: payload.workCategory || '',
     shootingDate: payload.shootingDate,
     videoName: videoName,
     driveFileId: v.fileId,

@@ -90,7 +90,7 @@ var VideoService = (function() {
         area: payload.area ? Number(payload.area) : '',
         projectVideoType: payload.projectVideoType.trim(),
         spaceType: payload.spaceType.trim(),
-        workCategory: payload.workCategory.trim(), // Decision A
+        workCategory: '', // Work Category is a Marketing Content field, not Project Video
         shootingDate: Utils.normalizeDateString(payload.shootingDate),
         videoLink: payload.videoLink,
         driveFileId: fileId,
@@ -191,7 +191,7 @@ var VideoService = (function() {
         area: '',
         projectVideoType: '',
         spaceType: payload.contentType === 'Educational' ? '' : (payload.spaceType || '').trim(),
-        workCategory: '',
+        workCategory: (payload.workCategory || '').trim(), // Decision A
         shootingDate: Utils.normalizeDateString(payload.shootingDate),
         videoLink: payload.videoLink,
         driveFileId: fileId,

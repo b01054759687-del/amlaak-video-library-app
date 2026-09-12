@@ -28,9 +28,6 @@ function validateProjectVideo(p) {
   if (!p.location || !p.location.trim()) return { isValid: false, error: 'Location is required' };
   if (!p.projectVideoType) return { isValid: false, error: 'Project video type is required' };
   if (!p.spaceType) return { isValid: false, error: 'Space type is required' };
-  if (p.workCategory && !APPROVED_WORK_CATEGORIES.includes(p.workCategory)) {
-    return { isValid: false, error: 'Invalid work category: ' + p.workCategory };
-  }
   if (!p.shootingDate) return { isValid: false, error: 'Shooting date is required' };
   return { isValid: true, fileId };
 }
@@ -41,6 +38,9 @@ function validateMarketingContent(p) {
   if (!fileId) return { isValid: false, error: 'Invalid Google Drive link or File ID' };
   if (!p.contentType) return { isValid: false, error: 'Content type is required' };
   if (!p.topic || !p.topic.trim()) return { isValid: false, error: 'Topic is required' };
+  if (p.workCategory && !APPROVED_WORK_CATEGORIES.includes(p.workCategory)) {
+    return { isValid: false, error: 'Invalid work category: ' + p.workCategory };
+  }
   if (!p.shootingDate) return { isValid: false, error: 'Shooting date is required' };
   return { isValid: true, fileId };
 }

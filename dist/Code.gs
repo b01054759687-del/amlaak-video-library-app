@@ -413,13 +413,6 @@ var Validators = (function() {
       errors.push({ field: 'spaceType', message: 'The selected Space Type is not in the approved list.' });
     }
 
-    // Section 8.6 Work Category (Decision A - Confirmed)
-    if (!payload.workCategory || !String(payload.workCategory).trim()) {
-      errors.push({ field: 'workCategory', message: 'Work Category is required.' });
-    } else if (Config.TAXONOMIES.workCategory.indexOf(payload.workCategory) === -1) {
-      errors.push({ field: 'workCategory', message: 'The selected Work Category is not in the approved list.' });
-    }
-
     if (!payload.shootingDate || !Utils.normalizeDateString(payload.shootingDate)) {
       errors.push({ field: 'shootingDate', message: 'Shooting Date is required in a valid format (YYYY-MM-DD).' });
     }
@@ -445,6 +438,13 @@ var Validators = (function() {
 
     if (!payload.topic || !String(payload.topic).trim()) {
       errors.push({ field: 'topic', message: 'Topic is required.' });
+    }
+
+    // Section 8.6 Work Category (Decision A - Confirmed: belongs to Marketing Content).
+    // Left optional here (rather than hard-required) so the legacy Apps Script HTML UI,
+    // which has no Work Category field on its Marketing Content form, keeps working.
+    if (payload.workCategory && Config.TAXONOMIES.workCategory.indexOf(payload.workCategory) === -1) {
+      errors.push({ field: 'workCategory', message: 'The selected Work Category is not in the approved list.' });
     }
 
     if (!payload.shootingDate || !Utils.normalizeDateString(payload.shootingDate)) {
@@ -2326,7 +2326,7 @@ var VideoService = (function() {
         area: payload.area ? Number(payload.area) : '',
         projectVideoType: payload.projectVideoType.trim(),
         spaceType: payload.spaceType.trim(),
-        workCategory: payload.workCategory.trim(), // Decision A
+        workCategory: '', // Work Category is a Marketing Content field, not Project Video
         shootingDate: Utils.normalizeDateString(payload.shootingDate),
         videoLink: payload.videoLink,
         driveFileId: fileId,
@@ -2427,7 +2427,7 @@ var VideoService = (function() {
         area: '',
         projectVideoType: '',
         spaceType: payload.contentType === 'Educational' ? '' : (payload.spaceType || '').trim(),
-        workCategory: '',
+        workCategory: (payload.workCategory || '').trim(), // Decision A
         shootingDate: Utils.normalizeDateString(payload.shootingDate),
         videoLink: payload.videoLink,
         driveFileId: fileId,

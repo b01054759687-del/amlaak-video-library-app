@@ -47,7 +47,7 @@
 | `Area (SQM)` | Number | مساحة الوحدة. |
 | `Project Video Type` | String | مرحلة الفيديو الهندسية (`Red Brick`, `Phase 1`, `Final with Furniture`, إلخ). |
 | `Space Type` | String | نوع الفراغ المعماري (`Reception`, `Kitchen`, `Full Unit`, إلخ). |
-| `Work Category` | String | **القرار A (مؤكد):** تصنيف الأعمال المستقل (`Roof`, `Electrical`, `Gypsum Board`, إلخ). |
+| `Work Category` | String | **القرار A (محدَّث):** خاص بفيديوهات الـ Marketing Content فقط (`Roof`, `Electrical`, `Gypsum Board`, إلخ) — مطلوب فى نموذج الويب الجديد. فارغ دائماً لفيديوهات الـ Project Video. |
 | `Shooting Date` | Date | تاريخ التصوير الفعلي للمحتوى (`YYYY-MM-DD`). |
 | `Video Link` | String | الرابط المباشر للملف على Google Drive. |
 | `Drive File ID` | String | معرّف الملف الفريد على Google Drive (Unique Key لمنع تكرار رفع نفس الملف). |
