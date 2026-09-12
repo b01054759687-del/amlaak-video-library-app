@@ -25,11 +25,15 @@ var DriveService = (function() {
    * Required by Section 6 and Section 13 step 7.
    */
   function verifyEditorAccess(file) {
-    // The operation runs as the current accessing user (webapp.executeAs =
-    // USER_ACCESSING), so it is THIS account's own Drive permissions that
-    // matter here — never a single fixed execution identity. Diagnostic
-    // label only, not an authorisation identity.
-    var executeAsEmail = Auth.getCurrentUserEmail() || Auth.getDiagnosticEffectiveEmail() || 'your Google account';
+    // Under the original Apps Script HTML UI (webapp.executeAs =
+    // USER_ACCESSING), this runs as the current accessing user, so it is
+    // THIS account's own Drive permissions that matter. Under the GitHub
+    // Pages shared-code gateway (USER_DEPLOYING), there is no accessing
+    // identity at all — every request executes as the deploying owner
+    // account instead, which getCurrentUserEmail() correctly reports as ''
+    // in that mode. The two cases need different, honest wording below.
+    var currentUserEmail = Auth.getCurrentUserEmail();
+    var executeAsEmail = currentUserEmail || Auth.getDiagnosticEffectiveEmail() || 'the connected Google account';
     var hasEditorAccess = false;
 
     try {
@@ -54,7 +58,9 @@ var DriveService = (function() {
     }
 
     if (!hasEditorAccess) {
-      var specificErrMsg = "This file isn't editable by your Google account (" + executeAsEmail + ") yet. Make sure you have Editor access to it in Google Drive and try again.";
+      var specificErrMsg = currentUserEmail
+        ? ("This file isn't editable by your Google account (" + executeAsEmail + ") yet. Make sure you have Editor access to it in Google Drive and try again.")
+        : ("This file isn't accessible to the Amlaak system account (" + executeAsEmail + ") yet. Make sure it's shared with Editor access to that account and try again.");
       throw new Error(specificErrMsg);
     }
 

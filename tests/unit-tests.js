@@ -1391,7 +1391,7 @@ test('Gateway: action allowlist contains exactly the intended actions, and never
   const actionNames = Array.from(actionsMatch[1].matchAll(/^\s{4}(\w+):\s*function/gm)).map((m) => m[1]);
 
   const expected = [
-    'health', 'login', 'sessionCheck', 'getBootstrapData', 'getDashboard',
+    'health', 'login', 'sessionCheck', 'getAppBootstrapData', 'getDashboard',
     'getVideos', 'addProjectVideo', 'addMarketingContent', 'addNewVersion',
     'getVideoVersionHistory', 'updateSingleVideoMetadata', 'getUnits',
     'getUnitDetail', 'createUnit', 'updateUnit', 'uploadPdf'
@@ -1692,6 +1692,96 @@ test('Gateway simulation: array or non-object request bodies are rejected, not t
   const res = simulateGatewayHandleRequest(JSON.stringify(['health']), { ACTIONS: { health: () => ({}) }, validateSession: () => true });
   assert.strictEqual(res.ok, false);
   assert.strictEqual(res.errorCode, 'BAD_REQUEST');
+});
+
+// ==============================================================================
+// 19. GitHub Pages Frontend (web/index.html) Tests
+// ==============================================================================
+console.log('\n>>> 19. GitHub Pages Frontend Tests:');
+
+test('web/index.html never calls google.script.run — uses fetch() to the gateway exclusively', () => {
+  const webHtml = fs.readFileSync('web/index.html', 'utf8');
+  assert.strictEqual(webHtml.includes('.withSuccessHandler('), false, 'withSuccessHandler indicates real google.script.run usage, not just a comment');
+  assert.strictEqual(webHtml.includes('.withFailureHandler('), false, 'withFailureHandler indicates real google.script.run usage, not just a comment');
+});
+
+test('web/index.html stores the session token in sessionStorage, never localStorage', () => {
+  const webHtml = fs.readFileSync('web/index.html', 'utf8');
+  assert.strictEqual(webHtml.includes('localStorage'), false, 'the session token must not be persisted in localStorage (spec requirement)');
+  assert.ok(webHtml.includes('sessionStorage.setItem') && webHtml.includes('sessionStorage.getItem'), 'the session token must be read/written via sessionStorage');
+});
+
+test('web/index.html has a login screen and no Settings/setup UI or calls', () => {
+  const webHtml = fs.readFileSync('web/index.html', 'utf8');
+  assert.ok(webHtml.includes('id="loginScreen"'), 'a login screen must exist');
+  assert.ok(webHtml.includes('id="formLogin"'), 'a login form must exist');
+  ['id="viewSettings"', 'id="btnTabSettings"', 'apiSetupSystem', 'apiGetSystemConfig', 'triggerSystemSetup', 'loadSettings('].forEach((needle) => {
+    assert.strictEqual(webHtml.includes(needle), false, 'owner-only settings/setup must not be reachable from the public GitHub Pages frontend: ' + needle);
+  });
+});
+
+test('web/index.html never hardcodes an access code, hash, or salt', () => {
+  const webHtml = fs.readFileSync('web/index.html', 'utf8');
+  const configJs = fs.readFileSync('web/config.js', 'utf8');
+  ['APP_ACCESS_CODE_HASH', 'APP_ACCESS_CODE_SALT', 'CHANGE_ME'].forEach((needle) => {
+    assert.strictEqual(webHtml.includes(needle), false, needle + ' must never appear in the public frontend');
+    assert.strictEqual(configJs.includes(needle), false, needle + ' must never appear in the public frontend config');
+  });
+});
+
+test('web/config.js defines a non-empty GATEWAY_URL pointing at an Apps Script exec endpoint', () => {
+  const configJs = fs.readFileSync('web/config.js', 'utf8');
+  const match = configJs.match(/var GATEWAY_URL = '([^']+)'/);
+  assert.ok(match, 'GATEWAY_URL must be defined');
+  assert.ok(/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(match[1]), 'GATEWAY_URL must be a real Apps Script /exec URL');
+});
+
+test('web/index.html: every non-trivial Gateway action it can call has a matching ACTION_PARAM_NAMES entry (catches client/server action-name drift)', () => {
+  const gatewaySrc = fs.readFileSync('Gateway.gs', 'utf8');
+  const actionsMatch = gatewaySrc.match(/var ACTIONS = \{([\s\S]*?)\n  \};/);
+  const serverActions = Array.from(actionsMatch[1].matchAll(/^\s{4}(\w+):\s*function/gm)).map((m) => m[1]);
+
+  const webHtml = fs.readFileSync('web/index.html', 'utf8');
+  const paramNamesMatch = webHtml.match(/var ACTION_PARAM_NAMES = \{([\s\S]*?)\n\};/);
+  assert.ok(paramNamesMatch, 'ACTION_PARAM_NAMES must be found in web/index.html');
+  const clientMappedActions = Array.from(paramNamesMatch[1].matchAll(/^\s{2}(\w+):/gm)).map((m) => m[1]);
+
+  // These take no positional args at all, so they legitimately need no
+  // mapping entry — buildActionPayload() already returns {} for them.
+  const noArgsNeeded = ['health', 'sessionCheck', 'getUnits', 'getAppBootstrapData'];
+
+  serverActions.forEach((action) => {
+    if (noArgsNeeded.includes(action)) return;
+    assert.ok(clientMappedActions.includes(action),
+      'server action "' + action + '" has no client-side ACTION_PARAM_NAMES mapping — it would silently receive an empty payload');
+  });
+
+  // And the reverse: no mapping should reference an action the server
+  // doesn't actually expose (dead code / stale rename).
+  clientMappedActions.forEach((action) => {
+    assert.ok(serverActions.includes(action),
+      'ACTION_PARAM_NAMES maps "' + action + '" but Gateway.gs has no such action — stale client-side mapping');
+  });
+});
+
+test('web/index.html: apiNameToAction correctly derives every action name actually used in a callApi() call site', () => {
+  const webHtml = fs.readFileSync('web/index.html', 'utf8');
+  const gatewaySrc = fs.readFileSync('Gateway.gs', 'utf8');
+  const actionsMatch = gatewaySrc.match(/var ACTIONS = \{([\s\S]*?)\n  \};/);
+  const serverActions = Array.from(actionsMatch[1].matchAll(/^\s{4}(\w+):\s*function/gm)).map((m) => m[1]);
+
+  function apiNameToAction(fnName) {
+    if (fnName.indexOf('api') === 0) return fnName.charAt(3).toLowerCase() + fnName.slice(4);
+    return fnName;
+  }
+
+  const callSites = Array.from(webHtml.matchAll(/callApi\('([A-Za-z]+)'/g)).map((m) => m[1]);
+  assert.ok(callSites.length > 10, 'expected many callApi() call sites in the ported frontend');
+
+  const usedActions = new Set(callSites.map(apiNameToAction));
+  usedActions.forEach((action) => {
+    assert.ok(serverActions.includes(action), 'callApi() call site resolves to action "' + action + '", which does not exist on the server gateway');
+  });
 });
 
 console.log('\n' + '='.repeat(70));
