@@ -25,8 +25,11 @@ var DriveService = (function() {
    * Required by Section 6 and Section 13 step 7.
    */
   function verifyEditorAccess(file) {
-    // Diagnostic label only (for the error message below) — not an authorisation identity.
-    var executeAsEmail = Auth.getCurrentUserEmail() || Auth.getDiagnosticEffectiveEmail() || 'the application account';
+    // The operation runs as the current accessing user (webapp.executeAs =
+    // USER_ACCESSING), so it is THIS account's own Drive permissions that
+    // matter here — never a single fixed execution identity. Diagnostic
+    // label only, not an authorisation identity.
+    var executeAsEmail = Auth.getCurrentUserEmail() || Auth.getDiagnosticEffectiveEmail() || 'your Google account';
     var hasEditorAccess = false;
 
     try {
@@ -51,7 +54,7 @@ var DriveService = (function() {
     }
 
     if (!hasEditorAccess) {
-      var specificErrMsg = "This file isn't shared with the app account yet — share it with " + executeAsEmail + " as Editor and try again";
+      var specificErrMsg = "This file isn't editable by your Google account (" + executeAsEmail + ") yet. Make sure you have Editor access to it in Google Drive and try again.";
       throw new Error(specificErrMsg);
     }
 

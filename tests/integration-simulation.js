@@ -44,7 +44,7 @@ const MockDrive = {
     const file = this.files[fileId];
     if (!file) throw new Error('File not found in Drive: ' + fileId);
     if (file.permission !== 'EDITOR' && file.permission !== 'OWNER') {
-      throw new Error(`This file isn't shared with the app account yet — share it with ${executeAsEmail} as Editor and try again`);
+      throw new Error(`This file isn't editable by your Google account (${executeAsEmail}) yet. Make sure you have Editor access to it in Google Drive and try again.`);
     }
     return true;
   },
@@ -69,7 +69,7 @@ it('Throws specific editor access error when Drive file is not shared as Editor'
   try {
     MockDrive.verifyEditorAccess('file_view_only_1234567890123456', 'app@amlaak.com');
   } catch (err) {
-    if (err.message === "This file isn't shared with the app account yet — share it with app@amlaak.com as Editor and try again") {
+    if (err.message === "This file isn't editable by your Google account (app@amlaak.com) yet. Make sure you have Editor access to it in Google Drive and try again.") {
       threwExpected = true;
     }
   }

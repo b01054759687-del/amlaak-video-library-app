@@ -27,7 +27,7 @@ function handleApiCall(serviceFn, actionName, entityType) {
     var errCode = 'EXECUTION_ERROR';
     if (errMsg.indexOf('not authorized') !== -1 || errMsg.indexOf('Access Denied') !== -1) {
       errCode = 'UNAUTHORIZED';
-    } else if (errMsg.indexOf("isn't shared with the app account") !== -1) {
+    } else if (errMsg.indexOf("isn't editable by your Google account") !== -1) {
       errCode = 'PERMISSION_DENIED';
     } else if (errMsg.indexOf('already registered') !== -1 || errMsg.indexOf('duplicate') !== -1) {
       errCode = 'DUPLICATE_FILE';

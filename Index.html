@@ -478,10 +478,20 @@
       <i class="fa-solid fa-triangle-exclamation text-amber-400 text-base mt-0.5"></i>
       <div class="text-slate-300 leading-relaxed">
         <strong class="text-amber-200 font-bold">Before you save a link:</strong>
-        the app renames and moves the original file — it never copies it. The Drive file must already be shared as
-        <span class="text-[#DFBF7A] font-mono-code font-bold">Editor</span> with the app account
-        (<span id="bannerExecuteEmail" class="font-mono-code underline">louyashra@gmail.com</span>) before you paste its link, or the save will fail with a clear permission error.
+        the app renames and moves the original file using your current Google account's own permissions —
+        it never copies it. Make sure you can edit the file yourself and have access to the destination
+        Drive folder before pasting its link, or the save will fail with a clear permission error.
       </div>
+    </div>
+
+    <div id="taxonomyLoadError" class="rounded-xl p-4 bg-rose-500/10 border border-rose-500/30 text-xs flex items-start gap-3 hidden">
+      <i class="fa-solid fa-circle-exclamation text-rose-400 text-base mt-0.5"></i>
+      <div class="text-slate-300 leading-relaxed flex-1">
+        <strong class="text-rose-300 font-bold">Configuration lists unavailable.</strong>
+        The required dropdown options (unit type, video type, space type, work category, content type)
+        could not be loaded from the server. Saving is disabled until this is resolved.
+      </div>
+      <button type="button" onclick="retryLoadTaxonomies()" class="btn-gold px-3 py-1.5 text-xs font-bold rounded-lg flex-shrink-0">Retry</button>
     </div>
 
     <!-- FORM: PROJECT VIDEO -->
@@ -1495,7 +1505,6 @@ function initApp() {
       if (data.user && data.user.email) {
         emailBadge.textContent = data.user.email;
         roleBadge.textContent = data.user.role || 'Authorised';
-        document.getElementById('bannerExecuteEmail').textContent = data.user.email;
 
         // Settings protection (§11): strictly hide Settings nav for non-owner
         var btnSettings = document.getElementById('btnTabSettings');
@@ -1595,11 +1604,11 @@ function capitalizeFirst(str) {
 // TAXONOMY DROPDOWNS
 // =============================================================
 function populateTaxonomyDropdowns() {
-  var lists = AppState.lists;
+  var lists = AppState.lists || {};
 
   function fillSelect(selectId, items, defaultText) {
     var el = document.getElementById(selectId);
-    if (!el) return;
+    if (!el) return 0;
     el.innerHTML = '';
     if (defaultText) {
       var defOpt = document.createElement('option');
@@ -1607,20 +1616,26 @@ function populateTaxonomyDropdowns() {
       defOpt.textContent = defaultText;
       el.appendChild(defOpt);
     }
-    (items || []).forEach(function(item) {
+    var validItems = Array.isArray(items) ? items : [];
+    validItems.forEach(function(item) {
       var opt = document.createElement('option');
       opt.value = item;
       opt.textContent = item;
       el.appendChild(opt);
     });
+    return validItems.length;
   }
 
-  fillSelect('pvUnitType', lists.unitType, '— Select unit type —');
-  fillSelect('pvProjectVideoType', lists.projectVideoType, '— Select video type —');
-  fillSelect('pvSpaceType', lists.spaceType, '— Select space type —');
-  fillSelect('pvWorkCategory', lists.workCategory, '— Select work category —');
+  // Required taxonomy-driven fields — Save must be disabled if any of these
+  // arrive empty, rather than silently leaving the dropdown with no options.
+  var requiredCounts = [
+    fillSelect('pvUnitType', lists.unitType, '— Select unit type —'),
+    fillSelect('pvProjectVideoType', lists.projectVideoType, '— Select video type —'),
+    fillSelect('pvSpaceType', lists.spaceType, '— Select space type —'),
+    fillSelect('pvWorkCategory', lists.workCategory, '— Select work category —'),
+    fillSelect('mcContentType', lists.marketingContentType, '— Select content type —')
+  ];
 
-  fillSelect('mcContentType', lists.marketingContentType, '— Select content type —');
   fillSelect('mcSpaceType', lists.spaceType, '— General / not specified —');
 
   // Video Library filters
@@ -1640,6 +1655,42 @@ function populateTaxonomyDropdowns() {
   fillSelect('emWorkCategory', lists.workCategory, '— Select work category —');
   fillSelect('emContentType', lists.marketingContentType, '— Select content type —');
   fillSelect('emMarketingSpaceType', lists.spaceType, '— General / not specified —');
+
+  var anyRequiredListEmpty = requiredCounts.some(function(count) { return count === 0; });
+  setTaxonomyLoadErrorState(anyRequiredListEmpty);
+}
+
+function setTaxonomyLoadErrorState(hasError) {
+  var banner = document.getElementById('taxonomyLoadError');
+  if (banner) banner.classList.toggle('hidden', !hasError);
+
+  ['btnSubmitProjectVideo', 'btnSubmitMarketingContent'].forEach(function(id) {
+    var btn = document.getElementById(id);
+    if (btn) btn.disabled = hasError;
+  });
+
+  if (hasError) {
+    console.error('[Amlaak] Required taxonomy lists arrived empty from apiGetAppBootstrapData(); Save disabled until resolved.');
+  }
+}
+
+function retryLoadTaxonomies() {
+  var btn = document.querySelector('#taxonomyLoadError button');
+  if (btn) { btn.disabled = true; btn.textContent = 'Retrying…'; }
+  callApi('apiGetAppBootstrapData', [], function(response) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Retry'; }
+    if (!response.ok) {
+      showToast('error', response.message || 'Could not reload configuration lists.');
+      return;
+    }
+    AppState.lists = response.data.lists;
+    populateTaxonomyDropdowns();
+    if (!document.getElementById('taxonomyLoadError').classList.contains('hidden')) {
+      showToast('error', 'Configuration lists are still unavailable.');
+    } else {
+      showToast('success', 'Configuration lists reloaded successfully.');
+    }
+  });
 }
 
 function populateSelect(selectId, items, selectedVal) {

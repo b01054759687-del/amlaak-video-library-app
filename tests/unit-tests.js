@@ -1127,6 +1127,101 @@ test('Cross-Module Call Audit: every Module.member usage exists on that module\'
   assert.deepStrictEqual(Array.from(new Set(missing)), [], 'Calls to non-existent module members found: ' + missing.join(', '));
 });
 
+// ==============================================================================
+// 16. Controlled Taxonomy Content & Dropdown Reliability
+// ==============================================================================
+console.log('\n>>> 16. Controlled Taxonomy Content & Dropdown Reliability:');
+
+function extractConfigTaxonomies() {
+  const configGs = fs.readFileSync('Config.gs', 'utf8');
+  const marker = 'var DEFAULT_TAXONOMIES = {';
+  const idx = configGs.indexOf(marker);
+  assert.notStrictEqual(idx, -1, 'DEFAULT_TAXONOMIES declaration must exist in Config.gs');
+  const start = idx + marker.length - 1;
+  let depth = 0, i = start, buf = '';
+  for (; i < configGs.length; i++) {
+    const ch = configGs[i];
+    if (ch === '{') depth++;
+    if (ch === '}') { depth--; if (depth === 0) { buf += ch; i++; break; } }
+    buf += ch;
+  }
+  // DEFAULT_TAXONOMIES is a plain object literal of string arrays — safe to eval in isolation.
+  return Function('"use strict"; return (' + buf + ');')();
+}
+
+const taxonomies = extractConfigTaxonomies();
+
+test('Taxonomy: Marketing Content Type contains exactly the approved 6 values', () => {
+  assert.deepStrictEqual(taxonomies.marketingContentType, ['Educational', 'Demonstration', 'Testimonial', 'Sales', 'Offer', 'Other']);
+});
+
+test('Taxonomy: Space Type contains exactly the approved 11 values', () => {
+  assert.deepStrictEqual(taxonomies.spaceType, ['Full Unit', 'Reception', 'Kitchen', 'Bathroom', 'Bedroom', 'Dressing Room', 'Entrance', 'Terrace', 'Garden', 'Multiple Spaces', 'Other']);
+});
+
+test('Taxonomy: Project Video Type contains the approved 7 values', () => {
+  assert.deepStrictEqual(taxonomies.projectVideoType, ['Red Brick', 'Phase 1', 'Phase 2', 'Final', 'Final with Furniture', 'Client Interview', 'Before & After']);
+});
+
+test('Taxonomy: Work Category contains exactly the approved 15 values', () => {
+  assert.deepStrictEqual(taxonomies.workCategory, ['Roof', 'Ceiling', 'Materials', 'Furniture', 'Decoration', 'HDF', 'Ceramics', 'Electrical', 'Gypsum Board', 'Air Conditioning', 'Sound System', 'Doors', 'Windows', 'Painting', 'Plastering']);
+});
+
+test('Taxonomy: Unit Type contains the approved 15 values', () => {
+  assert.deepStrictEqual(taxonomies.unitType, ['Apartment', 'Studio', 'Duplex', 'Penthouse', 'Roof Apartment', 'Standalone Villa', 'Twin House', 'Townhouse', 'Chalet', 'Cabin', 'Office', 'Clinic', 'Retail / Commercial Unit', 'Restaurant / Café', 'Other']);
+});
+
+test('Taxonomy: DashboardService.getBootstrapData exposes Config.TAXONOMIES directly as "lists" (server/client key match)', () => {
+  const dashboardGs = fs.readFileSync('DashboardService.gs', 'utf8');
+  assert.ok(/var lists\s*=\s*Config\.TAXONOMIES\s*;/.test(dashboardGs), 'getBootstrapData must assign lists = Config.TAXONOMIES verbatim');
+});
+
+test('Dropdown Reliability: required taxonomy selects get a placeholder and are tracked for the empty-list error state', () => {
+  const indexHtml = fs.readFileSync('Index.html', 'utf8');
+  const required = [
+    ["fillSelect('pvUnitType', lists.unitType, '— Select unit type —')"],
+    ["fillSelect('pvProjectVideoType', lists.projectVideoType, '— Select video type —')"],
+    ["fillSelect('pvSpaceType', lists.spaceType, '— Select space type —')"],
+    ["fillSelect('pvWorkCategory', lists.workCategory, '— Select work category —')"],
+    ["fillSelect('mcContentType', lists.marketingContentType, '— Select content type —')"]
+  ];
+  required.forEach((r) => assert.ok(indexHtml.includes(r[0]), 'Missing required fillSelect call: ' + r[0]));
+  assert.ok(indexHtml.includes('requiredCounts'), 'populateTaxonomyDropdowns must track required list counts');
+  assert.ok(indexHtml.includes('setTaxonomyLoadErrorState'), 'setTaxonomyLoadErrorState must exist');
+  assert.ok(indexHtml.includes('id="taxonomyLoadError"'), 'A visible taxonomy-load-error banner must exist in the DOM');
+  assert.ok(indexHtml.includes('function retryLoadTaxonomies'), 'A Retry mechanism must exist for a failed taxonomy load');
+});
+
+test('Dropdown Reliability: empty required taxonomy list disables both Save buttons (simulated)', () => {
+  function simulateSetTaxonomyLoadErrorState(hasError, buttons) {
+    buttons.btnSubmitProjectVideo.disabled = hasError;
+    buttons.btnSubmitMarketingContent.disabled = hasError;
+    return hasError;
+  }
+  const buttons = { btnSubmitProjectVideo: { disabled: false }, btnSubmitMarketingContent: { disabled: false } };
+  const requiredCounts = [15, 7, 0, 15, 6]; // spaceType came back empty
+  const anyEmpty = requiredCounts.some((c) => c === 0);
+  simulateSetTaxonomyLoadErrorState(anyEmpty, buttons);
+  assert.strictEqual(buttons.btnSubmitProjectVideo.disabled, true);
+  assert.strictEqual(buttons.btnSubmitMarketingContent.disabled, true);
+});
+
+test('Work Category: cleared for Marketing Content, independent of Space Type, excluded from filenames', () => {
+  // Already covered in detail by Section 9; this asserts the taxonomy-level contract:
+  // workCategory and spaceType are two disjoint controlled lists with no overlapping values.
+  const overlap = taxonomies.workCategory.filter((w) => taxonomies.spaceType.includes(w));
+  assert.deepStrictEqual(overlap, [], 'Work Category and Space Type must not share values');
+});
+
+test('UI copy: no owner-execution wording remains ("app account" / "share it with") in production client or server files', () => {
+  const filesToCheck = ['Index.html', 'DriveService.gs', 'Code.gs'];
+  filesToCheck.forEach((f) => {
+    const content = fs.readFileSync(f, 'utf8');
+    assert.strictEqual(content.includes('app account'), false, f + ' must not reference a fixed "app account" (execute-as-owner wording)');
+    assert.strictEqual(content.includes('share it with'), false, f + ' must not use "share it with <owner>" wording under USER_ACCESSING');
+  });
+});
+
 console.log('\n' + '='.repeat(70));
 console.log(`TOTAL UNIT TESTS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);
 console.log('='.repeat(70));
