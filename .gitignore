@@ -28,3 +28,4 @@ scratch/
 
 # Local browser QA harness output (never deployed, regenerated on demand)
 tests/.preview/
+tests/.transport-test/
