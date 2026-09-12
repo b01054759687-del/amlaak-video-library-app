@@ -1222,6 +1222,160 @@ test('UI copy: no owner-execution wording remains ("app account" / "share it wit
   });
 });
 
+// ==============================================================================
+// 17. Bootstrap Timeout & Client/Server Callback Resilience
+// ==============================================================================
+// Live browser QA against the real production deployment (real authenticated
+// owner session, real /exec URL) reproduced an indefinite hang: the Apps
+// Script Executions log showed apiGetAppBootstrapData completing
+// successfully in ~4.5s, yet the browser's network panel showed the
+// underlying google.script.run /callback POST stuck at "pending" forever,
+// and the UI stayed on "Signing in..."/"Checking role..."/"Loading..." with
+// no error shown. Neither withSuccessHandler nor withFailureHandler ever
+// fired, so nothing in the existing try/catch could have caught it. These
+// tests verify callApi() now guarantees a caller always hears back.
+console.log('\n>>> 17. Bootstrap Timeout & Client/Server Callback Resilience:');
+
+test('callApi(): accepts an optional timeoutMs override for deadline control', () => {
+  const indexHtml = fs.readFileSync('Index.html', 'utf8');
+  assert.ok(
+    /function\s+callApi\s*\(\s*fnName\s*,\s*args\s*,\s*callback\s*,\s*timeoutMs\s*\)/.test(indexHtml),
+    'callApi must accept a timeoutMs parameter'
+  );
+});
+
+test('callApi(): times out with errorCode TIMEOUT when the RPC bridge never calls back, and ignores a late response afterwards', () => {
+  const indexHtml = fs.readFileSync('Index.html', 'utf8');
+  const bodies = getAllTopLevelFunctionBodies(indexHtml);
+  assert.ok(bodies.callApi, 'callApi must exist in Index.html');
+
+  // Fake timer queue: setTimeout/clearTimeout are captured rather than real,
+  // so the test can deterministically fire the deadline callback to
+  // simulate elapsed time, mirroring the exact live defect (the server
+  // finishes, but the sandboxed-iframe bridge never delivers the response).
+  let nextTimerId = 1;
+  const pendingTimers = {};
+  function fakeSetTimeout(fn) { const id = nextTimerId++; pendingTimers[id] = fn; return id; }
+  function fakeClearTimeout(id) { delete pendingTimers[id]; }
+
+  const handlers = {};
+  const runStub = {
+    withSuccessHandler(fn) { handlers.success = fn; return runStub; },
+    withFailureHandler(fn) { handlers.failure = fn; return runStub; },
+    apiGetAppBootstrapData() { /* simulates the observed hang: never calls a handler */ }
+  };
+  const fakeGoogle = { script: { run: runStub } };
+
+  const factory = new Function('google', 'window', 'setTimeout', 'clearTimeout',
+    'function callApi(fnName, args, callback, timeoutMs) {' + bodies.callApi + '}\nreturn callApi;');
+  const sandboxedCallApi = factory(fakeGoogle, {}, fakeSetTimeout, fakeClearTimeout);
+
+  let received = null;
+  sandboxedCallApi('apiGetAppBootstrapData', [], (response) => { received = response; }, 20000);
+
+  assert.strictEqual(received, null, 'callback must not fire while the RPC is still genuinely pending');
+  const timerIds = Object.keys(pendingTimers);
+  assert.strictEqual(timerIds.length, 1, 'exactly one deadline timer must be scheduled per call');
+
+  pendingTimers[timerIds[0]](); // simulate the deadline elapsing
+
+  assert.ok(received, 'the timeout must synthesize a response so the caller is never left hanging indefinitely');
+  assert.strictEqual(received.ok, false);
+  assert.strictEqual(received.errorCode, 'TIMEOUT');
+  assert.ok(/second/i.test(received.message), 'timeout message should explain what happened in plain language');
+
+  // The real server response can legitimately still arrive late (this is
+  // exactly what live testing showed: the Executions log recorded success
+  // seconds after the browser had already stopped waiting). It must be
+  // ignored, not delivered as a confusing second callback invocation.
+  received = null;
+  handlers.success({ ok: true, data: { lists: {} } });
+  assert.strictEqual(received, null, 'a late success response arriving after the timeout must be ignored');
+});
+
+test('callApi(): a normal fast success clears the deadline timer and is delivered immediately', () => {
+  const indexHtml = fs.readFileSync('Index.html', 'utf8');
+  const bodies = getAllTopLevelFunctionBodies(indexHtml);
+
+  let nextTimerId = 1;
+  const pendingTimers = {};
+  function fakeSetTimeout(fn) { const id = nextTimerId++; pendingTimers[id] = fn; return id; }
+  function fakeClearTimeout(id) { delete pendingTimers[id]; }
+
+  const handlers = {};
+  const runStub = {
+    withSuccessHandler(fn) { handlers.success = fn; return runStub; },
+    withFailureHandler(fn) { handlers.failure = fn; return runStub; },
+    apiGetAppBootstrapData() { handlers.success({ ok: true, data: { lists: {} } }); }
+  };
+  const fakeGoogle = { script: { run: runStub } };
+
+  const factory = new Function('google', 'window', 'setTimeout', 'clearTimeout',
+    'function callApi(fnName, args, callback, timeoutMs) {' + bodies.callApi + '}\nreturn callApi;');
+  const sandboxedCallApi = factory(fakeGoogle, {}, fakeSetTimeout, fakeClearTimeout);
+
+  let received = null;
+  sandboxedCallApi('apiGetAppBootstrapData', [], (response) => { received = response; }, 20000);
+
+  assert.ok(received && received.ok === true, 'a normal fast success must be delivered immediately');
+  assert.deepStrictEqual(Object.keys(pendingTimers), [], 'the deadline timer must be cleared once the real response arrives');
+});
+
+test('callApi(): a genuine server failure also clears the deadline timer and is delivered immediately', () => {
+  const indexHtml = fs.readFileSync('Index.html', 'utf8');
+  const bodies = getAllTopLevelFunctionBodies(indexHtml);
+
+  const pendingTimers = {};
+  let nextTimerId = 1;
+  function fakeSetTimeout(fn) { const id = nextTimerId++; pendingTimers[id] = fn; return id; }
+  function fakeClearTimeout(id) { delete pendingTimers[id]; }
+
+  const handlers = {};
+  const runStub = {
+    withSuccessHandler(fn) { handlers.success = fn; return runStub; },
+    withFailureHandler(fn) { handlers.failure = fn; return runStub; },
+    apiGetAppBootstrapData() { handlers.failure({ message: 'Server exploded' }); }
+  };
+  const fakeGoogle = { script: { run: runStub } };
+
+  const factory = new Function('google', 'window', 'setTimeout', 'clearTimeout',
+    'function callApi(fnName, args, callback, timeoutMs) {' + bodies.callApi + '}\nreturn callApi;');
+  const sandboxedCallApi = factory(fakeGoogle, {}, fakeSetTimeout, fakeClearTimeout);
+
+  let received = null;
+  sandboxedCallApi('apiGetAppBootstrapData', [], (response) => { received = response; }, 20000);
+
+  assert.deepStrictEqual(received, { ok: false, message: 'Server exploded' });
+  assert.deepStrictEqual(Object.keys(pendingTimers), [], 'the deadline timer must be cleared on a real failure too');
+});
+
+test('showFatalConnectionError(): has a distinct TIMEOUT branch, not just the generic connection-error copy', () => {
+  const indexHtml = fs.readFileSync('Index.html', 'utf8');
+  const bodies = getAllTopLevelFunctionBodies(indexHtml);
+  assert.ok(bodies.showFatalConnectionError, 'showFatalConnectionError must exist');
+  const body = bodies.showFatalConnectionError;
+  assert.ok(/errorCode\s*===\s*['"]TIMEOUT['"]/.test(body), 'must branch on errorCode === "TIMEOUT"');
+  assert.ok(/Connection timed out/.test(body), 'must present an honest, distinct title for a timeout');
+});
+
+test('Write buttons (Save Video / Save Content) start disabled in markup until Bootstrap succeeds', () => {
+  const indexHtml = fs.readFileSync('Index.html', 'utf8');
+  ['btnSubmitProjectVideo', 'btnSubmitMarketingContent'].forEach((id) => {
+    const match = indexHtml.match(new RegExp('<button[^>]*id="' + id + '"[^>]*>'));
+    assert.ok(match, id + ' button must exist');
+    assert.ok(/\bdisabled\b/.test(match[0]), id + ' must start disabled so it cannot be used before Bootstrap succeeds');
+  });
+});
+
+test('dist/Index.html stays in sync with the timeout fix (built output matches source)', () => {
+  const src = fs.readFileSync('Index.html', 'utf8');
+  const dist = fs.readFileSync('dist/Index.html', 'utf8');
+  ['DEFAULT_API_TIMEOUT_MS', "errorCode: 'TIMEOUT'", 'Connection timed out'].forEach((needle) => {
+    assert.ok(src.includes(needle), 'source Index.html must contain: ' + needle);
+    assert.ok(dist.includes(needle), 'dist/Index.html must contain: ' + needle);
+  });
+});
+
 console.log('\n' + '='.repeat(70));
 console.log(`TOTAL UNIT TESTS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);
 console.log('='.repeat(70));

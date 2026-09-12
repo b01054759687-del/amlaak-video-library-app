@@ -604,7 +604,7 @@
 
       <div class="flex items-center justify-end gap-2.5 pt-1">
         <button type="reset" class="ghost-btn px-5 py-2.5 text-xs">Reset</button>
-        <button type="submit" id="btnSubmitProjectVideo" class="gold-btn px-8 py-3 text-sm font-black flex items-center gap-2">
+        <button type="submit" id="btnSubmitProjectVideo" disabled class="gold-btn px-8 py-3 text-sm font-black flex items-center gap-2">
           <i class="fa-solid fa-cloud-arrow-up"></i> <span>Save Video</span>
         </button>
       </div>
@@ -656,7 +656,7 @@
 
       <div class="flex items-center justify-end gap-2.5 pt-1">
         <button type="reset" class="ghost-btn px-5 py-2.5 text-xs">Reset</button>
-        <button type="submit" id="btnSubmitMarketingContent" class="gold-btn px-8 py-3 text-sm font-black flex items-center gap-2">
+        <button type="submit" id="btnSubmitMarketingContent" disabled class="gold-btn px-8 py-3 text-sm font-black flex items-center gap-2">
           <i class="fa-solid fa-cloud-arrow-up"></i> <span>Save Content</span>
         </button>
       </div>
@@ -3255,7 +3255,18 @@ function triggerSystemSetup() {
 // =============================================================
 // UNIVERSAL API CALL & FEEDBACK HELPERS
 // =============================================================
-function callApi(fnName, args, callback) {
+var DEFAULT_API_TIMEOUT_MS = 25000;
+
+// Every google.script.run call is bridged through a sandboxed iframe using
+// postMessage. That bridge can silently swallow the response (observed in
+// live testing: the server-side execution completes normally in the Apps
+// Script execution log, but withSuccessHandler/withFailureHandler are never
+// invoked client-side — most likely a browser extension or network layer
+// interfering with the cross-frame message). Without a timeout, callers are
+// stuck waiting forever with no error and no way to recover except a full
+// page reload. This wraps every call with a deadline so a caller always
+// hears back, one way or another.
+function callApi(fnName, args, callback, timeoutMs) {
   if (window._localMockDispatcher) {
     window._localMockDispatcher(fnName, args, callback);
     return;
@@ -3266,11 +3277,31 @@ function callApi(fnName, args, callback) {
     return;
   }
 
+  var settled = false;
+  var effectiveTimeoutMs = typeof timeoutMs === 'number' ? timeoutMs : DEFAULT_API_TIMEOUT_MS;
+  var timeoutId = setTimeout(function() {
+    if (settled) return;
+    settled = true;
+    callback({
+      ok: false,
+      errorCode: 'TIMEOUT',
+      message: 'The server did not respond within ' + Math.round(effectiveTimeoutMs / 1000) + ' seconds. ' +
+        'This can happen with a slow connection, or a browser extension interfering with the page. Please retry — ' +
+        'if it keeps happening, try again with browser extensions disabled or in a different browser profile.'
+    });
+  }, effectiveTimeoutMs);
+
   google.script.run
     .withSuccessHandler(function(response) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
       callback(response);
     })
     .withFailureHandler(function(error) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
       callback({ ok: false, message: error.message || error.toString() });
     })[fnName].apply(google.script.run, args || []);
 }
@@ -3321,11 +3352,12 @@ function showFatalConnectionError(message, errorCode) {
   var icon = document.getElementById('fatalErrorIcon');
   var retryBtn = document.getElementById('fatalErrorRetryBtn');
   var isAccessDenied = errorCode === 'UNAUTHORIZED';
+  var isTimeout = errorCode === 'TIMEOUT';
 
-  if (title) title.textContent = isAccessDenied ? 'Access Denied' : 'Database connection unavailable';
-  if (icon) icon.className = isAccessDenied ? 'fa-solid fa-user-lock text-3xl text-[#DFBF7A] mb-4' : 'fa-solid fa-plug-circle-exclamation text-3xl text-[#DFBF7A] mb-4';
-  if (text) text.textContent = message || (isAccessDenied ? 'Your Google account is not authorized to use this application.' : 'Database connection unavailable.');
-  if (retryBtn) retryBtn.textContent = isAccessDenied ? 'Try again' : 'Retry connection';
+  if (title) title.textContent = isAccessDenied ? 'Access Denied' : (isTimeout ? 'Connection timed out' : 'Database connection unavailable');
+  if (icon) icon.className = isAccessDenied ? 'fa-solid fa-user-lock text-3xl text-[#DFBF7A] mb-4' : (isTimeout ? 'fa-solid fa-hourglass-end text-3xl text-[#DFBF7A] mb-4' : 'fa-solid fa-plug-circle-exclamation text-3xl text-[#DFBF7A] mb-4');
+  if (text) text.textContent = message || (isAccessDenied ? 'Your Google account is not authorized to use this application.' : (isTimeout ? 'The connection to Google timed out.' : 'Database connection unavailable.'));
+  if (retryBtn) retryBtn.textContent = (isAccessDenied || isTimeout) ? 'Try again' : 'Retry connection';
   if (overlay) overlay.classList.remove('hidden');
 }
 
